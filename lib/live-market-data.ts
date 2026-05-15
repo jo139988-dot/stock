@@ -743,7 +743,7 @@ async function fetchNewYorkFedRrp(fetcher: Fetcher): Promise<DatedSeries | null>
 
 async function fetchFiscalDataTga(fetcher: Fetcher): Promise<DatedSeries | null> {
   const year = new Date().getUTCFullYear();
-  const sourceUrl = `https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/dts/operating_cash_balance?filter=record_date:gte:${year}-01-01,account_type:eq:Treasury%20General%20Account%20(TGA)%20Closing%20Balance&sort=-record_date&page[size]=40`;
+  const sourceUrl = `https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/dts/operating_cash_balance?filter=record_date:gte:${year}-01-01,account_type:eq:Treasury%20General%20Account%20%28TGA%29%20Closing%20Balance&sort=-record_date&page%5Bsize%5D=40`;
   try {
     const response = await fetchWithTimeout(fetcher, sourceUrl, {
       headers: {
@@ -760,6 +760,54 @@ async function fetchFiscalDataTga(fetcher: Fetcher): Promise<DatedSeries | null>
       sourceUrl,
       frequency: "Daily"
     });
+  } catch {
+    return null;
+  }
+}
+
+async function fetchBlsCpiRelease(fetcher: Fetcher): Promise<Record<string, DatedSeries> | null> {
+  const sourceUrl = "https://www.bls.gov/news.release/cpi.nr0.htm";
+  try {
+    const response = await fetchWithTimeout(fetcher, sourceUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!response.ok) return null;
+    const text = (await response.text()).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    const dateMatch = /CONSUMER PRICE INDEX\s*-\s*([A-Z]+)\s+(\d{4})/i.exec(text);
+    const month = dateMatch ? monthNumber(dateMatch[1]) : new Date().toISOString().slice(5, 7);
+    const year = dateMatch?.[2] ?? new Date().getUTCFullYear().toString();
+    const baseDate = `${year}-${month}-01`;
+    const headline = /all items index rose\s+(-?\d+(?:\.\d+)?)\s+percent for the 12 months ending [A-Za-z]+,\s+after rising\s+(-?\d+(?:\.\d+)?)\s+percent/i.exec(text);
+    const core = /all items less food and energy index rose\s+(-?\d+(?:\.\d+)?)\s+percent over the year,\s+following a\s+(-?\d+(?:\.\d+)?)\s+percent/i.exec(text);
+    const makeSeries = (match: RegExpExecArray | null): DatedSeries | null => {
+      if (!match) return null;
+      const value = Number(match[1]);
+      const previousClose = Number(match[2]);
+      if (!Number.isFinite(value) || !Number.isFinite(previousClose)) return null;
+      return {
+        source: "BLS Consumer Price Index Summary",
+        sourceUrl,
+        frequency: "Monthly",
+        baseDate,
+        lastUpdated: nowIso(),
+        value,
+        previousClose,
+        changePercent: changePercent(value, previousClose),
+        sparkline: [
+          { date: "prev", value: previousClose },
+          { date: baseDate.slice(5), value }
+        ]
+      };
+    };
+    const cpi = makeSeries(headline);
+    const coreCpi = makeSeries(core);
+    if (!cpi && !coreCpi) return null;
+    return {
+      ...(cpi ? { cpi } : {}),
+      ...(coreCpi ? { "core-cpi": coreCpi } : {})
+    };
   } catch {
     return null;
   }
@@ -1239,6 +1287,7 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     pceSeries,
     corePceSeries,
     clevelandNowcast,
+    blsCpiRelease,
     blsLevelResults
   ] = await Promise.all([
     fetchTreasuryCurve(fetcher, "daily_treasury_yield_curve", ["BC_2YEAR", "BC_10YEAR", "BC_30YEAR"]),
@@ -1250,6 +1299,7 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     fetchBeaInflationPage(fetcher, "https://www.bea.gov/data/personal-consumption-expenditures-price-index"),
     fetchBeaInflationPage(fetcher, "https://www.bea.gov/data/personal-consumption-expenditures-price-index-excluding-food-and-energy"),
     fetchClevelandNowcast(fetcher),
+    fetchBlsCpiRelease(fetcher),
     Promise.all(
       Object.entries(blsLevelSources).map(async ([id, seriesId]) => {
         const result = await fetchBlsLevel(fetcher, seriesId);
@@ -1307,6 +1357,13 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     if (!result) continue;
     const current = snapshot.indicators.find((indicator) => indicator.id === id);
     updateIndicator(snapshot, datedSeriesUpdate(id, result, current?.unit, inverse));
+  }
+
+  if (blsCpiRelease) {
+    for (const [id, result] of Object.entries(blsCpiRelease)) {
+      const current = snapshot.indicators.find((indicator) => indicator.id === id);
+      updateIndicator(snapshot, datedSeriesUpdate(id, result, current?.unit, true));
+    }
   }
 
   const blsEntries = Object.entries(blsSources);
