@@ -38,6 +38,8 @@ Deploy command: npx @opennextjs/cloudflare deploy
 
 `npm run build`는 Next.js 산출물만 만들기 때문에 Cloudflare 배포에는 충분하지 않습니다. OpenNext 빌드를 실행해야 `.open-next` 산출물이 생기고, 그 다음 deploy 단계가 성공합니다.
 
+배포 대상 Worker 이름은 `stock`이며, 기본 Workers URL은 `https://stock.jo139988.workers.dev/`입니다.
+
 CLI 배포 전에는 Cloudflare 계정 로그인이 필요합니다.
 
 ```powershell

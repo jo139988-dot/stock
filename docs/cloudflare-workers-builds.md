@@ -2,6 +2,8 @@
 
 If Cloudflare is connected directly to the GitHub repository, use Workers Builds with OpenNext.
 
+This repository deploys to the Cloudflare Worker named `stock`, which serves `https://stock.jo139988.workers.dev/`.
+
 Use these commands in the Cloudflare dashboard:
 
 ```text
