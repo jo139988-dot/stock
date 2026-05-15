@@ -37,6 +37,28 @@ type FredSeries = {
   rawValues: number[];
 };
 
+type BlsSeries = {
+  source: string;
+  sourceUrl: string;
+  baseDate: string;
+  lastUpdated: string;
+  value: number;
+  previousClose: number;
+  changePercent: number;
+  sparkline: SparkPoint[];
+};
+
+type CftcSeries = {
+  source: string;
+  sourceUrl: string;
+  baseDate: string;
+  lastUpdated: string;
+  value: number;
+  previousClose: number;
+  changePercent: number;
+  sparkline: SparkPoint[];
+};
+
 type Update = Partial<Indicator> & {
   id: string;
 };
@@ -88,6 +110,18 @@ const fredSources: Record<string, { series: string; unit?: string; transform?: (
   "jobless-claims": { series: "ICSA", transform: (value) => value / 1_000 },
   unemployment: { series: "UNRATE" },
   "retail-sales": { series: "RSAFS" }
+};
+
+const blsSources: Record<string, string> = {
+  cpi: "CUSR0000SA0",
+  "core-cpi": "CUSR0000SA0L1E"
+};
+
+const cftcSources: Record<string, string[]> = {
+  "cftc-spx": ["E-MINI S&P 500", "S&P 500 Consolidated", "S&P 500 STOCK INDEX"],
+  "cftc-nq": ["NASDAQ-100", "NASDAQ 100"],
+  "cftc-10y": ["10-YEAR U.S. TREASURY", "10-YEAR TREASURY"],
+  "cftc-dollar": ["U.S. DOLLAR INDEX", "US DOLLAR INDEX"]
 };
 
 const yahooRateFallbacks: Record<string, { symbols: string[]; transform: (value: number) => number }> = {
@@ -194,6 +228,12 @@ async function fetchWithTimeout(fetcher: Fetcher, input: string, init: RequestIn
   }
 }
 
+function twoYearsAgo() {
+  const date = new Date();
+  date.setUTCFullYear(date.getUTCFullYear() - 2);
+  return date.toISOString().slice(0, 10);
+}
+
 function sparkFromPairs(timestamps: number[], values: Array<number | null>) {
   const points: SparkPoint[] = [];
   for (let index = 0; index < values.length; index += 1) {
@@ -283,13 +323,13 @@ function parseFredCsv(text: string) {
 }
 
 async function fetchFredSeries(fetcher: Fetcher, series: string, transform?: (value: number) => number): Promise<FredSeries | null> {
-  const sourceUrl = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${encodeURIComponent(series)}`;
+  const sourceUrl = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${encodeURIComponent(series)}&cosd=${twoYearsAgo()}`;
   try {
     const response = await fetchWithTimeout(fetcher, sourceUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 market-regime-monitor"
       }
-    });
+    }, 9000);
     if (!response.ok) return null;
     const rows = parseFredCsv(await response.text());
     if (rows.length < 2) return null;
@@ -309,6 +349,177 @@ async function fetchFredSeries(fetcher: Fetcher, series: string, transform?: (va
       changePercent: changePercent(latest.value, previous.value),
       sparkline: transformed.slice(-40).map((row) => ({ date: row.date.slice(5), value: Number(row.value.toFixed(4)) })),
       rawValues: transformed.map((row) => row.value)
+    };
+  } catch {
+    return null;
+  }
+}
+
+function parseCsvLine(line: string) {
+  const fields: string[] = [];
+  let current = "";
+  let quoted = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const next = line[index + 1];
+    if (char === '"' && next === '"') {
+      current += '"';
+      index += 1;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === "," && !quoted) {
+      fields.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
+function parseNumberField(value: string | undefined) {
+  if (!value || value === ".") return null;
+  const parsed = Number(value.replace(/,/g, "").trim());
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+async function fetchCboePutCall(fetcher: Fetcher): Promise<PriceSeries | null> {
+  const sourceUrl = "https://www.cboe.com/us/options/market_statistics/daily/?PrintPage=true";
+  try {
+    const response = await fetchWithTimeout(fetcher, sourceUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!response.ok) return null;
+    const html = await response.text();
+    const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    const ratio = /TOTAL PUT\/CALL RATIO\s+([0-9.]+)/i.exec(text);
+    if (!ratio) return null;
+    const value = Number(ratio[1]);
+    if (!Number.isFinite(value)) return null;
+    const dateMatch =
+      /placeholder="yyyy\/mm\/dd"[^>]*value="([^"]+)"/i.exec(html) ??
+      /value="([^"]+)"[^>]*placeholder="yyyy\/mm\/dd"/i.exec(html);
+    const baseDate = dateMatch?.[1] ?? new Date().toISOString().slice(0, 10);
+    return {
+      source: "CBOE Daily Market Statistics",
+      sourceUrl,
+      baseDate,
+      lastUpdated: nowIso(),
+      value,
+      previousClose: value,
+      changePercent: 0,
+      sparkline: [{ date: baseDate, value }]
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchCftcTff(fetcher: Fetcher, id: string, matchers: string[]): Promise<CftcSeries | null> {
+  const sourceUrl = "https://www.cftc.gov/dea/newcot/FinComWk.txt";
+  try {
+    const response = await fetchWithTimeout(fetcher, sourceUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!response.ok) return null;
+    const text = await response.text();
+    const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 20);
+    const line = lines.find((item) => {
+      const upper = item.toUpperCase();
+      return matchers.some((matcher) => upper.includes(matcher.toUpperCase()));
+    });
+    if (!line) return null;
+    const fields = parseCsvLine(line);
+    const baseDate = fields[2] ?? new Date().toISOString().slice(0, 10);
+    const levLong = parseNumberField(fields[14]);
+    const levShort = parseNumberField(fields[15]);
+    const changeLevLong = parseNumberField(fields[31]);
+    const changeLevShort = parseNumberField(fields[32]);
+    if (levLong === null || levShort === null) return null;
+    const value = levLong - levShort;
+    const netChange = changeLevLong !== null && changeLevShort !== null ? changeLevLong - changeLevShort : 0;
+    const previousClose = value - netChange;
+    return {
+      source: "CFTC Traders in Financial Futures (Leveraged Funds net)",
+      sourceUrl,
+      baseDate,
+      lastUpdated: nowIso(),
+      value,
+      previousClose,
+      changePercent: changePercent(value, previousClose),
+      sparkline: [
+        { date: "prev", value: previousClose },
+        { date: baseDate.slice(5), value }
+      ]
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchBlsInflation(fetcher: Fetcher, id: string, seriesId: string): Promise<BlsSeries | null> {
+  const sourceUrl = "https://api.bls.gov/publicAPI/v2/timeseries/data/";
+  const endYear = new Date().getUTCFullYear();
+  const startYear = endYear - 2;
+  try {
+    const response = await fetchWithTimeout(fetcher, sourceUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      },
+      body: JSON.stringify({
+        seriesid: [seriesId],
+        startyear: String(startYear),
+        endyear: String(endYear)
+      })
+    }, 8000);
+    if (!response.ok) return null;
+    const payload = (await response.json()) as {
+      Results?: {
+        series?: Array<{
+          data?: Array<{ year: string; period: string; value: string }>;
+        }>;
+      };
+    };
+    const rows = payload.Results?.series?.[0]?.data
+      ?.filter((row) => /^M\d{2}$/.test(row.period))
+      .map((row) => ({
+        date: `${row.year}-${row.period.slice(1)}-01`,
+        value: Number(row.value)
+      }))
+      .filter((row) => Number.isFinite(row.value))
+      .sort((a, b) => a.date.localeCompare(b.date)) ?? [];
+    if (rows.length < 14) return null;
+    const latestIndex = rows.length - 1;
+    const latest = rows[latestIndex];
+    const previous = rows[latestIndex - 1];
+    const yearAgo = rows[latestIndex - 12];
+    const previousYearAgo = rows[latestIndex - 13];
+    const value = ((latest.value / yearAgo.value) - 1) * 100;
+    const previousClose = ((previous.value / previousYearAgo.value) - 1) * 100;
+    return {
+      source: `BLS Public API (${seriesId})`,
+      sourceUrl: `https://www.bls.gov/cpi/data.htm`,
+      baseDate: latest.date,
+      lastUpdated: nowIso(),
+      value,
+      previousClose,
+      changePercent: changePercent(value, previousClose),
+      sparkline: rows.slice(-24).map((row, index, sliced) => {
+        const sourceIndex = rows.length - sliced.length + index;
+        const base = rows[sourceIndex - 12];
+        return {
+          date: row.date.slice(5, 7),
+          value: base ? Number((((row.value / base.value) - 1) * 100).toFixed(3)) : 0
+        };
+      })
     };
   } catch {
     return null;
@@ -666,6 +877,15 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     });
   }
 
+  const cboePutCall = await fetchCboePutCall(fetcher);
+  if (cboePutCall) {
+    updateIndicator(snapshot, {
+      ...yahooUpdate("put-call", cboePutCall, ""),
+      tone: "neutral",
+      description: "Official current CBOE total put/call ratio. The public daily page does not expose a previous-day API value, so intraday change is set to 0 until a historical feed is added."
+    });
+  }
+
   const fredEntries = Object.entries(fredSources);
   const fredResults = await Promise.all(
     fredEntries.map(async ([id, config]) => {
@@ -689,6 +909,66 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
         frequency: ["cpi", "core-cpi", "pce", "core-pce", "ism-mfg", "unemployment", "retail-sales"].includes(id) ? "Monthly" : "Daily/Weekly",
         baseDate: transformed.baseDate,
         lastUpdated: nowIso(),
+        access: "free",
+        stale: false
+      }
+    });
+  }
+
+  const blsEntries = Object.entries(blsSources);
+  const blsResults = await Promise.all(
+    blsEntries.map(async ([id, seriesId]) => {
+      const result = await fetchBlsInflation(fetcher, id, seriesId);
+      return [id, seriesId, result] as const;
+    })
+  );
+  for (const [id, seriesId, result] of blsResults) {
+    if (!result) continue;
+    const current = snapshot.indicators.find((indicator) => indicator.id === id);
+    updateIndicator(snapshot, {
+      id,
+      value: result.value,
+      previousClose: result.previousClose,
+      changePercent: result.changePercent,
+      unit: current?.unit,
+      tone: toneForChange(result.changePercent, true),
+      sparkline: result.sparkline,
+      quality: {
+        source: `BLS Public API (${seriesId})`,
+        sourceUrl: result.sourceUrl,
+        frequency: "Monthly",
+        baseDate: result.baseDate,
+        lastUpdated: nowIso(),
+        access: "free",
+        stale: false
+      }
+    });
+  }
+
+  const cftcEntries = Object.entries(cftcSources);
+  const cftcResults = await Promise.all(
+    cftcEntries.map(async ([id, matchers]) => {
+      const result = await fetchCftcTff(fetcher, id, matchers);
+      return [id, result] as const;
+    })
+  );
+  for (const [id, result] of cftcResults) {
+    if (!result) continue;
+    const current = snapshot.indicators.find((indicator) => indicator.id === id);
+    updateIndicator(snapshot, {
+      id,
+      value: result.value,
+      previousClose: result.previousClose,
+      changePercent: result.changePercent,
+      unit: current?.unit,
+      tone: toneForChange(result.changePercent),
+      sparkline: result.sparkline,
+      quality: {
+        source: result.source,
+        sourceUrl: result.sourceUrl,
+        frequency: "Weekly",
+        baseDate: result.baseDate,
+        lastUpdated: result.lastUpdated,
         access: "free",
         stale: false
       }
