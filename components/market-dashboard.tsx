@@ -42,6 +42,7 @@ import type {
   Indicator,
   IndicatorTone,
   MarketAlert,
+  MarketSnapshot,
   MarketScore,
   Region,
   ThemeMomentum
@@ -131,18 +132,18 @@ function accessLabel(access: DataAccess) {
   return labels[access];
 }
 
-function byIds(ids: string[]) {
+function byIds(snapshot: MarketSnapshot, ids: string[]) {
   return ids
-    .map((id) => marketSnapshot.indicators.find((indicator) => indicator.id === id))
+    .map((id) => snapshot.indicators.find((indicator) => indicator.id === id))
     .filter(Boolean) as Indicator[];
 }
 
-function byRegion(region: Region) {
-  return marketSnapshot.indicators.filter((indicator) => indicator.region === region);
+function byRegion(snapshot: MarketSnapshot, region: Region) {
+  return snapshot.indicators.filter((indicator) => indicator.region === region);
 }
 
-function byGroup(group: Indicator["group"]) {
-  return marketSnapshot.indicators.filter((indicator) => indicator.group === group);
+function byGroup(snapshot: MarketSnapshot, group: Indicator["group"]) {
+  return snapshot.indicators.filter((indicator) => indicator.group === group);
 }
 
 function MetricCard({ indicator, compact = false }: { indicator: Indicator; compact?: boolean }) {
@@ -305,14 +306,14 @@ function SectionHeader({
   );
 }
 
-function MarketPulse() {
-  const topThemes = [...marketSnapshot.themes].sort((a, b) => b.score - a.score).slice(0, 6);
-  const pulseIndicators = byIds(["kospi", "spx", "vix", "usd-krw", "hy-oas", "net-liquidity"]);
+function MarketPulse({ snapshot }: { snapshot: MarketSnapshot }) {
+  const topThemes = [...snapshot.themes].sort((a, b) => b.score - a.score).slice(0, 6);
+  const pulseIndicators = byIds(snapshot, ["kospi", "spx", "vix", "usd-krw", "hy-oas", "net-liquidity"]);
 
   return (
     <div className="space-y-6">
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        {marketSnapshot.scores.slice(0, 6).map((score) => (
+        {snapshot.scores.slice(0, 6).map((score) => (
           <ScoreGauge key={score.id} score={score} />
         ))}
       </section>
@@ -337,7 +338,7 @@ function MarketPulse() {
         <div className="panel rounded-lg p-5">
           <SectionHeader eyebrow="Warnings" title="주요 경고 알림" icon={<Bell className="h-5 w-5" />} />
           <div className="space-y-3">
-            {marketSnapshot.alerts.slice(0, 4).map((alert) => (
+            {snapshot.alerts.slice(0, 4).map((alert) => (
               <AlertCard key={alert.id} alert={alert} />
             ))}
           </div>
@@ -361,18 +362,20 @@ function DashboardGrid({
   title,
   eyebrow,
   ids,
-  icon
+  icon,
+  snapshot
 }: {
   region: Region;
   title: string;
   eyebrow: string;
   ids: string[];
   icon: React.ReactNode;
+  snapshot: MarketSnapshot;
 }) {
-  const selected = byIds(ids);
-  const score = marketSnapshot.scores.find((item) => item.region === region);
-  const breadth = byRegion(region).filter((item) => item.group === "breadth").slice(0, 6);
-  const flow = byRegion(region).filter((item) => item.group === "flow").slice(0, 6);
+  const selected = byIds(snapshot, ids);
+  const score = snapshot.scores.find((item) => item.region === region);
+  const breadth = byRegion(snapshot, region).filter((item) => item.group === "breadth").slice(0, 6);
+  const flow = byRegion(snapshot, region).filter((item) => item.group === "flow").slice(0, 6);
 
   return (
     <div className="space-y-6">
@@ -438,13 +441,13 @@ function IndicatorTable({ title, indicators }: { title: string; indicators: Indi
   );
 }
 
-function MacroLiquidity() {
-  const rates = byGroup("rates");
-  const liquidity = byGroup("liquidity");
-  const credit = byGroup("credit");
-  const inflation = byGroup("inflation");
-  const macro = byGroup("macro");
-  const netLiquidity = marketSnapshot.indicators.find((item) => item.id === "net-liquidity");
+function MacroLiquidity({ snapshot }: { snapshot: MarketSnapshot }) {
+  const rates = byGroup(snapshot, "rates");
+  const liquidity = byGroup(snapshot, "liquidity");
+  const credit = byGroup(snapshot, "credit");
+  const inflation = byGroup(snapshot, "inflation");
+  const macro = byGroup(snapshot, "macro");
+  const netLiquidity = snapshot.indicators.find((item) => item.id === "net-liquidity");
 
   return (
     <div className="space-y-6">
@@ -477,9 +480,9 @@ function MacroLiquidity() {
   );
 }
 
-function ThemeMonitor() {
-  const koreaThemes = marketSnapshot.themes.filter((theme) => theme.region === "korea");
-  const usThemes = marketSnapshot.themes.filter((theme) => theme.region === "us");
+function ThemeMonitor({ snapshot }: { snapshot: MarketSnapshot }) {
+  const koreaThemes = snapshot.themes.filter((theme) => theme.region === "korea");
+  const usThemes = snapshot.themes.filter((theme) => theme.region === "us");
 
   return (
     <div className="space-y-6">
@@ -524,13 +527,13 @@ function ThemePanel({ title, themes }: { title: string; themes: ThemeMomentum[] 
   );
 }
 
-function AlertsView() {
+function AlertsView({ snapshot }: { snapshot: MarketSnapshot }) {
   return (
     <div className="space-y-6">
       <SectionHeader eyebrow="Alerts" title="알림 조건 및 이벤트 캘린더" icon={<AlertTriangle className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <section className="space-y-3">
-          {marketSnapshot.alerts.map((alert) => (
+          {snapshot.alerts.map((alert) => (
             <AlertCard key={alert.id} alert={alert} />
           ))}
         </section>
@@ -540,7 +543,7 @@ function AlertsView() {
             <CalendarDays className="h-5 w-5 text-accent" />
           </div>
           <div className="divide-y divide-white/10">
-            {marketSnapshot.calendar.map((event) => (
+            {snapshot.calendar.map((event) => (
               <div key={event.id} className="grid grid-cols-[1fr_auto] gap-4 py-4">
                 <div>
                   <div className="font-semibold text-ink">{event.title}</div>
@@ -583,11 +586,11 @@ function AlertsView() {
   );
 }
 
-function DataQualityView() {
-  const staleCount = marketSnapshot.indicators.filter((indicator) => indicator.quality.stale).length;
-  const paidCount = marketSnapshot.indicators.filter((indicator) => indicator.quality.access === "paid").length;
-  const freeCount = marketSnapshot.indicators.filter((indicator) => indicator.quality.access === "free").length;
-  const rows = marketSnapshot.indicators;
+function DataQualityView({ snapshot }: { snapshot: MarketSnapshot }) {
+  const staleCount = snapshot.indicators.filter((indicator) => indicator.quality.stale).length;
+  const paidCount = snapshot.indicators.filter((indicator) => indicator.quality.access === "paid").length;
+  const freeCount = snapshot.indicators.filter((indicator) => indicator.quality.access === "free").length;
+  const rows = snapshot.indicators;
 
   return (
     <div className="space-y-6">
@@ -697,9 +700,37 @@ function TechnicalStrip() {
 
 export function MarketDashboard() {
   const [active, setActive] = React.useState<NavItem>("Market Pulse");
+  const [snapshot, setSnapshot] = React.useState<MarketSnapshot>(marketSnapshot);
+  const [dataStatus, setDataStatus] = React.useState<"loading" | "live" | "fallback">("loading");
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    async function loadSnapshot() {
+      try {
+        const response = await fetch("/api/snapshot", { cache: "no-store" });
+        if (!response.ok) throw new Error(`snapshot ${response.status}`);
+        const nextSnapshot = (await response.json()) as MarketSnapshot;
+        if (!mounted) return;
+        setSnapshot(nextSnapshot);
+        const hasLive = nextSnapshot.indicators.some((indicator) => !indicator.quality.stale);
+        setDataStatus(hasLive ? "live" : "fallback");
+      } catch {
+        if (!mounted) return;
+        setDataStatus("fallback");
+      }
+    }
+
+    loadSnapshot();
+    const interval = window.setInterval(loadSnapshot, 5 * 60 * 1000);
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+    };
+  }, []);
 
   const renderContent = () => {
-    if (active === "Market Pulse") return <MarketPulse />;
+    if (active === "Market Pulse") return <MarketPulse snapshot={snapshot} />;
     if (active === "Korea Dashboard") {
       return (
         <div className="space-y-6">
@@ -708,6 +739,7 @@ export function MarketDashboard() {
             title="한국 시장 대시보드"
             eyebrow="Korea Dashboard"
             icon={<TrendingUp className="h-5 w-5" />}
+            snapshot={snapshot}
             ids={[
               "kospi",
               "kosdaq",
@@ -738,6 +770,7 @@ export function MarketDashboard() {
             title="미국 시장 대시보드"
             eyebrow="US Dashboard"
             icon={<Globe2 className="h-5 w-5" />}
+            snapshot={snapshot}
             ids={[
               "spx",
               "nasdaq-composite",
@@ -762,10 +795,10 @@ export function MarketDashboard() {
         </div>
       );
     }
-    if (active === "Macro & Liquidity") return <MacroLiquidity />;
-    if (active === "Theme Monitor") return <ThemeMonitor />;
-    if (active === "Alerts") return <AlertsView />;
-    return <DataQualityView />;
+    if (active === "Macro & Liquidity") return <MacroLiquidity snapshot={snapshot} />;
+    if (active === "Theme Monitor") return <ThemeMonitor snapshot={snapshot} />;
+    if (active === "Alerts") return <AlertsView snapshot={snapshot} />;
+    return <DataQualityView snapshot={snapshot} />;
   };
 
   return (
@@ -779,7 +812,7 @@ export function MarketDashboard() {
             <div>
               <h1 className="text-2xl font-semibold text-white">Market Regime Monitor</h1>
               <p className="mt-1 text-sm text-muted">
-                한국·미국 위험선호/위험회피 통합 대시보드 · KST {formatDateTime(marketSnapshot.generatedAt)} · NY timezone 지원
+                한국·미국 위험선호/위험회피 통합 대시보드 · KST {formatDateTime(snapshot.generatedAt)} · NY timezone 지원
               </p>
             </div>
           </div>
@@ -799,7 +832,11 @@ export function MarketDashboard() {
           </div>
           <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
             <span className="block text-white/70">Scheduler</span>
-            cron/APScheduler
+            Worker live fetch
+          </div>
+          <div className={`rounded-lg border px-3 py-2 ${dataStatus === "live" ? "border-positive/30 bg-positive/10 text-positive" : dataStatus === "loading" ? "border-accent/30 bg-accent/10 text-accent" : "border-caution/30 bg-caution/10 text-caution"}`}>
+            <span className="block text-white/70">Data</span>
+            {dataStatus === "live" ? "Live API" : dataStatus === "loading" ? "Loading" : "Fallback"}
           </div>
         </div>
       </header>

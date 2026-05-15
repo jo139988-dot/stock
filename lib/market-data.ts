@@ -10,8 +10,8 @@ import type {
   Region,
   SparkPoint,
   ThemeMomentum
-} from "@/lib/market-types";
-import { changePercent, makeMarketScore } from "@/lib/score";
+} from "./market-types";
+import { changePercent, makeMarketScore } from "./score";
 
 const generatedAt = "2026-05-15T09:10:00+09:00";
 const koreaBaseDate = "2026-05-14";

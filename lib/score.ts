@@ -1,4 +1,4 @@
-import type { Indicator, MarketScore, Region, ScoreBreakdown } from "@/lib/market-types";
+import type { Indicator, MarketScore, Region, ScoreBreakdown } from "./market-types";
 
 const weights: Record<keyof ScoreBreakdown, number> = {
   trend: 25,

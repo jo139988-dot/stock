@@ -9,7 +9,7 @@
 - 가격, 선물, 내부강도, 수급, 금리, 유동성, 신용위험, 인플레이션, 테마, 이벤트 데이터 모델
 - 모든 데이터 카드의 기준일, 업데이트 시간, 출처, 전일 대비 변화율 표시
 - stale 데이터 경고, 무료/유료 데이터 구분
-- `/api/snapshot` Next.js API route
+- `/api/snapshot` Cloudflare Worker API route
 - SQLite 시작용 스키마: `db/schema.sql`
 
 ## 실행
@@ -23,7 +23,7 @@ npm.cmd run dev
 
 ## Cloudflare 배포
 
-이 앱은 `/api/snapshot` route를 포함하므로 정적 Pages export가 아니라 Cloudflare Workers + OpenNext 방식으로 배포합니다.
+이 앱은 Cloudflare Workers static assets 방식으로 배포합니다. 화면은 Next.js 정적 산출물로 제공하고, `/api/snapshot`은 Worker가 직접 반환합니다.
 
 ```powershell
 npm.cmd run deploy
@@ -32,11 +32,9 @@ npm.cmd run deploy
 GitHub 저장소와 Cloudflare Workers Builds를 연결하는 경우 Cloudflare 대시보드의 빌드 설정은 아래처럼 둡니다.
 
 ```text
-Build command: npx @opennextjs/cloudflare build
-Deploy command: npx @opennextjs/cloudflare deploy
+Build command: npm run build
+Deploy command: npx wrangler deploy
 ```
-
-`npm run build`는 Next.js 산출물만 만들기 때문에 Cloudflare 배포에는 충분하지 않습니다. OpenNext 빌드를 실행해야 `.open-next` 산출물이 생기고, 그 다음 deploy 단계가 성공합니다.
 
 배포 대상 Worker 이름은 `stock`이며, 기본 Workers URL은 `https://stock.jo139988.workers.dev/`입니다.
 
