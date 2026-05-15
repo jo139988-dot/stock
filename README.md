@@ -29,11 +29,14 @@ npm.cmd run dev
 npm.cmd run deploy
 ```
 
-GitHub 저장소와 Cloudflare를 연결하는 경우 Cloudflare Workers/Pages 프로젝트의 빌드 명령은 아래처럼 둡니다.
+GitHub 저장소와 Cloudflare Workers Builds를 연결하는 경우 Cloudflare 대시보드의 빌드 설정은 아래처럼 둡니다.
 
 ```text
-npm run deploy
+Build command: npx @opennextjs/cloudflare build
+Deploy command: npx @opennextjs/cloudflare deploy
 ```
+
+`npm run build`는 Next.js 산출물만 만들기 때문에 Cloudflare 배포에는 충분하지 않습니다. OpenNext 빌드를 실행해야 `.open-next` 산출물이 생기고, 그 다음 deploy 단계가 성공합니다.
 
 CLI 배포 전에는 Cloudflare 계정 로그인이 필요합니다.
 
