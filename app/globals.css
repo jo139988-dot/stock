@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  background: #080b0f;
+  --grid-line: rgba(255, 255, 255, 0.06);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    linear-gradient(180deg, rgba(19, 24, 31, 0.94), #080b0f 440px),
+    repeating-linear-gradient(90deg, transparent 0 79px, var(--grid-line) 79px 80px),
+    repeating-linear-gradient(180deg, transparent 0 79px, var(--grid-line) 79px 80px);
+  color: #e7edf4;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: rgba(74, 163, 255, 0.4);
+}
+
+@layer components {
+  .panel {
+    @apply border border-panelLine bg-panel/90 shadow-terminal;
+  }
+
+  .thin-scrollbar {
+    scrollbar-color: #3a4654 #101419;
+    scrollbar-width: thin;
+  }
+
+  .thin-scrollbar::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+
+  .thin-scrollbar::-webkit-scrollbar-thumb {
+    background: #3a4654;
+    border-radius: 999px;
+  }
+
+  .thin-scrollbar::-webkit-scrollbar-track {
+    background: #101419;
+  }
+}

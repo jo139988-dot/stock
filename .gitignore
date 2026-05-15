@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+.streamlit/
+node_modules/
+.next/
+.open-next/
+out/
+*.db
+*.sqlite
+cloudflare-env.d.ts
+.dev.vars
