@@ -1083,9 +1083,10 @@ async function fetchCensusRetailSales(fetcher: Fetcher): Promise<DatedSeries | n
   try {
     const response = await fetchWithTimeout(fetcher, sourceUrl, {
       headers: {
+        Accept: "text/html,application/xhtml+xml",
         "User-Agent": "Mozilla/5.0 market-regime-monitor"
       }
-    }, 8000);
+    }, 15000);
     if (!response.ok) return null;
     const text = (await response.text()).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
     const current = /for\s+([A-Z][a-z]+)\s+(\d{4})[\s\S]{0,500}?were\s+\$?[\d.]+\s+billion,\s+(up|down|virtually unchanged)(?:\s+(-?\d+(?:\.\d+)?)\s+percent)?[\s\S]{0,160}?from the previous month/i.exec(text);
