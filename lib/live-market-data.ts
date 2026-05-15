@@ -590,11 +590,36 @@ function daysAgo(days: number) {
   return date.toISOString().slice(0, 10);
 }
 
+function compactDate(date: string) {
+  return date.replace(/-/g, "");
+}
+
+function dashedDate(date: string) {
+  return `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`;
+}
+
 function monthNumber(label: string) {
   const index = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].findIndex((month) =>
     label.toLowerCase().startsWith(month.toLowerCase())
   );
   return index >= 0 ? String(index + 1).padStart(2, "0") : "01";
+}
+
+function latestWeekdayInTimeZone(timeZone: string) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short"
+  });
+  const probe = new Date();
+  for (let offset = 0; offset < 4; offset += 1) {
+    const parts = Object.fromEntries(formatter.formatToParts(probe).map((part) => [part.type, part.value]));
+    if (parts.weekday !== "Sat" && parts.weekday !== "Sun") return `${parts.year}-${parts.month}-${parts.day}`;
+    probe.setUTCDate(probe.getUTCDate() - 1);
+  }
+  return new Date().toISOString().slice(0, 10);
 }
 
 function makeDatedSeries(input: {
@@ -765,6 +790,215 @@ async function fetchFiscalDataTga(fetcher: Fetcher): Promise<DatedSeries | null>
   }
 }
 
+async function fetchKrxIndexMain(fetcher: Fetcher): Promise<Record<string, PriceSeries> | null> {
+  const otpUrl = "https://index.krx.co.kr/contents/COM/GenerateOTP.jspx?bld=%2FIDX%2Fmain%2Fnew%2Findex_data&name=bld";
+  const dataUrlBase = "https://index.krx.co.kr/contents/IDX/99/IDX99000001.jspx";
+  const sourceUrl = "https://index.krx.co.kr/main/main.jsp";
+  const idByName: Record<string, string> = {
+    KOSPI: "kospi",
+    KOSDAQ: "kosdaq",
+    "KOSPI 200": "kospi200",
+    "KOSDAQ 150": "kosdaq150",
+    "KRX 300": "krx300"
+  };
+  try {
+    const otpResponse = await fetchWithTimeout(fetcher, otpUrl, {
+      headers: {
+        Referer: sourceUrl,
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!otpResponse.ok) return null;
+    const code = (await otpResponse.text()).trim();
+    if (!code) return null;
+    const response = await fetchWithTimeout(fetcher, `${dataUrlBase}?code=${encodeURIComponent(code)}`, {
+      headers: {
+        Referer: sourceUrl,
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!response.ok) return null;
+    const payload = (await response.json()) as {
+      board?: Array<{ idx_nm?: string; clsprc_idx?: string; cmpr_idx?: string; cmpr_rt?: string; updown?: string }>;
+    };
+    const baseDate = latestWeekdayInTimeZone("Asia/Seoul");
+    const results: Record<string, PriceSeries> = {};
+    for (const row of payload.board ?? []) {
+      const id = row.idx_nm ? idByName[row.idx_nm] : undefined;
+      const value = parseNumberField(row.clsprc_idx);
+      const pointChange = parseNumberField(row.cmpr_idx) ?? 0;
+      if (!id || value === null) continue;
+      const previousClose = row.updown === "down" ? value + pointChange : row.updown === "up" ? value - pointChange : value;
+      results[id] = {
+        source: "KRX Index Main",
+        sourceUrl,
+        baseDate,
+        lastUpdated: nowIso(),
+        value,
+        previousClose,
+        changePercent: row.updown === "down" ? -Math.abs(Number(row.cmpr_rt ?? 0)) : row.updown === "up" ? Math.abs(Number(row.cmpr_rt ?? 0)) : 0,
+        sparkline: [
+          { date: "prev", value: Number(previousClose.toFixed(4)) },
+          { date: baseDate.slice(5), value: Number(value.toFixed(4)) }
+        ]
+      };
+    }
+    return Object.keys(results).length ? results : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchKrxIndexChart(fetcher: Fetcher, chartId: string): Promise<PriceSeries | null> {
+  const sourceUrl = `https://index.krx.co.kr/main/chart.jsp?idx=${encodeURIComponent(chartId)}`;
+  try {
+    const response = await fetchWithTimeout(fetcher, sourceUrl, {
+      headers: {
+        Referer: "https://index.krx.co.kr/main/main.jsp",
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!response.ok) return null;
+    const html = await response.text();
+    const jsonMatch = /var\s+jsonData\s*=\s*(\{[\s\S]*?\});/.exec(html);
+    if (!jsonMatch) return null;
+    const payload = JSON.parse(jsonMatch[1]) as {
+      block1?: Array<{ trd_ddtm?: string; prsnt_idx?: string; prevdd_idx?: string }>;
+    };
+    const rows = payload.block1
+      ?.map((row) => ({
+        date: row.trd_ddtm ?? "",
+        value: parseNumberField(row.prsnt_idx) ?? Number.NaN,
+        previous: parseNumberField(row.prevdd_idx)
+      }))
+      .filter((row) => Number.isFinite(row.value)) ?? [];
+    if (rows.length < 2) return null;
+    const latest = rows[rows.length - 1];
+    const firstPrevious = rows.find((row) => row.previous !== null)?.previous;
+    const previousClose = firstPrevious ?? rows[rows.length - 2].value;
+    const baseDate = latestWeekdayInTimeZone("Asia/Seoul");
+    return {
+      source: `KRX Index Intraday Chart (${chartId})`,
+      sourceUrl,
+      baseDate,
+      lastUpdated: nowIso(),
+      value: latest.value,
+      previousClose,
+      changePercent: changePercent(latest.value, previousClose),
+      sparkline: rows.slice(-60).map((row) => ({ date: row.date, value: Number(row.value.toFixed(4)) }))
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchBokKoreaBondYield(fetcher: Fetcher, itemCode: string): Promise<DatedSeries | null> {
+  const start = compactDate(daysAgo(30));
+  const end = compactDate(new Date().toISOString().slice(0, 10));
+  const sourceUrl = `https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1/100/817Y002/D/${start}/${end}/${itemCode}`;
+  try {
+    const response = await fetchWithTimeout(fetcher, sourceUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!response.ok) return null;
+    const payload = (await response.json()) as {
+      StatisticSearch?: {
+        row?: Array<{ TIME: string; DATA_VALUE: string; ITEM_NAME1?: string }>;
+      };
+    };
+    const label = payload.StatisticSearch?.row?.find((row) => row.ITEM_NAME1)?.ITEM_NAME1 ?? itemCode;
+    return makeDatedSeries({
+      rows: payload.StatisticSearch?.row?.map((row) => ({ date: dashedDate(row.TIME), value: Number(row.DATA_VALUE) })) ?? [],
+      source: `Bank of Korea ECOS Open API sample key (${label})`,
+      sourceUrl,
+      frequency: "Daily"
+    });
+  } catch {
+    return null;
+  }
+}
+
+function datedSeriesFromCsvField(input: {
+  csv: string;
+  sourceUrl: string;
+  source: string;
+  field: string;
+  frequency: string;
+  divisor?: number;
+}) {
+  const rows = input.csv.trim().split(/\r?\n/).map(parseCsvLine);
+  const descriptions = rows.find((row) => row[0] === "Series Description");
+  if (!descriptions) return null;
+  const index = descriptions.findIndex((description) => description.includes(input.field));
+  if (index < 0) return null;
+  return makeDatedSeries({
+    rows: rows
+      .filter((row) => /^\d{4}-\d{2}-\d{2}$/.test(row[0] ?? ""))
+      .map((row) => ({ date: row[0], value: Number(row[index]) / (input.divisor ?? 1) })),
+    source: input.source,
+    sourceUrl: input.sourceUrl,
+    frequency: input.frequency
+  });
+}
+
+async function fetchFedH41(fetcher: Fetcher): Promise<Record<string, DatedSeries> | null> {
+  const table1Url = "https://www.federalreserve.gov/datadownload/Output.aspx?rel=H41&series=f52e72511be65e16f71d4f5858951312&lastobs=8&from=&to=&filetype=csv&label=include&layout=seriescolumn&type=package";
+  const table5Url = "https://www.federalreserve.gov/datadownload/Output.aspx?rel=H41&series=ccfdc0c8cb86be87af324da79a6f8826&lastobs=8&from=&to=&filetype=csv&label=include&layout=seriescolumn&type=package";
+  try {
+    const [table1Response, table5Response] = await Promise.all([
+      fetchWithTimeout(fetcher, table1Url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 market-regime-monitor"
+        }
+      }, 10000),
+      fetchWithTimeout(fetcher, table5Url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 market-regime-monitor"
+        }
+      }, 10000)
+    ]);
+    const results: Record<string, DatedSeries> = {};
+    if (table1Response.ok) {
+      const table1 = await table1Response.text();
+      const reserves = datedSeriesFromCsvField({
+        csv: table1,
+        sourceUrl: table1Url,
+        source: "Federal Reserve H.4.1 Table 1",
+        field: "Reserve balances with Federal Reserve Banks: Wednesday level",
+        frequency: "Weekly",
+        divisor: 1_000_000
+      });
+      const tga = datedSeriesFromCsvField({
+        csv: table1,
+        sourceUrl: table1Url,
+        source: "Federal Reserve H.4.1 Table 1",
+        field: "U.S. Treasury, General Account: Wednesday level",
+        frequency: "Weekly",
+        divisor: 1_000_000
+      });
+      if (reserves) results["bank-reserves"] = reserves;
+      if (tga) results.tga = tga;
+    }
+    if (table5Response.ok) {
+      const table5 = await table5Response.text();
+      const fedAssets = datedSeriesFromCsvField({
+        csv: table5,
+        sourceUrl: table5Url,
+        source: "Federal Reserve H.4.1 Table 5",
+        field: "Total assets (Less eliminations from consolidation): Wednesday level",
+        frequency: "Weekly",
+        divisor: 1_000_000
+      });
+      if (fedAssets) results["fed-assets"] = fedAssets;
+    }
+    return Object.keys(results).length ? results : null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchBlsCpiRelease(fetcher: Fetcher): Promise<Record<string, DatedSeries> | null> {
   const sourceUrl = "https://www.bls.gov/news.release/cpi.nr0.htm";
   try {
@@ -807,6 +1041,199 @@ async function fetchBlsCpiRelease(fetcher: Fetcher): Promise<Record<string, Date
     return {
       ...(cpi ? { cpi } : {}),
       ...(coreCpi ? { "core-cpi": coreCpi } : {})
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchDolInitialClaims(fetcher: Fetcher): Promise<DatedSeries | null> {
+  const sourceUrl = "https://oui.doleta.gov/unemploy/DataDashboard.asp";
+  try {
+    const response = await fetchWithTimeout(fetcher, sourceUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!response.ok) return null;
+    const text = (await response.text()).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    const match = /Seasonally Adjusted Initial Claims\s*\((\d{2})\/(\d{2})\/(\d{4})\)\s*([\d,]+)/i.exec(text);
+    if (!match) return null;
+    const value = Number(match[4].replace(/,/g, "")) / 1_000;
+    if (!Number.isFinite(value)) return null;
+    const baseDate = `${match[3]}-${match[1]}-${match[2]}`;
+    return {
+      source: "U.S. Department of Labor ETA UI Data Dashboard",
+      sourceUrl,
+      frequency: "Weekly",
+      baseDate,
+      lastUpdated: nowIso(),
+      value,
+      previousClose: value,
+      changePercent: 0,
+      sparkline: [{ date: baseDate.slice(5), value }]
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchCensusRetailSales(fetcher: Fetcher): Promise<DatedSeries | null> {
+  const sourceUrl = "https://www.census.gov/retail/sales.html";
+  try {
+    const response = await fetchWithTimeout(fetcher, sourceUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!response.ok) return null;
+    const text = (await response.text()).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    const current = /for\s+([A-Z][a-z]+)\s+(\d{4}).*?were\s+\$?[\d.]+\s+billion,\s+(up|down|virtually unchanged)(?:\s+(-?\d+(?:\.\d+)?)\s+percent)?[^.]*from the previous month/i.exec(text);
+    if (!current) return null;
+    const direction = current[3].toLowerCase();
+    const magnitude = current[4] ? Number(current[4]) : 0;
+    const value = direction === "down" ? -magnitude : magnitude;
+    const previous = /percent change was revised from .*? to (up|down|virtually unchanged)(?:\s+(-?\d+(?:\.\d+)?)\s+percent)?/i.exec(text);
+    const previousDirection = previous?.[1]?.toLowerCase();
+    const previousMagnitude = previous?.[2] ? Number(previous[2]) : 0;
+    const previousClose = previousDirection === "down" ? -previousMagnitude : previousMagnitude;
+    const baseDate = `${current[2]}-${monthNumber(current[1])}-01`;
+    return {
+      source: "U.S. Census Bureau Monthly Retail Trade",
+      sourceUrl,
+      frequency: "Monthly",
+      baseDate,
+      lastUpdated: nowIso(),
+      value,
+      previousClose,
+      changePercent: changePercent(value, previousClose),
+      sparkline: [
+        { date: "prev", value: previousClose },
+        { date: baseDate.slice(5), value }
+      ]
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchIsmCurrentReport(fetcher: Fetcher, kind: "manufacturing" | "services"): Promise<DatedSeries | null> {
+  const indexUrl = "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/";
+  try {
+    const indexResponse = await fetchWithTimeout(fetcher, indexUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!indexResponse.ok) return null;
+    const indexHtml = await indexResponse.text();
+    const pathPattern = kind === "manufacturing"
+      ? /href="([^"]*\/ism-pmi-reports\/pmi\/[^"]+)"/i
+      : /href="([^"]*\/ism-pmi-reports\/services\/[^"]+)"/i;
+    const path = pathPattern.exec(indexHtml)?.[1];
+    if (!path) return null;
+    const sourceUrl = path.startsWith("http") ? path : `https://www.ismworld.org${path}`;
+    const reportResponse = await fetchWithTimeout(fetcher, sourceUrl, {
+      headers: {
+        Referer: indexUrl,
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!reportResponse.ok) return null;
+    const text = (await reportResponse.text()).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    const dateMatch = new RegExp(`([A-Z][a-z]+)\\s+(\\d{4})\\s+ISM\\S*\\s+${kind === "manufacturing" ? "Manufacturing" : "Services"}\\s+PMI`, "i").exec(text);
+    const baseDate = dateMatch ? `${dateMatch[2]}-${monthNumber(dateMatch[1])}-01` : new Date().toISOString().slice(0, 10);
+    const label = kind === "manufacturing" ? "Manufacturing PMI" : "Services PMI";
+    const tableMatch = new RegExp(`${label}\\S*\\s+(-?\\d+(?:\\.\\d+)?)\\s+(-?\\d+(?:\\.\\d+)?)`, "i").exec(text);
+    const sentenceMatch = new RegExp(`${label}\\S*\\s+registered\\s+(-?\\d+(?:\\.\\d+)?)\\s+percent[\\s\\S]{0,180}?(?:figure|reading)\\s+of\\s+(-?\\d+(?:\\.\\d+)?)\\s+percent`, "i").exec(text);
+    const match = tableMatch ?? sentenceMatch;
+    if (!match) return null;
+    const value = Number(match[1]);
+    const previousClose = Number(match[2]);
+    if (!Number.isFinite(value) || !Number.isFinite(previousClose)) return null;
+    return {
+      source: `Institute for Supply Management ${label} Report`,
+      sourceUrl,
+      frequency: "Monthly",
+      baseDate,
+      lastUpdated: nowIso(),
+      value,
+      previousClose,
+      changePercent: changePercent(value, previousClose),
+      sparkline: [
+        { date: "prev", value: previousClose },
+        { date: baseDate.slice(5), value }
+      ]
+    };
+  } catch {
+    return null;
+  }
+}
+
+function decodeBasicEntities(text: string) {
+  return text
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#8211;|&#x2013;|&ndash;/g, "-")
+    .replace(/&#8722;|&#x2212;|&minus;/g, "-")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
+}
+
+async function fetchAaiiBullBearSpread(fetcher: Fetcher): Promise<DatedSeries | null> {
+  const feedUrl = "https://insights.aaii.com/feed";
+  try {
+    const feedResponse = await fetchWithTimeout(fetcher, feedUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!feedResponse.ok) return null;
+    const feed = await feedResponse.text();
+    const items = feed.match(/<item>[\s\S]*?<\/item>/g) ?? [];
+    const item = items.find((entry) => {
+      const title = /<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i.exec(entry)?.[1] ?? "";
+      return /^AAII Sentiment Survey/i.test(decodeBasicEntities(title).trim());
+    });
+    if (!item) return null;
+    const link = decodeBasicEntities(/<link>([\s\S]*?)<\/link>/i.exec(item)?.[1]?.trim() ?? "");
+    const pubDate = /<pubDate>([\s\S]*?)<\/pubDate>/i.exec(item)?.[1]?.trim();
+    const response = link
+      ? await fetchWithTimeout(fetcher, link, {
+          headers: {
+            Referer: feedUrl,
+            "User-Agent": "Mozilla/5.0 market-regime-monitor"
+          }
+        }, 8000)
+      : null;
+    const article = response?.ok ? await response.text() : item;
+    const text = decodeBasicEntities(article)
+      .replace(/<[^>]+>/g, " ")
+      .replace(/[\u2013\u2212]/g, "-")
+      .replace(/\s+/g, " ");
+    const match = /bull-bear spread[^.]*?\s+(increased|decreased)\s+(\d+(?:\.\d+)?)\s+percentage points?\s+to\s+(-?\d+(?:\.\d+)?)%/i.exec(text);
+    if (!match) return null;
+    const direction = match[1].toLowerCase();
+    const delta = Number(match[2]);
+    const value = Number(match[3]);
+    if (!Number.isFinite(delta) || !Number.isFinite(value)) return null;
+    const previousClose = direction === "increased" ? value - delta : value + delta;
+    const parsedDate = pubDate ? new Date(pubDate) : new Date();
+    const baseDate = Number.isNaN(parsedDate.getTime()) ? new Date().toISOString().slice(0, 10) : parsedDate.toISOString().slice(0, 10);
+    return {
+      source: "AAII Sentiment Survey public feed",
+      sourceUrl: link || feedUrl,
+      frequency: "Weekly",
+      baseDate,
+      lastUpdated: nowIso(),
+      value,
+      previousClose,
+      changePercent: changePercent(value, previousClose),
+      sparkline: [
+        { date: "prev", value: Number(previousClose.toFixed(2)) },
+        { date: baseDate.slice(5), value }
+      ]
     };
   } catch {
     return null;
@@ -1268,6 +1695,26 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     });
   }
 
+  const [krxIndexMain, krxKosdaq150Chart, krx300Chart] = await Promise.all([
+    fetchKrxIndexMain(fetcher),
+    fetchKrxIndexChart(fetcher, "kosdaq150"),
+    fetchKrxIndexChart(fetcher, "krx300")
+  ]);
+  if (krxIndexMain) {
+    for (const [id, result] of Object.entries(krxIndexMain)) {
+      const current = snapshot.indicators.find((indicator) => indicator.id === id);
+      updateIndicator(snapshot, yahooUpdate(id, result, current?.unit));
+    }
+  }
+  for (const [id, result] of [
+    ["kosdaq150", krxKosdaq150Chart],
+    ["krx300", krx300Chart]
+  ] as const) {
+    if (!result) continue;
+    const current = snapshot.indicators.find((indicator) => indicator.id === id);
+    updateIndicator(snapshot, yahooUpdate(id, result, current?.unit));
+  }
+
   const cboePutCall = await fetchCboePutCall(fetcher);
   if (cboePutCall) {
     updateIndicator(snapshot, {
@@ -1288,6 +1735,14 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     corePceSeries,
     clevelandNowcast,
     blsCpiRelease,
+    h41Series,
+    dolInitialClaims,
+    censusRetailSales,
+    krThreeYearYield,
+    krTenYearYield,
+    ismManufacturing,
+    ismServices,
+    aaiiBullBear,
     blsLevelResults
   ] = await Promise.all([
     fetchTreasuryCurve(fetcher, "daily_treasury_yield_curve", ["BC_2YEAR", "BC_10YEAR", "BC_30YEAR"]),
@@ -1300,6 +1755,14 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     fetchBeaInflationPage(fetcher, "https://www.bea.gov/data/personal-consumption-expenditures-price-index-excluding-food-and-energy"),
     fetchClevelandNowcast(fetcher),
     fetchBlsCpiRelease(fetcher),
+    fetchFedH41(fetcher),
+    fetchDolInitialClaims(fetcher),
+    fetchCensusRetailSales(fetcher),
+    fetchBokKoreaBondYield(fetcher, "010200000"),
+    fetchBokKoreaBondYield(fetcher, "010210000"),
+    fetchIsmCurrentReport(fetcher, "manufacturing"),
+    fetchIsmCurrentReport(fetcher, "services"),
+    fetchAaiiBullBearSpread(fetcher),
     Promise.all(
       Object.entries(blsLevelSources).map(async ([id, seriesId]) => {
         const result = await fetchBlsLevel(fetcher, seriesId);
@@ -1351,12 +1814,26 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     ["finra-margin", finraMarginDebt],
     ["pce", pceSeries, true],
     ["core-pce", corePceSeries, true],
-    ["cleveland-nowcast", clevelandNowcast, true]
+    ["cleveland-nowcast", clevelandNowcast, true],
+    ["jobless-claims", dolInitialClaims, true],
+    ["retail-sales", censusRetailSales],
+    ["kr-3y", krThreeYearYield, true],
+    ["kr-10y", krTenYearYield, true],
+    ["ism-mfg", ismManufacturing],
+    ["ism-services", ismServices],
+    ["aaii", aaiiBullBear]
   ];
   for (const [id, result, inverse] of officialSeriesUpdates) {
     if (!result) continue;
     const current = snapshot.indicators.find((indicator) => indicator.id === id);
     updateIndicator(snapshot, datedSeriesUpdate(id, result, current?.unit, inverse));
+  }
+
+  if (h41Series) {
+    for (const [id, result] of Object.entries(h41Series)) {
+      const current = snapshot.indicators.find((indicator) => indicator.id === id);
+      updateIndicator(snapshot, datedSeriesUpdate(id, result, current?.unit, id === "tga"));
+    }
   }
 
   if (blsCpiRelease) {
