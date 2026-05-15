@@ -893,9 +893,9 @@ async function fetchKrxIndexChart(fetcher: Fetcher, chartId: string): Promise<Pr
 }
 
 async function fetchBokKoreaBondYield(fetcher: Fetcher, itemCode: string): Promise<DatedSeries | null> {
-  const start = compactDate(daysAgo(30));
+  const start = compactDate(daysAgo(12));
   const end = compactDate(new Date().toISOString().slice(0, 10));
-  const sourceUrl = `https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1/100/817Y002/D/${start}/${end}/${itemCode}`;
+  const sourceUrl = `https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1/10/817Y002/D/${start}/${end}/${itemCode}`;
   try {
     const response = await fetchWithTimeout(fetcher, sourceUrl, {
       headers: {
@@ -1088,7 +1088,7 @@ async function fetchCensusRetailSales(fetcher: Fetcher): Promise<DatedSeries | n
     }, 8000);
     if (!response.ok) return null;
     const text = (await response.text()).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-    const current = /for\s+([A-Z][a-z]+)\s+(\d{4}).*?were\s+\$?[\d.]+\s+billion,\s+(up|down|virtually unchanged)(?:\s+(-?\d+(?:\.\d+)?)\s+percent)?[^.]*from the previous month/i.exec(text);
+    const current = /for\s+([A-Z][a-z]+)\s+(\d{4})[\s\S]{0,500}?were\s+\$?[\d.]+\s+billion,\s+(up|down|virtually unchanged)(?:\s+(-?\d+(?:\.\d+)?)\s+percent)?[\s\S]{0,160}?from the previous month/i.exec(text);
     if (!current) return null;
     const direction = current[3].toLowerCase();
     const magnitude = current[4] ? Number(current[4]) : 0;
@@ -1207,12 +1207,16 @@ async function fetchAaiiBullBearSpread(fetcher: Fetcher): Promise<DatedSeries | 
           }
         }, 8000)
       : null;
-    const article = response?.ok ? await response.text() : item;
-    const text = decodeBasicEntities(article)
-      .replace(/<[^>]+>/g, " ")
-      .replace(/[\u2013\u2212]/g, "-")
-      .replace(/\s+/g, " ");
-    const match = /bull-bear spread[^.]*?\s+(increased|decreased)\s+(\d+(?:\.\d+)?)\s+percentage points?\s+to\s+(-?\d+(?:\.\d+)?)%/i.exec(text);
+    const article = response?.ok ? await response.text() : "";
+    const match = [article, item]
+      .map((candidate) =>
+        decodeBasicEntities(candidate)
+          .replace(/<[^>]+>/g, " ")
+          .replace(/[\u2013\u2212]/g, "-")
+          .replace(/\s+/g, " ")
+      )
+      .map((text) => /bull-bear spread[^.]*?\s+(increased|decreased)\s+(\d+(?:\.\d+)?)\s+percentage points?\s+to\s+(-?\d+(?:\.\d+)?)%/i.exec(text))
+      .find((candidate): candidate is RegExpExecArray => Boolean(candidate));
     if (!match) return null;
     const direction = match[1].toLowerCase();
     const delta = Number(match[2]);
