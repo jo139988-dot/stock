@@ -21,3 +21,5 @@ Deploy command: npx wrangler deploy
 The normal `build` script in `package.json` should stay as `next build`, because OpenNext calls that script internally before adapting the output for Cloudflare Workers.
 
 For the current connected Cloudflare project, a `postbuild` hook also generates `.open-next` after `npm run build` on Linux. This keeps the existing Cloudflare setting working while still allowing the recommended OpenNext commands above.
+
+`next.config.mjs` must keep `output: "standalone"` enabled. OpenNext reads the standalone build output when generating the Cloudflare Worker bundle.
