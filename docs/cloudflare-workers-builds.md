@@ -19,3 +19,5 @@ Deploy command: npx wrangler deploy
 `npm run build` only creates the standard `.next` folder. The Worker deployment needs the OpenNext-generated `.open-next` output, which is created by `npx @opennextjs/cloudflare build`.
 
 The normal `build` script in `package.json` should stay as `next build`, because OpenNext calls that script internally before adapting the output for Cloudflare Workers.
+
+For the current connected Cloudflare project, a `postbuild` hook also generates `.open-next` after `npm run build` on Linux. This keeps the existing Cloudflare setting working while still allowing the recommended OpenNext commands above.
