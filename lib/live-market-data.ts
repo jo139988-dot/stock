@@ -40,6 +40,7 @@ type FredSeries = {
 type BlsSeries = {
   source: string;
   sourceUrl: string;
+  frequency: string;
   baseDate: string;
   lastUpdated: string;
   value: number;
@@ -57,6 +58,23 @@ type CftcSeries = {
   previousClose: number;
   changePercent: number;
   sparkline: SparkPoint[];
+};
+
+type DatedSeries = {
+  source: string;
+  sourceUrl: string;
+  frequency: string;
+  baseDate: string;
+  lastUpdated: string;
+  value: number;
+  previousClose: number;
+  changePercent: number;
+  sparkline: SparkPoint[];
+};
+
+type TreasuryCurveRow = {
+  date: string;
+  values: Record<string, number>;
 };
 
 type Update = Partial<Indicator> & {
@@ -117,11 +135,15 @@ const blsSources: Record<string, string> = {
   "core-cpi": "CUSR0000SA0L1E"
 };
 
+const blsLevelSources: Record<string, string> = {
+  unemployment: "LNS14000000"
+};
+
 const cftcSources: Record<string, string[]> = {
   "cftc-spx": ["E-MINI S&P 500", "S&P 500 Consolidated", "S&P 500 STOCK INDEX"],
   "cftc-nq": ["NASDAQ-100", "NASDAQ 100"],
-  "cftc-10y": ["10-YEAR U.S. TREASURY", "10-YEAR TREASURY"],
-  "cftc-dollar": ["U.S. DOLLAR INDEX", "US DOLLAR INDEX"]
+  "cftc-10y": ["UST 10Y NOTE", "10-YEAR U.S. TREASURY", "10-YEAR TREASURY"],
+  "cftc-dollar": ["USD INDEX", "U.S. DOLLAR INDEX", "US DOLLAR INDEX"]
 };
 
 const yahooRateFallbacks: Record<string, { symbols: string[]; transform: (value: number) => number }> = {
@@ -429,8 +451,9 @@ async function fetchCftcTff(fetcher: Fetcher, id: string, matchers: string[]): P
     }, 8000);
     if (!response.ok) return null;
     const text = await response.text();
-    const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 20);
-    const line = lines.find((item) => {
+    const records = text.match(/"[^"]+",\d{6},\d{4}-\d{2}-\d{2}[\s\S]*?(?=\s+"[^"]+",\d{6},\d{4}-\d{2}-\d{2}|$)/g) ??
+      text.split(/\r?\n/).filter((item) => item.trim().length > 20);
+    const line = records.find((item) => {
       const upper = item.toUpperCase();
       return matchers.some((matcher) => upper.includes(matcher.toUpperCase()));
     });
@@ -464,21 +487,12 @@ async function fetchCftcTff(fetcher: Fetcher, id: string, matchers: string[]): P
 }
 
 async function fetchBlsInflation(fetcher: Fetcher, id: string, seriesId: string): Promise<BlsSeries | null> {
-  const sourceUrl = "https://api.bls.gov/publicAPI/v2/timeseries/data/";
-  const endYear = new Date().getUTCFullYear();
-  const startYear = endYear - 2;
+  const sourceUrl = `https://api.bls.gov/publicAPI/v2/timeseries/data/${encodeURIComponent(seriesId)}`;
   try {
     const response = await fetchWithTimeout(fetcher, sourceUrl, {
-      method: "POST",
       headers: {
-        "Content-Type": "application/json",
         "User-Agent": "Mozilla/5.0 market-regime-monitor"
-      },
-      body: JSON.stringify({
-        seriesid: [seriesId],
-        startyear: String(startYear),
-        endyear: String(endYear)
-      })
+      }
     }, 8000);
     if (!response.ok) return null;
     const payload = (await response.json()) as {
@@ -506,7 +520,8 @@ async function fetchBlsInflation(fetcher: Fetcher, id: string, seriesId: string)
     const previousClose = ((previous.value / previousYearAgo.value) - 1) * 100;
     return {
       source: `BLS Public API (${seriesId})`,
-      sourceUrl: `https://www.bls.gov/cpi/data.htm`,
+      sourceUrl,
+      frequency: "Monthly",
       baseDate: latest.date,
       lastUpdated: nowIso(),
       value,
@@ -520,6 +535,313 @@ async function fetchBlsInflation(fetcher: Fetcher, id: string, seriesId: string)
           value: base ? Number((((row.value / base.value) - 1) * 100).toFixed(3)) : 0
         };
       })
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchBlsLevel(fetcher: Fetcher, seriesId: string): Promise<DatedSeries | null> {
+  const sourceUrl = `https://api.bls.gov/publicAPI/v2/timeseries/data/${encodeURIComponent(seriesId)}`;
+  try {
+    const response = await fetchWithTimeout(fetcher, sourceUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!response.ok) return null;
+    const payload = (await response.json()) as {
+      Results?: {
+        series?: Array<{
+          data?: Array<{ year: string; period: string; value: string }>;
+        }>;
+      };
+    };
+    const rows = payload.Results?.series?.[0]?.data
+      ?.filter((row) => /^M\d{2}$/.test(row.period))
+      .map((row) => ({
+        date: `${row.year}-${row.period.slice(1)}-01`,
+        value: Number(row.value)
+      }))
+      .filter((row) => Number.isFinite(row.value))
+      .sort((a, b) => a.date.localeCompare(b.date)) ?? [];
+    if (rows.length < 2) return null;
+    const latest = rows[rows.length - 1];
+    const previous = rows[rows.length - 2];
+    return {
+      source: `BLS Public API (${seriesId})`,
+      sourceUrl,
+      frequency: "Monthly",
+      baseDate: latest.date,
+      lastUpdated: nowIso(),
+      value: latest.value,
+      previousClose: previous.value,
+      changePercent: changePercent(latest.value, previous.value),
+      sparkline: rows.slice(-40).map((row) => ({ date: row.date.slice(5, 7), value: row.value }))
+    };
+  } catch {
+    return null;
+  }
+}
+
+function daysAgo(days: number) {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - days);
+  return date.toISOString().slice(0, 10);
+}
+
+function monthNumber(label: string) {
+  const index = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].findIndex((month) =>
+    label.toLowerCase().startsWith(month.toLowerCase())
+  );
+  return index >= 0 ? String(index + 1).padStart(2, "0") : "01";
+}
+
+function makeDatedSeries(input: {
+  rows: Array<{ date: string; value: number }>;
+  source: string;
+  sourceUrl: string;
+  frequency: string;
+  lastUpdated?: string;
+}): DatedSeries | null {
+  const rows = input.rows
+    .filter((row) => Number.isFinite(row.value))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  if (rows.length < 2) return null;
+  const latest = rows[rows.length - 1];
+  const previous = rows[rows.length - 2];
+  return {
+    source: input.source,
+    sourceUrl: input.sourceUrl,
+    frequency: input.frequency,
+    baseDate: latest.date,
+    lastUpdated: input.lastUpdated ?? nowIso(),
+    value: latest.value,
+    previousClose: previous.value,
+    changePercent: changePercent(latest.value, previous.value),
+    sparkline: rows.slice(-40).map((row) => ({ date: row.date.slice(5), value: Number(row.value.toFixed(4)) }))
+  };
+}
+
+function extractXmlValue(entry: string, field: string) {
+  const match = new RegExp(`<d:${field}\\b[^>]*>([^<]+)<\\/d:${field}>`).exec(entry);
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isFinite(value) ? value : null;
+}
+
+async function fetchTreasuryCurve(fetcher: Fetcher, dataType: string, fields: string[]) {
+  const year = new Date().getUTCFullYear();
+  const sourceUrl = `https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=${dataType}&field_tdr_date_value=${year}`;
+  try {
+    const response = await fetchWithTimeout(fetcher, sourceUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!response.ok) return null;
+    const xml = await response.text();
+    const entries = xml.match(/<entry>[\s\S]*?<\/entry>/g) ?? [];
+    const rows: TreasuryCurveRow[] = [];
+    for (const entry of entries) {
+      const date = /<d:NEW_DATE\b[^>]*>(\d{4}-\d{2}-\d{2})T/.exec(entry)?.[1];
+      if (!date) continue;
+      const values: Record<string, number> = {};
+      let hasAllFields = true;
+      for (const field of fields) {
+        const value = extractXmlValue(entry, field);
+        if (value === null) {
+          hasAllFields = false;
+          break;
+        }
+        values[field] = value;
+      }
+      if (hasAllFields) rows.push({ date, values });
+    }
+    return {
+      sourceUrl,
+      rows: rows.sort((a, b) => a.date.localeCompare(b.date))
+    };
+  } catch {
+    return null;
+  }
+}
+
+function treasuryCurveSeries(curve: { sourceUrl: string; rows: TreasuryCurveRow[] }, field: string, source: string): DatedSeries | null {
+  return makeDatedSeries({
+    rows: curve.rows.map((row) => ({ date: row.date, value: row.values[field] })),
+    source,
+    sourceUrl: curve.sourceUrl,
+    frequency: "Daily"
+  });
+}
+
+async function fetchNewYorkFedSofr(fetcher: Fetcher): Promise<DatedSeries | null> {
+  const sourceUrl = `https://markets.newyorkfed.org/api/rates/secured/sofr/search.json?startDate=${daysAgo(35)}&endDate=${new Date().toISOString().slice(0, 10)}&type=rate`;
+  try {
+    const response = await fetchWithTimeout(fetcher, sourceUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!response.ok) return null;
+    const payload = (await response.json()) as {
+      refRates?: Array<{ effectiveDate: string; percentRate: number }>;
+    };
+    return makeDatedSeries({
+      rows: payload.refRates?.map((row) => ({ date: row.effectiveDate, value: Number(row.percentRate) })) ?? [],
+      source: "Federal Reserve Bank of New York SOFR API",
+      sourceUrl,
+      frequency: "Daily"
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function fetchNewYorkFedRrp(fetcher: Fetcher): Promise<DatedSeries | null> {
+  const sourceUrl = "https://markets.newyorkfed.org/api/rp/all/all/results/lastTwoWeeks.json";
+  try {
+    const response = await fetchWithTimeout(fetcher, sourceUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!response.ok) return null;
+    const payload = (await response.json()) as {
+      repo?: {
+        operations?: Array<{
+          operationDate: string;
+          operationType: string;
+          term: string;
+          note?: string;
+          totalAmtAccepted?: number;
+        }>;
+      };
+    };
+    const rows = payload.repo?.operations
+      ?.filter((operation) =>
+        operation.operationType === "Reverse Repo" &&
+        operation.term === "Overnight" &&
+        !(operation.note ?? "").toLowerCase().includes("small value") &&
+        typeof operation.totalAmtAccepted === "number"
+      )
+      .map((operation) => ({
+        date: operation.operationDate,
+        value: Number(operation.totalAmtAccepted) / 1_000_000_000_000
+      })) ?? [];
+    return makeDatedSeries({
+      rows,
+      source: "Federal Reserve Bank of New York Repo/Reverse Repo API",
+      sourceUrl,
+      frequency: "Daily"
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function fetchFiscalDataTga(fetcher: Fetcher): Promise<DatedSeries | null> {
+  const year = new Date().getUTCFullYear();
+  const sourceUrl = `https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/dts/operating_cash_balance?filter=record_date:gte:${year}-01-01,account_type:eq:Treasury%20General%20Account%20(TGA)%20Closing%20Balance&sort=-record_date&page[size]=40`;
+  try {
+    const response = await fetchWithTimeout(fetcher, sourceUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!response.ok) return null;
+    const payload = (await response.json()) as {
+      data?: Array<{ record_date: string; open_today_bal: string }>;
+    };
+    return makeDatedSeries({
+      rows: payload.data?.map((row) => ({ date: row.record_date, value: Number(row.open_today_bal) / 1_000_000 })) ?? [],
+      source: "U.S. Treasury FiscalData Daily Treasury Statement",
+      sourceUrl,
+      frequency: "Daily"
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function fetchFinraMarginDebt(fetcher: Fetcher): Promise<DatedSeries | null> {
+  const sourceUrl = "https://www.finra.org/rules-guidance/key-topics/margin-accounts/margin-statistics";
+  try {
+    const response = await fetchWithTimeout(fetcher, sourceUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!response.ok) return null;
+    const text = (await response.text()).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    const matches = [...text.matchAll(/([A-Z][a-z]{2})-(\d{2})\s+([\d,]+)\s+[\d,]+\s+[\d,]+/g)];
+    const rows = matches.map((match) => ({
+      date: `20${match[2]}-${monthNumber(match[1])}-01`,
+      value: Number(match[3].replace(/,/g, "")) / 1_000
+    }));
+    return makeDatedSeries({
+      rows,
+      source: "FINRA Margin Statistics",
+      sourceUrl,
+      frequency: "Monthly"
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function fetchBeaInflationPage(fetcher: Fetcher, sourceUrl: string): Promise<DatedSeries | null> {
+  try {
+    const response = await fetchWithTimeout(fetcher, sourceUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!response.ok) return null;
+    const text = (await response.text()).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    const rows = [...text.matchAll(/([A-Z][a-z]+)\s+(\d{4})\s*\+?(-?\d+(?:\.\d+)?)%/g)]
+      .map((match) => ({
+        date: `${match[2]}-${monthNumber(match[1])}-01`,
+        value: Number(match[3])
+      }));
+    return makeDatedSeries({
+      rows,
+      source: "U.S. Bureau of Economic Analysis",
+      sourceUrl,
+      frequency: "Monthly"
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function fetchClevelandNowcast(fetcher: Fetcher): Promise<DatedSeries | null> {
+  const sourceUrl = "https://www.clevelandfed.org/indicators-and-data/inflation-nowcasting";
+  try {
+    const response = await fetchWithTimeout(fetcher, sourceUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 market-regime-monitor"
+      }
+    }, 8000);
+    if (!response.ok) return null;
+    const text = (await response.text()).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    const section = /Inflation,\s*year-over-year percent change([\s\S]*?)Quarterly annualized percent change/i.exec(text)?.[1] ?? text;
+    const match = /([A-Z][a-z]+)\s+(\d{4})\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+\d{2}\/\d{2}/.exec(section);
+    if (!match) return null;
+    const date = `${match[2]}-${monthNumber(match[1])}-01`;
+    const value = Number(match[3]);
+    if (!Number.isFinite(value)) return null;
+    return {
+      source: "Federal Reserve Bank of Cleveland Inflation Nowcasting",
+      sourceUrl,
+      frequency: "Daily",
+      baseDate: date,
+      lastUpdated: nowIso(),
+      value,
+      previousClose: value,
+      changePercent: 0,
+      sparkline: [{ date: date.slice(5), value }]
     };
   } catch {
     return null;
@@ -628,6 +950,27 @@ function fredUpdate(id: string, data: FredSeries, unit?: string): Update {
       source: data.source,
       sourceUrl: data.sourceUrl,
       frequency: "Daily/Monthly",
+      baseDate: data.baseDate,
+      lastUpdated: data.lastUpdated,
+      access: "free",
+      stale: false
+    }
+  };
+}
+
+function datedSeriesUpdate(id: string, data: DatedSeries, unit?: string, inverse = isRiskIndicator(id)): Update {
+  return {
+    id,
+    value: data.value,
+    previousClose: data.previousClose,
+    changePercent: data.changePercent,
+    unit,
+    tone: toneForChange(data.changePercent, inverse),
+    sparkline: data.sparkline,
+    quality: {
+      source: data.source,
+      sourceUrl: data.sourceUrl,
+      frequency: data.frequency,
       baseDate: data.baseDate,
       lastUpdated: data.lastUpdated,
       access: "free",
@@ -886,7 +1229,114 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     });
   }
 
-  const fredEntries = Object.entries(fredSources);
+  const [
+    treasuryNominalCurve,
+    treasuryRealCurve,
+    sofrSeries,
+    rrpSeries,
+    tgaSeries,
+    finraMarginDebt,
+    pceSeries,
+    corePceSeries,
+    clevelandNowcast,
+    blsLevelResults
+  ] = await Promise.all([
+    fetchTreasuryCurve(fetcher, "daily_treasury_yield_curve", ["BC_2YEAR", "BC_10YEAR", "BC_30YEAR"]),
+    fetchTreasuryCurve(fetcher, "daily_treasury_real_yield_curve", ["TC_10YEAR"]),
+    fetchNewYorkFedSofr(fetcher),
+    fetchNewYorkFedRrp(fetcher),
+    fetchFiscalDataTga(fetcher),
+    fetchFinraMarginDebt(fetcher),
+    fetchBeaInflationPage(fetcher, "https://www.bea.gov/data/personal-consumption-expenditures-price-index"),
+    fetchBeaInflationPage(fetcher, "https://www.bea.gov/data/personal-consumption-expenditures-price-index-excluding-food-and-energy"),
+    fetchClevelandNowcast(fetcher),
+    Promise.all(
+      Object.entries(blsLevelSources).map(async ([id, seriesId]) => {
+        const result = await fetchBlsLevel(fetcher, seriesId);
+        return [id, seriesId, result] as const;
+      })
+    )
+  ]);
+
+  if (treasuryNominalCurve) {
+    const treasuryUpdates = [
+      ["us-2y", "BC_2YEAR"],
+      ["us-10y", "BC_10YEAR"],
+      ["us-30y", "BC_30YEAR"]
+    ] as const;
+    for (const [id, field] of treasuryUpdates) {
+      const result = treasuryCurveSeries(treasuryNominalCurve, field, "U.S. Treasury Daily Treasury Par Yield Curve Rates");
+      const current = snapshot.indicators.find((indicator) => indicator.id === id);
+      if (result) updateIndicator(snapshot, datedSeriesUpdate(id, result, current?.unit, true));
+    }
+  }
+
+  if (treasuryRealCurve) {
+    const result = treasuryCurveSeries(treasuryRealCurve, "TC_10YEAR", "U.S. Treasury Daily Treasury Real Yield Curve Rates");
+    const current = snapshot.indicators.find((indicator) => indicator.id === "real-yield-10y");
+    if (result) updateIndicator(snapshot, datedSeriesUpdate("real-yield-10y", result, current?.unit, true));
+  }
+
+  if (treasuryNominalCurve && treasuryRealCurve) {
+    const realByDate = new Map(treasuryRealCurve.rows.map((row) => [row.date, row.values.TC_10YEAR]));
+    const result = makeDatedSeries({
+      rows: treasuryNominalCurve.rows
+        .map((row) => {
+          const real = realByDate.get(row.date);
+          return typeof real === "number" ? { date: row.date, value: row.values.BC_10YEAR - real } : null;
+        })
+        .filter((row): row is { date: string; value: number } => Boolean(row)),
+      source: "U.S. Treasury calculation (10Y nominal - 10Y real)",
+      sourceUrl: treasuryNominalCurve.sourceUrl,
+      frequency: "Daily"
+    });
+    const current = snapshot.indicators.find((indicator) => indicator.id === "bei-10y");
+    if (result) updateIndicator(snapshot, datedSeriesUpdate("bei-10y", result, current?.unit, true));
+  }
+
+  const officialSeriesUpdates: Array<[string, DatedSeries | null, boolean?]> = [
+    ["sofr", sofrSeries, true],
+    ["rrp", rrpSeries, true],
+    ["tga", tgaSeries, true],
+    ["finra-margin", finraMarginDebt],
+    ["pce", pceSeries, true],
+    ["core-pce", corePceSeries, true],
+    ["cleveland-nowcast", clevelandNowcast, true]
+  ];
+  for (const [id, result, inverse] of officialSeriesUpdates) {
+    if (!result) continue;
+    const current = snapshot.indicators.find((indicator) => indicator.id === id);
+    updateIndicator(snapshot, datedSeriesUpdate(id, result, current?.unit, inverse));
+  }
+
+  const blsEntries = Object.entries(blsSources);
+  const blsResults = await Promise.all(
+    blsEntries.map(async ([id, seriesId]) => {
+      const result = await fetchBlsInflation(fetcher, id, seriesId);
+      return [id, seriesId, result] as const;
+    })
+  );
+  for (const [id, seriesId, result] of [...blsResults, ...blsLevelResults]) {
+    if (!result) continue;
+    const current = snapshot.indicators.find((indicator) => indicator.id === id);
+    updateIndicator(snapshot, {
+      ...datedSeriesUpdate(id, result, current?.unit, true),
+      quality: {
+        source: `BLS Public API (${seriesId})`,
+        sourceUrl: result.sourceUrl,
+        frequency: result.frequency,
+        baseDate: result.baseDate,
+        lastUpdated: nowIso(),
+        access: "free",
+        stale: false
+      }
+    });
+  }
+
+  const fredEntries = Object.entries(fredSources).filter(([id]) => {
+    const indicator = snapshot.indicators.find((item) => item.id === id);
+    return !indicator || indicator.quality.stale;
+  });
   const fredResults = await Promise.all(
     fredEntries.map(async ([id, config]) => {
       const result = await fetchFredSeries(fetcher, config.series, config.transform);
@@ -908,36 +1358,6 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
         sourceUrl: transformed.sourceUrl,
         frequency: ["cpi", "core-cpi", "pce", "core-pce", "ism-mfg", "unemployment", "retail-sales"].includes(id) ? "Monthly" : "Daily/Weekly",
         baseDate: transformed.baseDate,
-        lastUpdated: nowIso(),
-        access: "free",
-        stale: false
-      }
-    });
-  }
-
-  const blsEntries = Object.entries(blsSources);
-  const blsResults = await Promise.all(
-    blsEntries.map(async ([id, seriesId]) => {
-      const result = await fetchBlsInflation(fetcher, id, seriesId);
-      return [id, seriesId, result] as const;
-    })
-  );
-  for (const [id, seriesId, result] of blsResults) {
-    if (!result) continue;
-    const current = snapshot.indicators.find((indicator) => indicator.id === id);
-    updateIndicator(snapshot, {
-      id,
-      value: result.value,
-      previousClose: result.previousClose,
-      changePercent: result.changePercent,
-      unit: current?.unit,
-      tone: toneForChange(result.changePercent, true),
-      sparkline: result.sparkline,
-      quality: {
-        source: `BLS Public API (${seriesId})`,
-        sourceUrl: result.sourceUrl,
-        frequency: "Monthly",
-        baseDate: result.baseDate,
         lastUpdated: nowIso(),
         access: "free",
         stale: false
