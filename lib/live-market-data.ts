@@ -1833,6 +1833,35 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     });
   }
 
+  const cftcEntries = Object.entries(cftcSources);
+  const cftcText = await fetchCftcTffText(fetcher);
+  const cftcResults = cftcEntries.map(([id, matchers]) => {
+    const result = cftcText ? parseCftcTff(cftcText.text, cftcText.sourceUrl, matchers) : null;
+    return [id, result] as const;
+  });
+  for (const [id, result] of cftcResults) {
+    if (!result) continue;
+    const current = snapshot.indicators.find((indicator) => indicator.id === id);
+    updateIndicator(snapshot, {
+      id,
+      value: result.value,
+      previousClose: result.previousClose,
+      changePercent: result.changePercent,
+      unit: current?.unit,
+      tone: toneForChange(result.changePercent),
+      sparkline: result.sparkline,
+      quality: {
+        source: result.source,
+        sourceUrl: result.sourceUrl,
+        frequency: "Weekly",
+        baseDate: result.baseDate,
+        lastUpdated: result.lastUpdated,
+        access: "free",
+        stale: false
+      }
+    });
+  }
+
   const fredEntries = Object.entries(fredSources).filter(([id]) => {
     const indicator = snapshot.indicators.find((item) => item.id === id);
     return !indicator || indicator.quality.stale;
@@ -1859,35 +1888,6 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
         frequency: ["cpi", "core-cpi", "pce", "core-pce", "ism-mfg", "unemployment", "retail-sales"].includes(id) ? "Monthly" : "Daily/Weekly",
         baseDate: transformed.baseDate,
         lastUpdated: nowIso(),
-        access: "free",
-        stale: false
-      }
-    });
-  }
-
-  const cftcEntries = Object.entries(cftcSources);
-  const cftcText = await fetchCftcTffText(fetcher);
-  const cftcResults = cftcEntries.map(([id, matchers]) => {
-    const result = cftcText ? parseCftcTff(cftcText.text, cftcText.sourceUrl, matchers) : null;
-    return [id, result] as const;
-  });
-  for (const [id, result] of cftcResults) {
-    if (!result) continue;
-    const current = snapshot.indicators.find((indicator) => indicator.id === id);
-    updateIndicator(snapshot, {
-      id,
-      value: result.value,
-      previousClose: result.previousClose,
-      changePercent: result.changePercent,
-      unit: current?.unit,
-      tone: toneForChange(result.changePercent),
-      sparkline: result.sparkline,
-      quality: {
-        source: result.source,
-        sourceUrl: result.sourceUrl,
-        frequency: "Weekly",
-        baseDate: result.baseDate,
-        lastUpdated: result.lastUpdated,
         access: "free",
         stale: false
       }
