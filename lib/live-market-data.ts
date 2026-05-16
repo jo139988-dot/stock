@@ -441,7 +441,7 @@ async function fetchCboePutCall(fetcher: Fetcher): Promise<PriceSeries | null> {
   }
 }
 
-async function fetchCftcTff(fetcher: Fetcher, id: string, matchers: string[]): Promise<CftcSeries | null> {
+async function fetchCftcTffText(fetcher: Fetcher): Promise<{ text: string; sourceUrl: string } | null> {
   const sourceUrl = "https://www.cftc.gov/dea/newcot/FinComWk.txt";
   try {
     const response = await fetchWithTimeout(fetcher, sourceUrl, {
@@ -450,40 +450,43 @@ async function fetchCftcTff(fetcher: Fetcher, id: string, matchers: string[]): P
       }
     }, 8000);
     if (!response.ok) return null;
-    const text = await response.text();
-    const records = text.match(/"[^"]+",\d{6},\d{4}-\d{2}-\d{2}[\s\S]*?(?=\s+"[^"]+",\d{6},\d{4}-\d{2}-\d{2}|$)/g) ??
-      text.split(/\r?\n/).filter((item) => item.trim().length > 20);
-    const line = records.find((item) => {
-      const upper = item.toUpperCase();
-      return matchers.some((matcher) => upper.includes(matcher.toUpperCase()));
-    });
-    if (!line) return null;
-    const fields = parseCsvLine(line);
-    const baseDate = fields[2] ?? new Date().toISOString().slice(0, 10);
-    const levLong = parseNumberField(fields[14]);
-    const levShort = parseNumberField(fields[15]);
-    const changeLevLong = parseNumberField(fields[31]);
-    const changeLevShort = parseNumberField(fields[32]);
-    if (levLong === null || levShort === null) return null;
-    const value = levLong - levShort;
-    const netChange = changeLevLong !== null && changeLevShort !== null ? changeLevLong - changeLevShort : 0;
-    const previousClose = value - netChange;
-    return {
-      source: "CFTC Traders in Financial Futures (Leveraged Funds net)",
-      sourceUrl,
-      baseDate,
-      lastUpdated: nowIso(),
-      value,
-      previousClose,
-      changePercent: changePercent(value, previousClose),
-      sparkline: [
-        { date: "prev", value: previousClose },
-        { date: baseDate.slice(5), value }
-      ]
-    };
+    return { text: await response.text(), sourceUrl };
   } catch {
     return null;
   }
+}
+
+function parseCftcTff(text: string, sourceUrl: string, matchers: string[]): CftcSeries | null {
+  const records = text.match(/"[^"]+",\d{6},\d{4}-\d{2}-\d{2}[\s\S]*?(?=\s+"[^"]+",\d{6},\d{4}-\d{2}-\d{2}|$)/g) ??
+    text.split(/\r?\n/).filter((item) => item.trim().length > 20);
+  const line = records.find((item) => {
+    const upper = item.toUpperCase();
+    return matchers.some((matcher) => upper.includes(matcher.toUpperCase()));
+  });
+  if (!line) return null;
+  const fields = parseCsvLine(line);
+  const baseDate = fields[2] ?? new Date().toISOString().slice(0, 10);
+  const levLong = parseNumberField(fields[14]);
+  const levShort = parseNumberField(fields[15]);
+  const changeLevLong = parseNumberField(fields[31]);
+  const changeLevShort = parseNumberField(fields[32]);
+  if (levLong === null || levShort === null) return null;
+  const value = levLong - levShort;
+  const netChange = changeLevLong !== null && changeLevShort !== null ? changeLevLong - changeLevShort : 0;
+  const previousClose = value - netChange;
+  return {
+    source: "CFTC Traders in Financial Futures (Leveraged Funds net)",
+    sourceUrl,
+    baseDate,
+    lastUpdated: nowIso(),
+    value,
+    previousClose,
+    changePercent: changePercent(value, previousClose),
+    sparkline: [
+      { date: "prev", value: previousClose },
+      { date: baseDate.slice(5), value }
+    ]
+  };
 }
 
 async function fetchBlsInflation(fetcher: Fetcher, id: string, seriesId: string): Promise<BlsSeries | null> {
@@ -1863,12 +1866,11 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
   }
 
   const cftcEntries = Object.entries(cftcSources);
-  const cftcResults = await Promise.all(
-    cftcEntries.map(async ([id, matchers]) => {
-      const result = await fetchCftcTff(fetcher, id, matchers);
-      return [id, result] as const;
-    })
-  );
+  const cftcText = await fetchCftcTffText(fetcher);
+  const cftcResults = cftcEntries.map(([id, matchers]) => {
+    const result = cftcText ? parseCftcTff(cftcText.text, cftcText.sourceUrl, matchers) : null;
+    return [id, result] as const;
+  });
   for (const [id, result] of cftcResults) {
     if (!result) continue;
     const current = snapshot.indicators.find((indicator) => indicator.id === id);
