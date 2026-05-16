@@ -1200,16 +1200,7 @@ async function fetchAaiiBullBearSpread(fetcher: Fetcher): Promise<DatedSeries | 
     if (!item) return null;
     const link = decodeBasicEntities(/<link>([\s\S]*?)<\/link>/i.exec(item)?.[1]?.trim() ?? "");
     const pubDate = /<pubDate>([\s\S]*?)<\/pubDate>/i.exec(item)?.[1]?.trim();
-    const response = link
-      ? await fetchWithTimeout(fetcher, link, {
-          headers: {
-            Referer: feedUrl,
-            "User-Agent": "Mozilla/5.0 market-regime-monitor"
-          }
-        }, 8000)
-      : null;
-    const article = response?.ok ? await response.text() : "";
-    const match = [article, item]
+    const match = [item]
       .map((candidate) =>
         decodeBasicEntities(candidate)
           .replace(/<[^>]+>/g, " ")
@@ -1700,24 +1691,12 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     });
   }
 
-  const [krxIndexMain, krxKosdaq150Chart, krx300Chart] = await Promise.all([
-    fetchKrxIndexMain(fetcher),
-    fetchKrxIndexChart(fetcher, "kosdaq150"),
-    fetchKrxIndexChart(fetcher, "krx300")
-  ]);
+  const krxIndexMain = await fetchKrxIndexMain(fetcher);
   if (krxIndexMain) {
     for (const [id, result] of Object.entries(krxIndexMain)) {
       const current = snapshot.indicators.find((indicator) => indicator.id === id);
       updateIndicator(snapshot, yahooUpdate(id, result, current?.unit));
     }
-  }
-  for (const [id, result] of [
-    ["kosdaq150", krxKosdaq150Chart],
-    ["krx300", krx300Chart]
-  ] as const) {
-    if (!result) continue;
-    const current = snapshot.indicators.find((indicator) => indicator.id === id);
-    updateIndicator(snapshot, yahooUpdate(id, result, current?.unit));
   }
 
   const cboePutCall = await fetchCboePutCall(fetcher);
@@ -1734,19 +1713,14 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     treasuryRealCurve,
     sofrSeries,
     rrpSeries,
-    tgaSeries,
     finraMarginDebt,
     pceSeries,
     corePceSeries,
     clevelandNowcast,
-    blsCpiRelease,
     h41Series,
     dolInitialClaims,
-    censusRetailSales,
     krThreeYearYield,
     krTenYearYield,
-    ismManufacturing,
-    ismServices,
     aaiiBullBear,
     blsLevelResults
   ] = await Promise.all([
@@ -1754,19 +1728,14 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     fetchTreasuryCurve(fetcher, "daily_treasury_real_yield_curve", ["TC_10YEAR"]),
     fetchNewYorkFedSofr(fetcher),
     fetchNewYorkFedRrp(fetcher),
-    fetchFiscalDataTga(fetcher),
     fetchFinraMarginDebt(fetcher),
     fetchBeaInflationPage(fetcher, "https://www.bea.gov/data/personal-consumption-expenditures-price-index"),
     fetchBeaInflationPage(fetcher, "https://www.bea.gov/data/personal-consumption-expenditures-price-index-excluding-food-and-energy"),
     fetchClevelandNowcast(fetcher),
-    fetchBlsCpiRelease(fetcher),
     fetchFedH41(fetcher),
     fetchDolInitialClaims(fetcher),
-    fetchCensusRetailSales(fetcher),
     fetchBokKoreaBondYield(fetcher, "010200000"),
     fetchBokKoreaBondYield(fetcher, "010210000"),
-    fetchIsmCurrentReport(fetcher, "manufacturing"),
-    fetchIsmCurrentReport(fetcher, "services"),
     fetchAaiiBullBearSpread(fetcher),
     Promise.all(
       Object.entries(blsLevelSources).map(async ([id, seriesId]) => {
@@ -1815,17 +1784,13 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
   const officialSeriesUpdates: Array<[string, DatedSeries | null, boolean?]> = [
     ["sofr", sofrSeries, true],
     ["rrp", rrpSeries, true],
-    ["tga", tgaSeries, true],
     ["finra-margin", finraMarginDebt],
     ["pce", pceSeries, true],
     ["core-pce", corePceSeries, true],
     ["cleveland-nowcast", clevelandNowcast, true],
     ["jobless-claims", dolInitialClaims, true],
-    ["retail-sales", censusRetailSales],
     ["kr-3y", krThreeYearYield, true],
     ["kr-10y", krTenYearYield, true],
-    ["ism-mfg", ismManufacturing],
-    ["ism-services", ismServices],
     ["aaii", aaiiBullBear]
   ];
   for (const [id, result, inverse] of officialSeriesUpdates) {
@@ -1838,13 +1803,6 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     for (const [id, result] of Object.entries(h41Series)) {
       const current = snapshot.indicators.find((indicator) => indicator.id === id);
       updateIndicator(snapshot, datedSeriesUpdate(id, result, current?.unit, id === "tga"));
-    }
-  }
-
-  if (blsCpiRelease) {
-    for (const [id, result] of Object.entries(blsCpiRelease)) {
-      const current = snapshot.indicators.find((indicator) => indicator.id === id);
-      updateIndicator(snapshot, datedSeriesUpdate(id, result, current?.unit, true));
     }
   }
 
