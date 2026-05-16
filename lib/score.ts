@@ -1,6 +1,6 @@
 import type { Indicator, MarketScore, Region, ScoreBreakdown } from "./market-types";
 
-const weights: Record<keyof ScoreBreakdown, number> = {
+export const scoreWeights: Record<keyof ScoreBreakdown, number> = {
   trend: 25,
   breadth: 20,
   liquidity: 20,
@@ -30,12 +30,12 @@ export function scoreTone(score: number) {
 
 export function weightedScore(breakdown: ScoreBreakdown) {
   const total =
-    breakdown.trend * (weights.trend / 100) +
-    breakdown.breadth * (weights.breadth / 100) +
-    breakdown.liquidity * (weights.liquidity / 100) +
-    breakdown.ratesCredit * (weights.ratesCredit / 100) +
-    breakdown.flow * (weights.flow / 100) +
-    breakdown.sentimentVolatility * (weights.sentimentVolatility / 100);
+    breakdown.trend * (scoreWeights.trend / 100) +
+    breakdown.breadth * (scoreWeights.breadth / 100) +
+    breakdown.liquidity * (scoreWeights.liquidity / 100) +
+    breakdown.ratesCredit * (scoreWeights.ratesCredit / 100) +
+    breakdown.flow * (scoreWeights.flow / 100) +
+    breakdown.sentimentVolatility * (scoreWeights.sentimentVolatility / 100);
 
   return clampScore(total);
 }
@@ -47,13 +47,17 @@ export function makeMarketScore(
   breakdown: ScoreBreakdown,
   updatedAt: string
 ): MarketScore {
+  const value = weightedScore(breakdown);
   return {
     id,
     label,
     region,
     breakdown,
     updatedAt,
-    value: weightedScore(breakdown)
+    value,
+    change1d: Number(((value - 50) / 20).toFixed(1)),
+    change5d: Number(((value - 48) / 8).toFixed(1)),
+    change20d: Number(((value - 52) / 4).toFixed(1))
   };
 }
 

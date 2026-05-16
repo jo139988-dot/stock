@@ -1,10 +1,12 @@
 import { marketSnapshot } from "./market-data";
 import type {
   AlertSeverity,
+  DataStatus,
   Indicator,
   IndicatorTone,
   MarketAlert,
   MarketSnapshot,
+  SourceFetchLog,
   SparkPoint,
   ThemeMomentum
 } from "./market-types";
@@ -176,6 +178,31 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function deriveQualityStatus(quality: Indicator["quality"]): DataStatus {
+  if (quality.status) return quality.status;
+  if (quality.stale) return "Stale";
+
+  const baseDate = quality.tradeDate ?? quality.baseDate;
+  const parsed = baseDate ? Date.parse(baseDate) : NaN;
+  if (!Number.isFinite(parsed)) return "Delayed";
+
+  const ageDays = (Date.now() - parsed) / 86_400_000;
+  const frequency = quality.frequency.toLowerCase();
+
+  if (frequency.includes("monthly")) return ageDays <= 45 ? "Delayed" : "Stale";
+  if (frequency.includes("weekly")) return ageDays <= 10 ? "Delayed" : "Stale";
+  if (frequency.includes("daily/weekly")) return ageDays <= 10 ? "Delayed" : "Stale";
+  if (ageDays <= 3) return "Fresh";
+  if (ageDays <= 7) return "Delayed";
+  return "Stale";
+}
+
+function normalizeQuality(quality: Indicator["quality"]): Indicator["quality"] {
+  const tradeDate = quality.tradeDate ?? quality.baseDate;
+  const status = deriveQualityStatus({ ...quality, tradeDate });
+  return { ...quality, tradeDate, status };
+}
+
 function dateLabel(timestampSeconds: number) {
   return new Date(timestampSeconds * 1000).toISOString().slice(0, 10);
 }
@@ -186,21 +213,21 @@ function cloneFallbackSnapshot(): MarketSnapshot {
   cloned.generatedAt = now;
   cloned.indicators = cloned.indicators.map((indicator) => ({
     ...indicator,
-    quality: {
+    quality: normalizeQuality({
       ...indicator.quality,
       lastUpdated: now,
       stale: true,
       source: `${indicator.quality.source} / fallback sample`
-    }
+    })
   }));
   cloned.themes = cloned.themes.map((theme) => ({
     ...theme,
-    quality: {
+    quality: normalizeQuality({
       ...theme.quality,
       lastUpdated: now,
       stale: true,
       source: `${theme.quality.source} / fallback sample`
-    }
+    })
   }));
   return cloned;
 }
@@ -1368,10 +1395,10 @@ function updateIndicator(snapshot: MarketSnapshot, update: Update) {
   snapshot.indicators[index] = {
     ...current,
     ...update,
-    quality: {
+    quality: normalizeQuality({
       ...current.quality,
       ...update.quality
-    }
+    })
   };
 }
 
@@ -1540,14 +1567,14 @@ async function updateThemes(fetcher: Fetcher, snapshot: MarketSnapshot) {
         fiveDay: Number(fiveDay.toFixed(2)),
         volumeRatio: Number(volumeRatio.toFixed(2)),
         tone,
-        quality: {
+        quality: normalizeQuality({
           source: `Yahoo Finance basket (${tickers.join(", ")})`,
           frequency: "Daily",
           baseDate: live[0].baseDate,
           lastUpdated: nowIso(),
           access: "free",
           stale: false
-        }
+        })
       } satisfies ThemeMomentum;
     })
   );
@@ -1670,6 +1697,81 @@ function generateAlerts(snapshot: MarketSnapshot) {
     addAlert(alerts, "no-critical-alerts", "주요 실시간 경고 없음", "무료 데이터로 확인 가능한 주요 경고 조건은 현재 트리거되지 않았습니다.", "info", "global", "실데이터 기반 기본 경고 스캔", []);
   }
   snapshot.alerts = alerts;
+}
+
+function sourceLogId(source: string) {
+  return source.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 52) || "source";
+}
+
+function sourceMessage(status: DataStatus, staleCount: number, delayedCount: number, freshCount: number) {
+  if (status === "Error") return "Fetch failed; the dashboard is keeping the last usable value.";
+  if (status === "Stale") return `${staleCount} stale item(s) remain on fallback or last-good data.`;
+  if (status === "Delayed") return `${delayedCount} item(s) are current for their official release cadence.`;
+  return `${freshCount} item(s) refreshed successfully from this free source.`;
+}
+
+function refreshSourceLogs(snapshot: MarketSnapshot) {
+  type Accumulator = SourceFetchLog & {
+    rank: number;
+    staleCount: number;
+    delayedCount: number;
+    freshCount: number;
+  };
+
+  const rank: Record<DataStatus, number> = { Fresh: 0, Delayed: 1, Stale: 2, Error: 3 };
+  const groups = new Map<string, Accumulator>();
+
+  const register = (source: string, status: DataStatus, lastAttemptAt: string, affectedId: string) => {
+    const current = groups.get(source);
+    if (!current) {
+      groups.set(source, {
+        id: sourceLogId(source),
+        source,
+        status,
+        lastAttemptAt,
+        message: "",
+        affectedIndicatorIds: [affectedId],
+        rank: rank[status],
+        staleCount: status === "Stale" ? 1 : 0,
+        delayedCount: status === "Delayed" ? 1 : 0,
+        freshCount: status === "Fresh" ? 1 : 0
+      });
+      return;
+    }
+
+    current.status = rank[status] > current.rank ? status : current.status;
+    current.rank = Math.max(current.rank, rank[status]);
+    current.lastAttemptAt = current.lastAttemptAt > lastAttemptAt ? current.lastAttemptAt : lastAttemptAt;
+    current.affectedIndicatorIds = Array.from(new Set([...(current.affectedIndicatorIds ?? []), affectedId]));
+    current.staleCount += status === "Stale" ? 1 : 0;
+    current.delayedCount += status === "Delayed" ? 1 : 0;
+    current.freshCount += status === "Fresh" ? 1 : 0;
+  };
+
+  for (const indicator of snapshot.indicators) {
+    const quality = normalizeQuality(indicator.quality);
+    indicator.quality = quality;
+    register(quality.source, quality.status ?? "Delayed", quality.lastUpdated, indicator.id);
+  }
+
+  for (const theme of snapshot.themes) {
+    const quality = normalizeQuality(theme.quality);
+    theme.quality = quality;
+    register(quality.source, quality.status ?? "Delayed", quality.lastUpdated, `theme:${theme.name}`);
+  }
+
+  const liveLogs = Array.from(groups.values()).map((log) => ({
+    id: log.id,
+    source: log.source,
+    status: log.status,
+    lastAttemptAt: log.lastAttemptAt,
+    latencyMs: log.latencyMs,
+    affectedIndicatorIds: log.affectedIndicatorIds,
+    message: sourceMessage(log.status, log.staleCount, log.delayedCount, log.freshCount)
+  }));
+  const existingLogs = (snapshot.sourceLogs ?? []).filter((log) => !groups.has(log.source));
+
+  snapshot.sourceLogs = [...liveLogs, ...existingLogs].sort((a, b) => rank[b.status] - rank[a.status]);
 }
 
 export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<MarketSnapshot> {
@@ -1927,6 +2029,7 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
   await updateThemes(fetcher, snapshot);
   recalculateScores(snapshot);
   generateAlerts(snapshot);
+  refreshSourceLogs(snapshot);
 
   return snapshot;
 }

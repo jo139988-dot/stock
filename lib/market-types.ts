@@ -4,14 +4,19 @@ export type IndicatorTone = "positive" | "negative" | "neutral" | "caution";
 
 export type DataAccess = "free" | "paid" | "manual";
 
+export type DataStatus = "Fresh" | "Delayed" | "Stale" | "Error";
+
 export type DataQuality = {
   source: string;
   sourceUrl?: string;
   frequency: string;
   lastUpdated: string;
   baseDate: string;
+  tradeDate?: string;
+  status?: DataStatus;
   stale: boolean;
   access: DataAccess;
+  errorMessage?: string;
 };
 
 export type SparkPoint = {
@@ -63,6 +68,20 @@ export type MarketScore = {
   region: Region;
   breakdown: ScoreBreakdown;
   updatedAt: string;
+  change1d?: number;
+  change5d?: number;
+  change20d?: number;
+  history?: SparkPoint[];
+  summary?: string;
+};
+
+export type ThemeScoreBreakdown = {
+  momentumScore: number;
+  volumeScore: number;
+  breadthScore: number;
+  leaderScore: number;
+  qualityScore: number;
+  newsScore: number;
 };
 
 export type ThemeMomentum = {
@@ -73,11 +92,16 @@ export type ThemeMomentum = {
   fiveDay: number;
   volumeRatio: number;
   leaders: string[];
+  followers?: string[];
+  laggards?: string[];
+  linkedThemes?: string[];
+  concentrationRisk?: boolean;
+  scoreBreakdown?: ThemeScoreBreakdown;
   tone: IndicatorTone;
   quality: DataQuality;
 };
 
-export type AlertSeverity = "info" | "warning" | "critical";
+export type AlertSeverity = "yellow" | "orange" | "red" | "info" | "warning" | "critical";
 
 export type MarketAlert = {
   id: string;
@@ -88,6 +112,11 @@ export type MarketAlert = {
   region: Region;
   rule: string;
   sourceIndicatorIds: string[];
+  affectedAssets?: string[];
+  triggerCondition?: string;
+  releaseCondition?: string;
+  category?: string;
+  userEditable?: boolean;
 };
 
 export type CalendarEvent = {
@@ -97,6 +126,57 @@ export type CalendarEvent = {
   startsAt: string;
   importance: "low" | "medium" | "high";
   source: string;
+};
+
+export type SourceFetchLog = {
+  id: string;
+  source: string;
+  status: DataStatus;
+  lastAttemptAt: string;
+  latencyMs?: number;
+  message: string;
+  affectedIndicatorIds: string[];
+};
+
+export type SignalType = "Breakout" | "Pullback" | "Trend Leader" | "Reversal" | "Overheated" | "Breakdown";
+
+export type ActionTag = "Buy Watch" | "Hold" | "Take Profit" | "Avoid";
+
+export type StockSignal = {
+  date: string;
+  ticker: string;
+  name: string;
+  market: "KOSPI" | "KOSDAQ" | "NASDAQ" | "S&P500";
+  theme: string;
+  price: number;
+  change1d: number;
+  change5d: number;
+  change1m: number;
+  volumeRatio: number;
+  rsi: number;
+  relativeStrength: number;
+  fundFlow: string;
+  signalType: SignalType;
+  score: number;
+  reason: string;
+  actionTag: ActionTag;
+  candidateGroup: "Long Candidate" | "Watch Candidate" | "Risk-Off Candidate";
+  maStatus: {
+    ma20: boolean;
+    ma60: boolean;
+    ma120: boolean;
+  };
+};
+
+export type BacktestMetric = {
+  signalType: SignalType;
+  sampleSize: number;
+  return20d?: number;
+  return60d?: number;
+  hitRatio?: number;
+  averageReturn?: number;
+  maxDrawdown?: number;
+  status: "planned" | "collecting" | "ready";
 };
 
 export type MarketSnapshot = {
@@ -110,4 +190,7 @@ export type MarketSnapshot = {
   themes: ThemeMomentum[];
   alerts: MarketAlert[];
   calendar: CalendarEvent[];
+  sourceLogs?: SourceFetchLog[];
+  stockSignals?: StockSignal[];
+  backtestMetrics?: BacktestMetric[];
 };

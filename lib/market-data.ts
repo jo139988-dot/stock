@@ -8,7 +8,10 @@ import type {
   MarketAlert,
   MarketSnapshot,
   Region,
+  SourceFetchLog,
   SparkPoint,
+  StockSignal,
+  BacktestMetric,
   ThemeMomentum
 } from "./market-types";
 import { changePercent, makeMarketScore } from "./score";
@@ -285,6 +288,153 @@ const scores = [
   makeMarketScore("volatility", "Volatility Score", "global", { trend: 50, breadth: 50, liquidity: 50, ratesCredit: 50, flow: 50, sentimentVolatility: 34 }, generatedAt)
 ];
 
+const sourceLogs: SourceFetchLog[] = [
+  { id: "krx-index", source: "KRX Index Main", status: "Fresh", lastAttemptAt: generatedAt, latencyMs: 820, message: "KRX representative index snapshot accepted.", affectedIndicatorIds: ["kospi", "kosdaq", "kospi200", "kosdaq150", "krx300"] },
+  { id: "yahoo-chart", source: "Yahoo Finance chart", status: "Fresh", lastAttemptAt: generatedAt, latencyMs: 640, message: "Global equity, FX and volatility proxies refreshed.", affectedIndicatorIds: ["spx", "ndx", "vix", "usd-krw", "dxy"] },
+  { id: "fed-h41", source: "Federal Reserve H.4.1", status: "Delayed", lastAttemptAt: generatedAt, latencyMs: 1180, message: "Weekly liquidity series refreshed on official release cadence.", affectedIndicatorIds: ["fed-assets", "tga", "bank-reserves", "net-liquidity"] },
+  { id: "bls-public", source: "BLS Public API", status: "Delayed", lastAttemptAt: generatedAt, latencyMs: 940, message: "Monthly macro series use latest official release month.", affectedIndicatorIds: ["cpi", "core-cpi", "unemployment"] },
+  { id: "krx-flow", source: "KRX investor flow endpoints", status: "Stale", lastAttemptAt: generatedAt, latencyMs: 0, message: "OTP/session protected endpoints need a server-side collector.", affectedIndicatorIds: ["foreign-kospi-flow", "institution-flow", "program-trading"] },
+  { id: "ism-report", source: "ISM Report on Business", status: "Error", lastAttemptAt: generatedAt, latencyMs: 0, message: "Public report pages can return captcha in Workers.", affectedIndicatorIds: ["ism-mfg", "ism-services"] }
+];
+
+const stockSignals: StockSignal[] = [
+  {
+    date: koreaBaseDate,
+    ticker: "005930.KS",
+    name: "Samsung Electronics",
+    market: "KOSPI",
+    theme: "Semiconductor",
+    price: 83400,
+    change1d: 1.8,
+    change5d: 5.6,
+    change1m: 12.4,
+    volumeRatio: 1.7,
+    rsi: 63.2,
+    relativeStrength: 78,
+    fundFlow: "Foreign + Institution net buy",
+    signalType: "Trend Leader",
+    score: 82,
+    reason: "Price is above 20/60/120-day averages with rising volume and improving relative strength.",
+    actionTag: "Buy Watch",
+    candidateGroup: "Long Candidate",
+    maStatus: { ma20: true, ma60: true, ma120: true }
+  },
+  {
+    date: koreaBaseDate,
+    ticker: "000660.KS",
+    name: "SK Hynix",
+    market: "KOSPI",
+    theme: "AI Memory",
+    price: 214500,
+    change1d: 2.6,
+    change5d: 8.3,
+    change1m: 18.9,
+    volumeRatio: 2.1,
+    rsi: 71.5,
+    relativeStrength: 92,
+    fundFlow: "Foreign net buy 3D",
+    signalType: "Breakout",
+    score: 88,
+    reason: "New 60-day high with leadership in the AI memory basket.",
+    actionTag: "Hold",
+    candidateGroup: "Long Candidate",
+    maStatus: { ma20: true, ma60: true, ma120: true }
+  },
+  {
+    date: usBaseDate,
+    ticker: "NVDA",
+    name: "NVIDIA",
+    market: "NASDAQ",
+    theme: "AI",
+    price: 138.4,
+    change1d: 3.1,
+    change5d: 11.4,
+    change1m: 24.6,
+    volumeRatio: 1.9,
+    rsi: 76.8,
+    relativeStrength: 96,
+    fundFlow: "ETF inflow proxy positive",
+    signalType: "Overheated",
+    score: 79,
+    reason: "Leadership remains intact, but RSI and short-term extension are elevated.",
+    actionTag: "Take Profit",
+    candidateGroup: "Watch Candidate",
+    maStatus: { ma20: true, ma60: true, ma120: true }
+  },
+  {
+    date: usBaseDate,
+    ticker: "IWM",
+    name: "Russell 2000 ETF",
+    market: "S&P500",
+    theme: "Small Cap",
+    price: 203.1,
+    change1d: -1.4,
+    change5d: -3.7,
+    change1m: -6.1,
+    volumeRatio: 1.4,
+    rsi: 38.6,
+    relativeStrength: 32,
+    fundFlow: "Outflow proxy negative",
+    signalType: "Breakdown",
+    score: 28,
+    reason: "Below 20/60-day averages with weak breadth and poor relative strength.",
+    actionTag: "Avoid",
+    candidateGroup: "Risk-Off Candidate",
+    maStatus: { ma20: false, ma60: false, ma120: true }
+  },
+  {
+    date: koreaBaseDate,
+    ticker: "207940.KS",
+    name: "Samsung Biologics",
+    market: "KOSPI",
+    theme: "Bio",
+    price: 912000,
+    change1d: 0.4,
+    change5d: 1.9,
+    change1m: 5.3,
+    volumeRatio: 0.9,
+    rsi: 54.1,
+    relativeStrength: 61,
+    fundFlow: "Institution accumulation",
+    signalType: "Pullback",
+    score: 64,
+    reason: "Pullback toward 20-day average while 60-day trend remains positive.",
+    actionTag: "Buy Watch",
+    candidateGroup: "Watch Candidate",
+    maStatus: { ma20: false, ma60: true, ma120: true }
+  },
+  {
+    date: usBaseDate,
+    ticker: "XBI",
+    name: "SPDR Biotech ETF",
+    market: "NASDAQ",
+    theme: "Biotech",
+    price: 86.2,
+    change1d: -0.8,
+    change5d: -2.6,
+    change1m: -7.4,
+    volumeRatio: 1.2,
+    rsi: 34.8,
+    relativeStrength: 29,
+    fundFlow: "Neutral",
+    signalType: "Reversal",
+    score: 42,
+    reason: "Oversold RSI is improving, but price remains below key moving averages.",
+    actionTag: "Hold",
+    candidateGroup: "Risk-Off Candidate",
+    maStatus: { ma20: false, ma60: false, ma120: false }
+  }
+];
+
+const backtestMetrics: BacktestMetric[] = [
+  { signalType: "Breakout", sampleSize: 0, status: "collecting" },
+  { signalType: "Pullback", sampleSize: 0, status: "collecting" },
+  { signalType: "Trend Leader", sampleSize: 0, status: "collecting" },
+  { signalType: "Reversal", sampleSize: 0, status: "planned" },
+  { signalType: "Overheated", sampleSize: 0, status: "planned" },
+  { signalType: "Breakdown", sampleSize: 0, status: "planned" }
+];
+
 export const marketSnapshot: MarketSnapshot = {
   generatedAt,
   timezone: {
@@ -295,7 +445,10 @@ export const marketSnapshot: MarketSnapshot = {
   indicators,
   themes,
   alerts,
-  calendar
+  calendar,
+  sourceLogs,
+  stockSignals,
+  backtestMetrics
 };
 
 export function getIndicators(region?: Region, group?: Indicator["group"]) {

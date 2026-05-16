@@ -6,6 +6,8 @@ __pycache__/
 node_modules/
 .next/
 .open-next/
+.wrangler/
+.wrangler-dev*.log
 out/
 *.db
 *.sqlite
