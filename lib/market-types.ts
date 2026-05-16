@@ -82,6 +82,11 @@ export type ThemeScoreBreakdown = {
   leaderScore: number;
   qualityScore: number;
   newsScore: number;
+  priceMomentum?: number;
+  volumeExpansion?: number;
+  advancingRatio?: number;
+  newHighParticipation?: number;
+  leaderStrength?: number;
 };
 
 export type ThemeMomentum = {
@@ -90,7 +95,13 @@ export type ThemeMomentum = {
   score: number;
   oneDay: number;
   fiveDay: number;
+  return20d?: number;
   volumeRatio: number;
+  volumeRatio20d?: number;
+  advancingRatio?: number;
+  newHighCount20d?: number;
+  leaderContribution?: number;
+  linkageScore?: number;
   leaders: string[];
   followers?: string[];
   laggards?: string[];
@@ -113,6 +124,9 @@ export type MarketAlert = {
   rule: string;
   sourceIndicatorIds: string[];
   affectedAssets?: string[];
+  affectedThemes?: string[];
+  affectedSignalTypes?: SignalType[];
+  suggestedAction?: string;
   triggerCondition?: string;
   releaseCondition?: string;
   category?: string;
@@ -138,9 +152,9 @@ export type SourceFetchLog = {
   affectedIndicatorIds: string[];
 };
 
-export type SignalType = "Breakout" | "Pullback" | "Trend Leader" | "Reversal" | "Overheated" | "Breakdown";
+export type SignalType = "Breakout" | "Pullback" | "Pullback Buy" | "Trend Leader" | "Momentum Fade" | "Reversal" | "Overheated" | "Breakdown" | "Avoid";
 
-export type ActionTag = "Buy Watch" | "Hold" | "Take Profit" | "Avoid";
+export type ActionTag = "Buy Watch" | "Hold" | "Take Profit" | "Reduce" | "Avoid";
 
 export type StockSignal = {
   date: string;
@@ -149,16 +163,32 @@ export type StockSignal = {
   market: "KOSPI" | "KOSDAQ" | "NASDAQ" | "S&P500";
   theme: string;
   price: number;
+  close?: number;
   change1d: number;
   change5d: number;
+  return5d?: number;
+  return20d?: number;
+  return60d?: number;
   change1m: number;
+  marketCap?: number;
+  tradingValue?: number;
   volumeRatio: number;
+  volumeRatio20d?: number;
   rsi: number;
+  rsi14?: number;
   relativeStrength: number;
+  relativeStrength20d?: number;
+  ma20Position?: number;
+  ma60Position?: number;
+  high52wProximity?: number;
+  foreignFlow5d?: number;
+  institutionFlow5d?: number;
   fundFlow: string;
   signalType: SignalType;
   score: number;
+  signalScore?: number;
   reason: string;
+  riskComment?: string;
   actionTag: ActionTag;
   candidateGroup: "Long Candidate" | "Watch Candidate" | "Risk-Off Candidate";
   maStatus: {
@@ -169,13 +199,23 @@ export type StockSignal = {
 };
 
 export type BacktestMetric = {
-  signalType: SignalType;
+  id?: string;
+  targetType?: "signalType" | "theme" | "regime";
+  label?: string;
+  signalType?: SignalType;
+  theme?: string;
+  regime?: string;
+  holdingPeriod?: "5D" | "10D" | "20D" | "60D";
   sampleSize: number;
+  averageReturn?: number;
+  medianReturn?: number;
+  hitRatio?: number;
+  maxDrawdown?: number;
+  profitLossRatio?: number;
+  bestCase?: number;
+  worstCase?: number;
   return20d?: number;
   return60d?: number;
-  hitRatio?: number;
-  averageReturn?: number;
-  maxDrawdown?: number;
   status: "planned" | "collecting" | "ready";
 };
 

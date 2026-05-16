@@ -1,5 +1,6 @@
--- SQLite-first schema for Market Regime Monitor.
--- The date columns can become TimescaleDB hypertable time dimensions later.
+-- SQLite-first schema for the action-oriented Market Regime Monitor.
+-- Every analytical table keeps tradeDate, lastUpdated, source, and status so it can
+-- later move to PostgreSQL/TimescaleDB without losing freshness metadata.
 
 create table if not exists indicators (
   id text primary key,
@@ -8,6 +9,8 @@ create table if not exists indicators (
   category text not null,
   value real,
   prevValue real,
+  unit text,
+  changePercent real,
   tradeDate text,
   lastUpdated text not null,
   source text not null,
@@ -22,7 +25,7 @@ create index if not exists idx_indicators_market_category
   on indicators(market, category);
 
 create table if not exists regime_scores (
-  date text not null,
+  tradeDate text not null,
   market text not null check (market in ('global', 'korea', 'us', 'macro')),
   totalScore real not null,
   trendScore real not null,
@@ -31,106 +34,242 @@ create table if not exists regime_scores (
   creditScore real not null,
   flowScore real not null,
   sentimentScore real not null,
+  change1D real,
+  change5D real,
+  change20D real,
   summary text,
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
   createdAt text not null default (datetime('now')),
-  primary key (date, market)
+  primary key (tradeDate, market)
+);
+
+create table if not exists regime_score_components (
+  id integer primary key autoincrement,
+  tradeDate text not null,
+  market text not null check (market in ('global', 'korea', 'us', 'macro')),
+  scoreId text not null,
+  component text not null check (component in ('trend', 'breadth', 'liquidity', 'ratesCredit', 'flow', 'sentimentVolatility')),
+  metricName text not null,
+  metricValue real,
+  metricText text,
+  contribution real,
+  weight real,
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
+  unique (tradeDate, market, scoreId, component, metricName)
+);
+
+create table if not exists themes (
+  id text primary key,
+  name text not null,
+  market text not null check (market in ('korea', 'us')),
+  linkedThemeId text,
+  description text,
+  leaderStocks text,
+  followerStocks text,
+  laggardStocks text,
+  tradeDate text,
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error'))
 );
 
 create table if not exists theme_scores (
-  date text not null,
+  tradeDate text not null,
+  themeId text not null,
   theme text not null,
   market text not null check (market in ('korea', 'us')),
-  score real not null,
-  momentumScore real not null,
-  volumeScore real not null,
-  breadthScore real not null,
-  leaderScore real not null,
-  qualityScore real not null,
-  newsScore real default 0,
+  themeScore real not null,
+  return1D real,
+  return5D real,
+  return20D real,
+  volumeRatio20D real,
+  advancingRatio real,
+  newHighCount20D integer,
+  leaderContribution real,
   concentrationRisk integer not null default 0,
-  leaders text,
-  followers text,
-  laggards text,
-  linkedThemes text,
+  koreaUsLinkageScore real,
+  priceMomentumScore real not null,
+  volumeExpansionScore real not null,
+  advancingRatioScore real not null,
+  newHighParticipationScore real not null,
+  leaderStrengthScore real not null,
+  qualityScore real not null,
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
   createdAt text not null default (datetime('now')),
-  primary key (date, market, theme)
+  primary key (tradeDate, themeId)
 );
 
+create table if not exists stocks (
+  ticker text primary key,
+  name text not null,
+  market text not null check (market in ('KOSPI', 'KOSDAQ', 'NASDAQ', 'S&P500')),
+  themeId text,
+  theme text,
+  sector text,
+  marketCap real,
+  freeFloatMarketCap real,
+  tradeDate text,
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error'))
+);
+
+create table if not exists stock_prices (
+  tradeDate text not null,
+  ticker text not null,
+  close real not null,
+  open real,
+  high real,
+  low real,
+  volume real,
+  tradingValue real,
+  change1D real,
+  return5D real,
+  return20D real,
+  return60D real,
+  volumeRatio20D real,
+  rsi14 real,
+  ma20Position real,
+  ma60Position real,
+  ma120Position real,
+  high52wProximity real,
+  relativeStrength20D real,
+  foreignFlow5D real,
+  institutionFlow5D real,
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
+  primary key (tradeDate, ticker)
+);
+
+create index if not exists idx_stock_prices_ticker_date
+  on stock_prices(ticker, tradeDate desc);
+
 create table if not exists stock_signals (
-  date text not null,
+  tradeDate text not null,
   ticker text not null,
   name text not null,
   market text not null check (market in ('KOSPI', 'KOSDAQ', 'NASDAQ', 'S&P500')),
   theme text,
-  signalType text not null check (signalType in ('Breakout', 'Pullback', 'Trend Leader', 'Reversal', 'Overheated', 'Breakdown')),
-  score real not null,
+  close real,
+  change1D real,
+  return5D real,
+  return20D real,
+  return60D real,
+  volumeRatio20D real,
+  relativeStrength20D real,
+  ma20Position real,
+  ma60Position real,
+  rsi14 real,
+  foreignFlow5D real,
+  institutionFlow5D real,
+  signalType text not null check (signalType in ('Breakout', 'Pullback', 'Pullback Buy', 'Trend Leader', 'Momentum Fade', 'Reversal', 'Overheated', 'Breakdown', 'Avoid')),
+  signalScore real not null,
   reason text not null,
-  actionTag text not null check (actionTag in ('Buy Watch', 'Hold', 'Take Profit', 'Avoid')),
-  price real,
-  change1d real,
-  change5d real,
-  change1m real,
-  volumeRatio real,
-  rsi real,
-  relativeStrength real,
-  fundFlow text,
+  actionTag text not null check (actionTag in ('Buy Watch', 'Hold', 'Take Profit', 'Reduce', 'Avoid')),
+  riskComment text,
+  candidateGroup text check (candidateGroup in ('Long Candidate', 'Watch Candidate', 'Risk-Off Candidate')),
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
   createdAt text not null default (datetime('now')),
-  primary key (date, ticker, signalType)
+  primary key (tradeDate, ticker, signalType)
 );
 
-create index if not exists idx_stock_signals_market_score
-  on stock_signals(market, score desc);
+create index if not exists idx_stock_signals_action_score
+  on stock_signals(actionTag, signalScore desc);
+
+create table if not exists stock_signals_history (
+  id integer primary key autoincrement,
+  signalTradeDate text not null,
+  evaluationDate text,
+  ticker text not null,
+  signalType text not null,
+  actionTag text not null,
+  signalScore real,
+  entryClose real,
+  close5D real,
+  close10D real,
+  close20D real,
+  close60D real,
+  return5D real,
+  return10D real,
+  return20D real,
+  return60D real,
+  maxDrawdown20D real,
+  maxDrawdown60D real,
+  hit5D integer,
+  hit10D integer,
+  hit20D integer,
+  hit60D integer,
+  tradeDate text,
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
+  unique (signalTradeDate, ticker, signalType)
+);
 
 create table if not exists alerts (
-  date text not null,
+  id text primary key,
+  tradeDate text not null,
   severity text not null check (severity in ('Red', 'Orange', 'Yellow')),
   category text not null,
   title text not null,
   message text not null,
   triggerCondition text not null,
   releaseCondition text,
+  suggestedAction text,
   affectedAssets text,
+  affectedThemes text,
+  affectedSignalTypes text,
   sourceIndicatorIds text,
   acknowledgedAt text,
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
   createdAt text not null default (datetime('now'))
 );
 
 create index if not exists idx_alerts_date_severity
-  on alerts(date desc, severity);
+  on alerts(tradeDate desc, severity);
 
-create table if not exists alert_rules (
+create table if not exists backtest_results (
   id text primary key,
-  name text not null,
-  severity text not null check (severity in ('Red', 'Orange', 'Yellow')),
-  category text not null,
-  triggerCondition text not null,
-  releaseCondition text,
-  affectedAssets text,
-  enabled integer not null default 1,
+  tradeDate text not null,
+  targetType text not null check (targetType in ('signalType', 'theme', 'regime')),
+  targetKey text not null,
+  targetLabel text not null,
+  holdingPeriod text not null check (holdingPeriod in ('5D', '10D', '20D', '60D')),
+  averageReturn real,
+  medianReturn real,
+  hitRatio real,
+  maxDrawdown real,
+  profitLossRatio real,
+  sampleSize integer not null default 0,
+  bestCase real,
+  worstCase real,
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
   createdAt text not null default (datetime('now')),
-  updatedAt text
+  unique (tradeDate, targetType, targetKey, holdingPeriod)
 );
 
 create table if not exists source_fetch_logs (
   id integer primary key autoincrement,
+  tradeDate text,
   source text not null,
   status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
   lastAttemptAt text not null,
+  lastUpdated text not null,
   latencyMs integer,
   message text,
   affectedIndicatorIds text,
   createdAt text not null default (datetime('now'))
-);
-
-create table if not exists signal_backtest_results (
-  id integer primary key autoincrement,
-  date text not null,
-  signalType text not null check (signalType in ('Breakout', 'Pullback', 'Trend Leader', 'Reversal', 'Overheated', 'Breakdown')),
-  horizonDays integer not null check (horizonDays in (20, 60)),
-  sampleSize integer not null default 0,
-  hitRatio real,
-  averageReturn real,
-  maxDrawdown real,
-  createdAt text not null default (datetime('now')),
-  unique (date, signalType, horizonDays)
 );
