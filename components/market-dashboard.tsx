@@ -331,6 +331,17 @@ function sessionClass(status: string) {
   return "border-white/10 bg-white/5 text-muted";
 }
 
+function refreshIntervalMs() {
+  const korea = marketSession("korea");
+  const us = marketSession("us");
+  const active = [korea, us].some((status) => status === "Open" || status === "Pre-market" || status === "After-hours");
+  return active ? 60 * 1000 : 5 * 60 * 1000;
+}
+
+function refreshCadenceLabel(ms: number) {
+  return ms < 60_000 ? `${Math.round(ms / 1000)}s` : `${Math.round(ms / 60_000)}m`;
+}
+
 function scoreHistory(score: MarketScore) {
   if (score.history?.length) return score.history;
   return Array.from({ length: 60 }, (_, index) => {
@@ -1271,9 +1282,13 @@ export function MarketDashboard() {
   const [active, setActive] = React.useState<NavItem>("Market Pulse");
   const [snapshot, setSnapshot] = React.useState<MarketSnapshot>(marketSnapshot);
   const [dataStatus, setDataStatus] = React.useState<"loading" | "live" | "fallback">("loading");
+  const [lastRefreshAt, setLastRefreshAt] = React.useState<string | null>(null);
+  const [nextRefreshMs, setNextRefreshMs] = React.useState(() => refreshIntervalMs());
 
   React.useEffect(() => {
     let mounted = true;
+    let timer: number | undefined;
+
     async function loadSnapshot() {
       try {
         const response = await fetch("/api/snapshot", { cache: "no-store" });
@@ -1285,13 +1300,27 @@ export function MarketDashboard() {
       } catch {
         if (!mounted) return;
         setDataStatus("fallback");
+      } finally {
+        if (mounted) setLastRefreshAt(new Date().toISOString());
       }
     }
-    loadSnapshot();
-    const interval = window.setInterval(loadSnapshot, 5 * 60 * 1000);
+
+    function scheduleNextRefresh() {
+      const interval = refreshIntervalMs();
+      if (mounted) setNextRefreshMs(interval);
+      timer = window.setTimeout(async () => {
+        await loadSnapshot();
+        if (mounted) scheduleNextRefresh();
+      }, interval);
+    }
+
+    loadSnapshot().finally(() => {
+      if (mounted) scheduleNextRefresh();
+    });
+
     return () => {
       mounted = false;
-      window.clearInterval(interval);
+      if (timer) window.clearTimeout(timer);
     };
   }, []);
 
@@ -1350,11 +1379,12 @@ export function MarketDashboard() {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2 text-xs text-muted sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 text-xs text-muted sm:grid-cols-5">
           <HeaderStat label="Korea" value={marketSession("korea")} />
           <HeaderStat label="US" value={marketSession("us")} />
           <HeaderStat label="Reliability" value={`${reliabilityScore(snapshot)}/100`} />
           <HeaderStat label="Data" value={dataStatus === "live" ? "Live API" : dataStatus === "loading" ? "Loading" : "Fallback"} />
+          <HeaderStat label="Refresh" value={`${refreshCadenceLabel(nextRefreshMs)}${lastRefreshAt ? ` · ${formatDateTime(lastRefreshAt)}` : ""}`} />
         </div>
       </header>
 

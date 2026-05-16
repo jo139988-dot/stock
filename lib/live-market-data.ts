@@ -179,7 +179,7 @@ function nowIso() {
 }
 
 function deriveQualityStatus(quality: Indicator["quality"]): DataStatus {
-  if (quality.status) return quality.status;
+  if (quality.status === "Error") return "Error";
   if (quality.stale) return "Stale";
 
   const baseDate = quality.tradeDate ?? quality.baseDate;
@@ -1824,6 +1824,10 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     clevelandNowcast,
     h41Series,
     dolInitialClaims,
+    censusRetailSales,
+    blsCpiRelease,
+    ismManufacturing,
+    ismServices,
     krThreeYearYield,
     krTenYearYield,
     aaiiBullBear,
@@ -1839,6 +1843,10 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     fetchClevelandNowcast(fetcher),
     fetchFedH41(fetcher),
     fetchDolInitialClaims(fetcher),
+    fetchCensusRetailSales(fetcher),
+    fetchBlsCpiRelease(fetcher),
+    fetchIsmCurrentReport(fetcher, "manufacturing"),
+    fetchIsmCurrentReport(fetcher, "services"),
     fetchBokKoreaBondYield(fetcher, "010200000"),
     fetchBokKoreaBondYield(fetcher, "010210000"),
     fetchAaiiBullBearSpread(fetcher),
@@ -1894,6 +1902,9 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     ["core-pce", corePceSeries, true],
     ["cleveland-nowcast", clevelandNowcast, true],
     ["jobless-claims", dolInitialClaims, true],
+    ["retail-sales", censusRetailSales, true],
+    ["ism-mfg", ismManufacturing],
+    ["ism-services", ismServices],
     ["kr-3y", krThreeYearYield, true],
     ["kr-10y", krTenYearYield, true],
     ["aaii", aaiiBullBear]
@@ -1908,6 +1919,13 @@ export async function getLiveMarketSnapshot(fetcher: Fetcher = fetch): Promise<M
     for (const [id, result] of Object.entries(h41Series)) {
       const current = snapshot.indicators.find((indicator) => indicator.id === id);
       updateIndicator(snapshot, datedSeriesUpdate(id, result, current?.unit, id === "tga"));
+    }
+  }
+
+  if (blsCpiRelease) {
+    for (const [id, result] of Object.entries(blsCpiRelease)) {
+      const current = snapshot.indicators.find((indicator) => indicator.id === id);
+      updateIndicator(snapshot, datedSeriesUpdate(id, result, current?.unit, true));
     }
   }
 
