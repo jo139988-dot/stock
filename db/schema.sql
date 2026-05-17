@@ -417,6 +417,7 @@ create table if not exists risk_valuation_alerts (
   affectedStocks text,
   suggestedInvestorAction text,
   alertType text not null check (alertType in ('Tactical', 'Fundamental')),
+  confidence real,
   lastUpdated text not null,
   source text not null,
   status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error'))

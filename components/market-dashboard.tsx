@@ -163,6 +163,7 @@ type RiskAlert = {
   affectedStocks: string[];
   suggestedInvestorAction: string;
   type: "Tactical" | "Fundamental";
+  confidence: number;
 };
 
 type PortfolioBucket = {
@@ -341,16 +342,16 @@ const commodityMonitors: CommodityMonitor[] = [
 ];
 
 const riskAlerts: RiskAlert[] = [
-  risk("Valuation Stretch Alert", "Orange", "Quality growth valuation percentile above 85%", ["US Equity", "Semiconductor/AI"], ["Technology", "AI"], ["QQQ", "SMH", "SOXX"], ["NVDA", "LLY"], "Use valuation discipline; add only on weakness and avoid portfolio crowding.", "Tactical"),
-  risk("Earnings Revision Down Alert", "Yellow", "Forward EPS revision breadth turns negative", ["Korea Equity", "Mid/Small Cap"], ["Industrials", "KOSDAQ Growth"], ["IWM", "KOSDAQ basket"], ["454910.KQ", "141080.KQ"], "Move candidates to thesis review until revisions stabilize.", "Fundamental"),
-  risk("Margin Deterioration Alert", "Yellow", "Gross or operating margin trend falls for two quarters", ["Quality Stocks"], ["Healthcare", "Manufacturing"], ["QUAL", "MOAT"], ["207940.KS"], "Check whether margin pressure is cyclical or thesis-breaking.", "Fundamental"),
-  risk("Balance Sheet Risk Alert", "Orange", "Net debt/EBITDA rises above sector threshold", ["Mid/Small Cap Quality"], ["Small Cap", "Battery Materials"], ["IWM"], ["247540.KQ"], "Reduce position sizing and require cash-flow confirmation.", "Fundamental"),
-  risk("Commodity Price Shock Alert", "Orange", "Oil/Copper 20D move exceeds risk band", ["Commodity Equity"], ["Energy", "Materials"], ["XLE", "COPX"], ["COP", "FCX"], "Rebalance commodity beta and avoid extrapolating spot moves.", "Tactical"),
-  risk("Dollar Strength Alert", "Orange", "DXY and USD/KRW break 20D highs", ["Korea Equity", "EM risk"], ["KOSDAQ Growth", "Materials"], ["UUP", "EWY"], ["005930.KS", "000660.KS"], "Review FX-sensitive exposure and stagger accumulation.", "Tactical"),
-  risk("Rate Shock Alert", "Red", "US 10Y and real yield rise together", ["Growth Equity", "Bonds"], ["Technology", "Utilities"], ["QQQ", "TLT"], ["NVDA", "MSFT"], "Do not expand duration-sensitive exposure; rebalance to quality cash-flow names.", "Tactical"),
-  risk("Liquidity Deterioration Alert", "Orange", "Net liquidity proxy falls while credit spreads widen", ["Equity", "Credit"], ["Small Cap", "Cyclicals"], ["IWM", "HYG"], ["Small-cap watchlist"], "Raise quality threshold and keep cash buffer.", "Tactical"),
-  risk("Crowded Trade Alert", "Yellow", "Leader contribution above 50% in a theme", ["Theme ETFs", "Quality Growth"], ["Semiconductor", "AI"], ["SMH", "SOXX"], ["NVDA", "000660.KS"], "Prefer diversified ETF or secondary quality leaders over single-name concentration.", "Tactical"),
-  risk("Mid/Small Cap Liquidity Alert", "Orange", "Trading value falls below position-size threshold", ["Mid/Small Cap"], ["KOSDAQ", "Small Cap"], ["IWM"], ["454910.KQ", "141080.KQ"], "Limit position sizing and require liquidity confirmation before accumulation.", "Fundamental")
+  risk("Valuation Stretch Alert", "Orange", "Quality growth valuation percentile above 85%", ["US Equity", "Semiconductor/AI"], ["Technology", "AI"], ["QQQ", "SMH", "SOXX"], ["NVDA", "LLY"], "Use valuation discipline; add only on weakness and avoid portfolio crowding.", "Tactical", 78),
+  risk("Earnings Revision Down Alert", "Yellow", "Forward EPS revision breadth turns negative", ["Korea Equity", "Mid/Small Cap"], ["Industrials", "KOSDAQ Growth"], ["IWM", "KOSDAQ basket"], ["454910.KQ", "141080.KQ"], "Move candidates to thesis review until revisions stabilize.", "Fundamental", 66),
+  risk("Margin Deterioration Alert", "Yellow", "Gross or operating margin trend falls for two quarters", ["Quality Stocks"], ["Healthcare", "Manufacturing"], ["QUAL", "MOAT"], ["207940.KS"], "Check whether margin pressure is cyclical or thesis-breaking.", "Fundamental", 72),
+  risk("Balance Sheet Risk Alert", "Orange", "Net debt/EBITDA rises above sector threshold", ["Mid/Small Cap Quality"], ["Small Cap", "Battery Materials"], ["IWM"], ["247540.KQ"], "Reduce position sizing and require cash-flow confirmation.", "Fundamental", 70),
+  risk("Commodity Price Shock Alert", "Orange", "Oil/Copper 20D move exceeds risk band", ["Commodity Equity"], ["Energy", "Materials"], ["XLE", "COPX"], ["COP", "FCX"], "Rebalance commodity beta and avoid extrapolating spot moves.", "Tactical", 74),
+  risk("Dollar Strength Alert", "Orange", "DXY and USD/KRW break 20D highs", ["Korea Equity", "EM risk"], ["KOSDAQ Growth", "Materials"], ["UUP", "EWY"], ["005930.KS", "000660.KS"], "Review FX-sensitive exposure and stagger accumulation.", "Tactical", 68),
+  risk("Rate Shock Alert", "Red", "US 10Y and real yield rise together", ["Growth Equity", "Bonds"], ["Technology", "Utilities"], ["QQQ", "TLT"], ["NVDA", "MSFT"], "Do not expand duration-sensitive exposure; rebalance to quality cash-flow names.", "Tactical", 82),
+  risk("Liquidity Deterioration Alert", "Orange", "Net liquidity proxy falls while credit spreads widen", ["Equity", "Credit"], ["Small Cap", "Cyclicals"], ["IWM", "HYG"], ["Small-cap watchlist"], "Raise quality threshold and keep cash buffer.", "Tactical", 71),
+  risk("Crowded Trade Alert", "Yellow", "Leader contribution above 50% in a theme", ["Theme ETFs", "Quality Growth"], ["Semiconductor", "AI"], ["SMH", "SOXX"], ["NVDA", "000660.KS"], "Prefer diversified ETF or secondary quality leaders over single-name concentration.", "Tactical", 69),
+  risk("Mid/Small Cap Liquidity Alert", "Orange", "Trading value falls below position-size threshold", ["Mid/Small Cap"], ["KOSDAQ", "Small Cap"], ["IWM"], ["454910.KQ", "141080.KQ"], "Limit position sizing and require liquidity confirmation before accumulation.", "Fundamental", 64)
 ];
 
 const portfolioBuckets: PortfolioBucket[] = [
@@ -382,8 +383,8 @@ function commodity(category: string, commodityTrend: string, futuresCurve: strin
   return { category, commodityTrend, futuresCurve, inventoryTrend, dollarSensitivity, chinaDemandSensitivity, relatedEtfs, relatedStocks, action, rationale };
 }
 
-function risk(title: string, severity: RiskAlert["severity"], trigger: string, affectedAssetClasses: string[], affectedSectors: string[], affectedEtfs: string[], affectedStocks: string[], suggestedInvestorAction: string, type: RiskAlert["type"]): RiskAlert {
-  return { title, severity, trigger, affectedAssetClasses, affectedSectors, affectedEtfs, affectedStocks, suggestedInvestorAction, type };
+function risk(title: string, severity: RiskAlert["severity"], trigger: string, affectedAssetClasses: string[], affectedSectors: string[], affectedEtfs: string[], affectedStocks: string[], suggestedInvestorAction: string, type: RiskAlert["type"], confidence = 70): RiskAlert {
+  return { title, severity, trigger, affectedAssetClasses, affectedSectors, affectedEtfs, affectedStocks, suggestedInvestorAction, type, confidence };
 }
 
 function bucket(bucketName: string, suggestedWeight: number, minWeight: number, maxWeight: number, regimeFit: number, rebalanceTrigger: string, riskComment: string): PortfolioBucket {
@@ -417,8 +418,9 @@ function indicatorStatus(indicator: Indicator): DataStatus {
 
 function reliabilityScore(snapshot: MarketSnapshot) {
   const weights: Record<DataStatus, number> = { Fresh: 100, Delayed: 72, Stale: 32, Error: 0 };
-  if (!snapshot.indicators.length) return 0;
-  return Math.round(snapshot.indicators.reduce((sum, item) => sum + weights[indicatorStatus(item)], 0) / snapshot.indicators.length);
+  const statuses = allDataStatuses(snapshot);
+  if (!statuses.length) return 0;
+  return Math.round(statuses.reduce((sum, status) => sum + weights[status], 0) / statuses.length);
 }
 
 function clampScore(value: number) {
@@ -440,6 +442,39 @@ function reliabilityFromIndicators(items: Indicator[]) {
 
 function hasLogIssue(snapshot: MarketSnapshot, sourcePattern: RegExp) {
   return sourceLogs(snapshot).some((log) => sourcePattern.test(log.source) && (log.status === "Stale" || log.status === "Error"));
+}
+
+function allDataStatuses(snapshot: MarketSnapshot) {
+  return [
+    ...snapshot.indicators.map((item) => indicatorStatus(item)),
+    ...sourceLogs(snapshot).map((log) => log.status)
+  ];
+}
+
+function dataStatusCounts(snapshot: MarketSnapshot) {
+  return allDataStatuses(snapshot).reduce<Record<Lowercase<DataStatus>, number>>(
+    (counts, status) => {
+      counts[status.toLowerCase() as Lowercase<DataStatus>] += 1;
+      return counts;
+    },
+    { fresh: 0, delayed: 0, stale: 0, error: 0 }
+  );
+}
+
+function isFlowSensitiveAlert(alert: RiskAlert) {
+  return [
+    alert.title,
+    alert.trigger,
+    ...alert.affectedAssetClasses,
+    ...alert.affectedSectors,
+    ...alert.affectedEtfs,
+    ...alert.affectedStocks
+  ].join(" ").match(/Korea|KOSPI|KOSDAQ|KRW|EWY|Mid\/Small|Small Cap|005930|000660|454910|141080/i);
+}
+
+function alertConfidence(snapshot: MarketSnapshot, alert: RiskAlert) {
+  const flowPenalty = hasLogIssue(snapshot, /KRX investor flow endpoints/i) && isFlowSensitiveAlert(alert) ? 12 : 0;
+  return clampScore(alert.confidence - flowPenalty);
 }
 
 function macroRegimeConfidence(snapshot: MarketSnapshot, regime: MacroRegime) {
@@ -617,7 +652,7 @@ function HomeView({ snapshot }: { snapshot: MarketSnapshot }) {
       <QualityStockCandidates compact />
       <MidSmallQualityWatchlist compact />
       <CommodityResourceMonitor compact />
-      <RiskValuationAlerts compact />
+      <RiskValuationAlerts snapshot={snapshot} compact />
       <KeyIndicatorPanel snapshot={snapshot} />
       <DataReliability snapshot={snapshot} compact />
     </div>
@@ -952,6 +987,7 @@ function CommodityResourceMonitor({ compact = false }: { compact?: boolean }) {
               </div>
             </summary>
             <div className="mt-3 grid grid-cols-1 gap-2 text-sm">
+              <InfoBlock label="Underlying Commodity Trend" value={row.commodityTrend} />
               <InfoBlock label="Futures Curve" value={row.futuresCurve} />
               <InfoBlock label="Inventory Trend" value={row.inventoryTrend} />
               <InfoBlock label="Dollar / China Sensitivity" value={`${row.dollarSensitivity} / ${row.chinaDemandSensitivity}`} />
@@ -966,13 +1002,15 @@ function CommodityResourceMonitor({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function RiskValuationAlerts({ compact = false }: { compact?: boolean }) {
+function RiskValuationAlerts({ snapshot, compact = false }: { snapshot: MarketSnapshot; compact?: boolean }) {
   const rows = compact ? riskAlerts.slice(0, 6) : riskAlerts;
   return (
     <section className="panel rounded-lg p-5">
       <SectionHeader eyebrow="Risk & Valuation Alerts" title="리스크와 밸류에이션 알림" icon={<ShieldAlert className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        {rows.map((alert) => (
+        {rows.map((alert) => {
+          const confidence = alertConfidence(snapshot, alert);
+          return (
           <details key={alert.title} className={`rounded-lg border p-4 ${alert.severity === "Red" ? toneClass.negative : alert.severity === "Orange" ? toneClass.caution : "border-accent/35 bg-accent/10 text-accent"}`} open={!compact}>
             <summary className="cursor-pointer list-none">
               <div className="flex items-start justify-between gap-3">
@@ -981,7 +1019,11 @@ function RiskValuationAlerts({ compact = false }: { compact?: boolean }) {
                   <h3 className="mt-2 font-semibold text-white">{alert.title}</h3>
                   <p className="mt-1 text-sm text-white/75">{alert.trigger}</p>
                 </div>
-                <Bell className="h-5 w-5" />
+                <div className="text-right">
+                  <Bell className="ml-auto h-5 w-5" />
+                  <div className="mt-2 font-mono text-sm text-white">{confidence}/100</div>
+                  {confidence < alert.confidence ? <div className="text-xs text-caution">flow adjusted</div> : <div className="text-xs text-muted">confidence</div>}
+                </div>
               </div>
             </summary>
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -990,9 +1032,11 @@ function RiskValuationAlerts({ compact = false }: { compact?: boolean }) {
               <InfoBlock label="Affected ETFs" value={alert.affectedEtfs.join(", ")} />
               <InfoBlock label="Affected Stocks" value={alert.affectedStocks.join(", ")} />
               <InfoBlock label="Suggested Investor Action" value={alert.suggestedInvestorAction} />
+              <InfoBlock label="Confidence" value={`${confidence}/100${confidence < alert.confidence ? " (KRX flow stale penalty applied)" : ""}`} />
             </div>
           </details>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
@@ -1027,12 +1071,7 @@ function PortfolioConstructionView() {
 }
 
 function DataReliability({ snapshot, compact = false }: { snapshot: MarketSnapshot; compact?: boolean }) {
-  const counts = {
-    fresh: snapshot.indicators.filter((item) => indicatorStatus(item) === "Fresh").length,
-    delayed: snapshot.indicators.filter((item) => indicatorStatus(item) === "Delayed").length,
-    stale: snapshot.indicators.filter((item) => indicatorStatus(item) === "Stale").length,
-    error: snapshot.indicators.filter((item) => indicatorStatus(item) === "Error").length
-  };
+  const counts = dataStatusCounts(snapshot);
   const groups = reliabilityGroups(snapshot);
   return (
     <section className="panel rounded-lg p-5">
@@ -1220,7 +1259,7 @@ export function MarketDashboard() {
     if (active === "Mid/Small Quality") return <MidSmallQualityWatchlist />;
     if (active === "Commodity Monitor") return <CommodityResourceMonitor />;
     if (active === "Portfolio Construction") return <PortfolioConstructionView />;
-    if (active === "Risk & Valuation Alerts") return <RiskValuationAlerts />;
+    if (active === "Risk & Valuation Alerts") return <RiskValuationAlerts snapshot={snapshot} />;
     return <DataReliability snapshot={snapshot} />;
   };
 
