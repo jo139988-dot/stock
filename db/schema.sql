@@ -456,3 +456,151 @@ create table if not exists my_watchlist (
   createdAt text not null default (datetime('now')),
   unique (asset, tradeDate)
 );
+
+-- Point-in-time history for the 3-year reconstructed/live backtest engine.
+-- These tables preserve the exact inputs shown by the dashboard on each date so
+-- portfolio results can be replayed without accidentally using future data.
+
+create table if not exists macro_snapshot_history (
+  date text not null,
+  indicator text not null,
+  value real,
+  change1D real,
+  change5D real,
+  change20D real,
+  dataStatus text not null check (dataStatus in ('Live', 'Delayed', 'Stale', 'Modeled', 'Fallback', 'Error')),
+  source text not null,
+  createdAt text not null default (datetime('now')),
+  primary key (date, indicator)
+);
+
+create index if not exists idx_macro_snapshot_history_indicator_date
+  on macro_snapshot_history(indicator, date desc);
+
+create table if not exists macro_regime_history (
+  date text primary key,
+  goldilocksProbability real not null,
+  reflationProbability real not null,
+  slowdownProbability real not null,
+  stagflationProbability real not null,
+  selectedRegime text not null check (selectedRegime in ('Goldilocks', 'Reflation', 'Slowdown', 'Stagflation', 'Mixed')),
+  confidence real not null,
+  createdAt text not null default (datetime('now'))
+);
+
+create table if not exists asset_allocation_history (
+  date text not null,
+  assetClass text not null,
+  suggestedWeight real not null,
+  previousWeight real,
+  currentWeight real,
+  minWeight real,
+  maxWeight real,
+  signal text not null check (signal in ('Overweight', 'Neutral+', 'Neutral', 'Neutral-', 'Underweight', 'Avoid')),
+  confidence real,
+  dataStatus text not null check (dataStatus in ('Live', 'Delayed', 'Stale', 'Modeled', 'Fallback', 'Error')),
+  createdAt text not null default (datetime('now')),
+  primary key (date, assetClass)
+);
+
+create index if not exists idx_asset_allocation_history_date
+  on asset_allocation_history(date desc);
+
+create table if not exists etf_score_history (
+  date text not null,
+  ticker text not null,
+  allocationScore real not null,
+  macroFit real not null,
+  trend real not null,
+  valuation real not null,
+  cycle real not null,
+  liquidity real not null,
+  drawdownRisk real not null,
+  action text not null check (action in ('Overweight', 'Neutral+', 'Neutral', 'Neutral-', 'Underweight', 'Avoid')),
+  dataStatus text not null check (dataStatus in ('Live', 'Delayed', 'Stale', 'Modeled', 'Fallback', 'Error')),
+  createdAt text not null default (datetime('now')),
+  primary key (date, ticker)
+);
+
+create index if not exists idx_etf_score_history_ticker_date
+  on etf_score_history(ticker, date desc);
+
+create table if not exists quality_stock_score_history (
+  date text not null,
+  ticker text not null,
+  qualityScore real not null,
+  businessQuality real not null,
+  financialQuality real not null,
+  growthDurability real not null,
+  valuationScore real not null,
+  earningsRevision real not null,
+  liquidityRisk real,
+  balanceSheetRisk real,
+  action text not null check (action in ('Core Hold', 'Accumulate', 'Buy on Weakness', 'Valuation Watch', 'Deep Dive Needed', 'Trim', 'Avoid')),
+  dataStatus text not null check (dataStatus in ('Live', 'Delayed', 'Stale', 'Modeled', 'Fallback', 'Error')),
+  createdAt text not null default (datetime('now')),
+  primary key (date, ticker)
+);
+
+create index if not exists idx_quality_stock_score_history_ticker_date
+  on quality_stock_score_history(ticker, date desc);
+
+create table if not exists risk_alert_history (
+  date text not null,
+  alertType text not null,
+  severity text not null check (severity in ('Red', 'Orange', 'Yellow')),
+  affectedAssets text,
+  affectedETFs text,
+  affectedStocks text,
+  suggestedAction text,
+  confidence real,
+  dataStatus text not null default 'Modeled' check (dataStatus in ('Live', 'Delayed', 'Stale', 'Modeled', 'Fallback', 'Error')),
+  createdAt text not null default (datetime('now')),
+  primary key (date, alertType)
+);
+
+create index if not exists idx_risk_alert_history_date_severity
+  on risk_alert_history(date desc, severity);
+
+create table if not exists price_history (
+  date text not null,
+  ticker text not null,
+  open real,
+  high real,
+  low real,
+  close real,
+  adjustedClose real,
+  totalReturn real,
+  currency text not null check (currency in ('USD', 'KRW')),
+  returnBasis text not null default 'Price Return' check (returnBasis in ('Total Return', 'Price Return')),
+  source text not null,
+  dataStatus text not null check (dataStatus in ('Live', 'Delayed', 'Stale', 'Modeled', 'Fallback', 'Error')),
+  createdAt text not null default (datetime('now')),
+  primary key (date, ticker, currency)
+);
+
+create index if not exists idx_price_history_ticker_date
+  on price_history(ticker, date desc);
+
+create table if not exists portfolio_backtest_results (
+  date text not null,
+  strategyName text not null,
+  portfolioValue real not null,
+  dailyReturn real,
+  cumulativeReturn real,
+  drawdown real,
+  turnover real,
+  cashWeight real,
+  currency text not null check (currency in ('USD', 'KRW')),
+  benchmark text not null,
+  rebalancePolicy text not null check (rebalancePolicy in ('Weekly', 'Monthly', 'Signal Change')),
+  executionPrice text not null check (executionPrice in ('Next Open', 'Next Close')),
+  transactionCostBps real not null,
+  fxCostBps real not null,
+  confidence text not null check (confidence in ('High', 'Medium', 'Low')),
+  createdAt text not null default (datetime('now')),
+  primary key (date, strategyName, currency, benchmark, rebalancePolicy, executionPrice)
+);
+
+create index if not exists idx_portfolio_backtest_results_strategy_date
+  on portfolio_backtest_results(strategyName, date desc);

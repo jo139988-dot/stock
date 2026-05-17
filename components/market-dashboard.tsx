@@ -37,6 +37,15 @@ import {
   YAxis
 } from "recharts";
 import { marketSnapshot } from "@/lib/market-data";
+import {
+  BACKTEST_BENCHMARKS,
+  BACKTEST_ETF_UNIVERSE,
+  BACKTEST_LIMITATIONS,
+  BACKTEST_STRATEGY_RULES,
+  DEFAULT_BACKTEST_SETTINGS,
+  buildReconstructedBacktestPreview
+} from "@/lib/backtest-engine";
+import type { BacktestSettings } from "@/lib/backtest-engine";
 import type {
   DataStatus,
   Indicator,
@@ -54,6 +63,7 @@ const navItems = [
   "Quality Stocks",
   "Commodity",
   "Portfolio",
+  "Backtest Lab",
   "Risk & Data"
 ] as const;
 
@@ -2441,6 +2451,244 @@ function RiskBudgetView() {
   );
 }
 
+function formatBacktestPercent(value: number) {
+  return `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)}%`;
+}
+
+function formatBacktestRatio(value: number) {
+  return value.toFixed(2);
+}
+
+function returnHeatClass(value: number) {
+  if (value >= 0.04) return "border-positive/35 bg-positive/15";
+  if (value >= 0) return "border-positive/20 bg-positive/5";
+  if (value <= -0.04) return "border-negative/35 bg-negative/15";
+  return "border-caution/25 bg-caution/10";
+}
+
+function BacktestLabView() {
+  const [settings, setSettings] = React.useState<BacktestSettings>(DEFAULT_BACKTEST_SETTINGS);
+  const preview = React.useMemo(() => buildReconstructedBacktestPreview(settings), [settings]);
+  const metricRows = [
+    ["Cumulative Return", formatBacktestPercent(preview.metrics.cumulativeReturn), "3-year total"],
+    ["CAGR", formatBacktestPercent(preview.metrics.cagr), "annualized"],
+    ["Volatility", formatBacktestPercent(preview.metrics.annualizedVolatility), "annualized"],
+    ["Sharpe", formatBacktestRatio(preview.metrics.sharpeRatio), "rf 3.5%"],
+    ["Sortino", formatBacktestRatio(preview.metrics.sortinoRatio), "downside risk"],
+    ["Max Drawdown", formatBacktestPercent(preview.metrics.maxDrawdown), "peak-to-trough"],
+    ["Calmar", formatBacktestRatio(preview.metrics.calmarRatio), "CAGR / MDD"],
+    ["Hit Ratio", formatBacktestPercent(preview.metrics.hitRatio), "daily positive"],
+    ["Best Month", formatBacktestPercent(preview.metrics.bestMonth), "monthly"],
+    ["Worst Month", formatBacktestPercent(preview.metrics.worstMonth), "monthly"],
+    ["Turnover", formatBacktestPercent(preview.metrics.turnover), "annualized"],
+    ["Transaction Cost", formatBacktestPercent(preview.metrics.transactionCost), "estimated"],
+    ["Excess Return", formatBacktestPercent(preview.metrics.excessReturnVsBenchmark), `vs ${settings.benchmark}`]
+  ];
+  const chartData = preview.points
+    .filter((_, index) => index % 21 === 0)
+    .concat(preview.points.at(-1) ? [preview.points.at(-1)!] : [])
+    .map((point) => ({
+      date: point.date.slice(2, 7),
+      strategy: Number((point.cumulativeReturn * 100).toFixed(1)),
+      benchmark: Number((point.benchmarkCumulativeReturn * 100).toFixed(1)),
+      drawdown: Number((point.drawdown * 100).toFixed(1)),
+      cashWeight: Number((point.cashWeight * 100).toFixed(1))
+    }));
+  const updateSetting = <Key extends keyof BacktestSettings>(key: Key, value: BacktestSettings[Key]) => {
+    setSettings((current) => ({ ...current, [key]: value }));
+  };
+
+  return (
+    <div className="space-y-6">
+      <section className="panel rounded-lg border-caution/35 bg-caution/5 p-5">
+        <SectionHeader eyebrow="Backtest Lab" title="3-year reconstructed engine design" icon={<BarChart3 className="h-5 w-5" />} />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <StatCard label="Lookback" value={`${settings.lookbackYears}Y`} detail="Recent rolling window" tone="neutral" />
+          <StatCard label="Currency" value={settings.currency} detail="USD and KRW supported" tone="neutral" />
+          <StatCard label="Rebalance" value={settings.rebalancePolicy} detail="Weekly / Monthly / Signal" tone="neutral" />
+          <StatCard label="Execution" value={settings.executionPrice} detail="Signal + next trading day" tone="neutral" />
+          <StatCard label="Confidence" value={preview.confidence} detail="Based on return/fundamental data quality" tone={preview.confidence === "High" ? "positive" : preview.confidence === "Medium" ? "caution" : "negative"} />
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
+          {BACKTEST_LIMITATIONS.map((warning) => (
+            <div key={warning} className="rounded border border-caution/25 bg-black/20 px-3 py-2 text-white/75">{warning}</div>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel rounded-lg p-5">
+        <SectionHeader eyebrow="Backtest Settings" title="Execution, cost, currency, and benchmark assumptions" icon={<SlidersHorizontal className="h-5 w-5" />} />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-7">
+          <Select label="Currency" value={settings.currency} onChange={(value) => updateSetting("currency", value as BacktestSettings["currency"])} options={["KRW", "USD"]} />
+          <Select label="Rebalance" value={settings.rebalancePolicy} onChange={(value) => updateSetting("rebalancePolicy", value as BacktestSettings["rebalancePolicy"])} options={["Weekly", "Monthly", "Signal Change"]} />
+          <Select label="Execution" value={settings.executionPrice} onChange={(value) => updateSetting("executionPrice", value as BacktestSettings["executionPrice"])} options={["Next Open", "Next Close"]} />
+          <Select label="Benchmark" value={settings.benchmark} onChange={(value) => updateSetting("benchmark", value as BacktestSettings["benchmark"])} options={BACKTEST_BENCHMARKS} />
+          <Select label="Return Basis" value={settings.returnBasis} onChange={(value) => updateSetting("returnBasis", value as BacktestSettings["returnBasis"])} options={["Total Return", "Price Return"]} />
+          <NumberInput label="Trading Cost bps" value={settings.transactionCostBps} onChange={(value) => updateSetting("transactionCostBps", value)} />
+          <NumberInput label="FX Cost bps" value={settings.fxCostBps} onChange={(value) => updateSetting("fxCostBps", value)} />
+        </div>
+        <div className="mt-3">
+          <Toggle label="Survivorship-bias removal enabled" checked={settings.survivalBiasRemoved} onChange={(value) => updateSetting("survivalBiasRemoved", value)} />
+        </div>
+      </section>
+
+      <section className="panel rounded-lg p-5">
+        <SectionHeader eyebrow="Performance Summary" title="Strategy results versus selected benchmark" icon={<LineChart className="h-5 w-5" />} />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+          {metricRows.map(([label, value, detail]) => (
+            <StatCard key={label} label={label} value={value} detail={detail} tone={String(value).startsWith("-") ? "negative" : "neutral"} />
+          ))}
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <section className="panel rounded-lg p-5">
+          <SectionHeader eyebrow="Cumulative Return" title="Portfolio vs benchmark" icon={<TrendingUp className="h-5 w-5" />} />
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <ReLineChart data={chartData}>
+                <CartesianGrid stroke="#1f2a38" strokeDasharray="3 3" />
+                <XAxis dataKey="date" stroke="#8a96a8" tick={{ fontSize: 11 }} />
+                <YAxis stroke="#8a96a8" tick={{ fontSize: 11 }} unit="%" />
+                <Tooltip contentStyle={{ background: "#0b1118", border: "1px solid #223044", color: "#e8eef7" }} />
+                <Line type="monotone" dataKey="strategy" stroke="#36d399" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="benchmark" stroke="#60a5fa" strokeWidth={2} dot={false} />
+              </ReLineChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+
+        <section className="panel rounded-lg p-5">
+          <SectionHeader eyebrow="Drawdown Chart" title="Peak-to-trough risk path" icon={<ShieldAlert className="h-5 w-5" />} />
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <ReLineChart data={chartData}>
+                <CartesianGrid stroke="#1f2a38" strokeDasharray="3 3" />
+                <XAxis dataKey="date" stroke="#8a96a8" tick={{ fontSize: 11 }} />
+                <YAxis stroke="#8a96a8" tick={{ fontSize: 11 }} unit="%" />
+                <Tooltip contentStyle={{ background: "#0b1118", border: "1px solid #223044", color: "#e8eef7" }} />
+                <Line type="monotone" dataKey="drawdown" stroke="#fb7185" strokeWidth={2} dot={false} />
+              </ReLineChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <section className="panel rounded-lg p-5">
+          <SectionHeader eyebrow="Monthly Return Heatmap" title="Last 36 months" icon={<Bell className="h-5 w-5" />} />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {preview.monthlyReturns.slice(-36).map((row) => (
+              <div key={row.month} className={`rounded border px-3 py-2 text-xs ${returnHeatClass(row.strategyReturn)}`}>
+                <div className="text-white/60">{row.month}</div>
+                <div className="mt-1 font-mono text-sm text-white">{formatBacktestPercent(row.strategyReturn)}</div>
+                <div className="mt-1 text-white/50">excess {formatBacktestPercent(row.excessReturn)}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="panel rounded-lg p-5">
+          <SectionHeader eyebrow="Asset Weight Path" title="Current target bands used by the engine" icon={<BriefcaseBusiness className="h-5 w-5" />} />
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={preview.allocationHistory}>
+                <CartesianGrid stroke="#1f2a38" strokeDasharray="3 3" />
+                <XAxis dataKey="assetClass" stroke="#8a96a8" tick={{ fontSize: 10 }} />
+                <YAxis stroke="#8a96a8" tick={{ fontSize: 11 }} unit="%" />
+                <Tooltip contentStyle={{ background: "#0b1118", border: "1px solid #223044", color: "#e8eef7" }} />
+                <Bar dataKey="currentWeight" fill="#64748b" />
+                <Bar dataKey="suggestedWeight" fill="#36d399" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <section className="panel rounded-lg p-5">
+          <SectionHeader eyebrow="Regime Performance" title="Return quality by macro regime" icon={<Globe2 className="h-5 w-5" />} />
+          <div className="thin-scrollbar overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left text-sm">
+              <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
+                <tr>{["regime", "days", "avg monthly return", "hit ratio", "max drawdown"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+              </thead>
+              <tbody>
+                {preview.regimeResults.map((row) => (
+                  <tr key={row.regime} className="border-t border-white/10">
+                    <td className="px-4 py-3 font-medium text-white">{row.regime}</td>
+                    <td className="px-4 py-3 font-mono text-white">{row.days}</td>
+                    <td className="px-4 py-3 font-mono text-white">{formatBacktestPercent(row.averageReturn)}</td>
+                    <td className="px-4 py-3 font-mono text-white">{formatBacktestPercent(row.hitRatio)}</td>
+                    <td className="px-4 py-3 font-mono text-negative">{formatBacktestPercent(row.maxDrawdown)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="panel rounded-lg p-5">
+          <SectionHeader eyebrow="ETF / Sleeve Contribution" title="Performance attribution preview" icon={<Layers3 className="h-5 w-5" />} />
+          <div className="thin-scrollbar overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
+                <tr>{["name", "sleeve", "contribution", "avg weight", "hit ratio"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+              </thead>
+              <tbody>
+                {preview.contributions.map((row) => (
+                  <tr key={row.name} className="border-t border-white/10">
+                    <td className="px-4 py-3 font-mono text-white">{row.name}</td>
+                    <td className="px-4 py-3 text-muted">{row.sleeve}</td>
+                    <td className="px-4 py-3 font-mono text-positive">{formatBacktestPercent(row.contribution)}</td>
+                    <td className="px-4 py-3 font-mono text-white">{formatBacktestPercent(row.averageWeight)}</td>
+                    <td className="px-4 py-3 font-mono text-white">{formatBacktestPercent(row.hitRatio)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <section className="panel rounded-lg p-5">
+        <SectionHeader eyebrow="Strategy Rulebook" title="How dashboard signals become portfolio positions" icon={<Database className="h-5 w-5" />} />
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+          {BACKTEST_STRATEGY_RULES.map((group) => (
+            <div key={group.name} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+              <div className="font-semibold text-white">{group.name}</div>
+              <ul className="mt-3 space-y-2 text-sm text-white/70">
+                {group.rules.map((rule) => <li key={rule}>{rule}</li>)}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel rounded-lg p-5">
+        <SectionHeader eyebrow="Data Model" title="Snapshot tables required for point-in-time replay" icon={<Database className="h-5 w-5" />} />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {[
+            "macro_snapshot_history",
+            "macro_regime_history",
+            "asset_allocation_history",
+            "etf_score_history",
+            "quality_stock_score_history",
+            "risk_alert_history",
+            "price_history",
+            "portfolio_backtest_results"
+          ].map((table) => (
+            <div key={table} className="rounded border border-white/10 bg-black/20 px-3 py-2 font-mono text-sm text-white/80">{table}</div>
+          ))}
+        </div>
+        <div className="mt-4 rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm text-white/70">
+          ETF universe: {BACKTEST_ETF_UNIVERSE.join(", ")}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function DataReliability({ snapshot, compact = false }: { snapshot: MarketSnapshot; compact?: boolean }) {
   const counts = dataStatusCounts(snapshot);
   const groups = reliabilityGroups(snapshot);
@@ -2660,6 +2908,7 @@ export function MarketDashboard() {
     if (active === "Quality Stocks") return <><QualityStockCandidates /><MidSmallQualityWatchlist /></>;
     if (active === "Commodity") return <CommodityResourceMonitor />;
     if (active === "Portfolio") return <><PortfolioConstructionView /><RiskBudgetView /><MyWatchlistView /></>;
+    if (active === "Backtest Lab") return <BacktestLabView />;
     return <RiskAndDataView snapshot={snapshot} />;
   };
 
