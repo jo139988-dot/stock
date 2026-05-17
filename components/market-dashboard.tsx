@@ -1144,7 +1144,7 @@ function currentRegimeLabel() {
 function currentRegimeInterpretation() {
   const regime = currentRegime();
   const second = secondaryRegime();
-  return `${regime.name} is the leading regime but not a confirmed state; ${second.name} probability is ${second.probability}%, so the portfolio should pair Quality Growth with Commodity/Industrial hedges.`;
+  return `${regime.name} 우위지만 확정 국면은 아닙니다. ${second.name} 가능성도 ${second.probability}%로 높아 퀄리티 성장주와 원자재/산업재 헤지를 병행하는 접근이 적절합니다.`;
 }
 
 function basisDateForGroups(snapshot: MarketSnapshot, groups: Indicator["group"][]) {
@@ -1327,13 +1327,38 @@ function localizedOption(option: string) {
   return option;
 }
 
+function fieldLabel(label: string) {
+  const labels: Record<string, string> = {
+    Action: "\uD22C\uC790 \uC561\uC158",
+    "Data Status": "\uB370\uC774\uD130 \uC0C1\uD0DC",
+    "Asset Class": "\uC790\uC0B0\uAD70",
+    Region: "\uC9C0\uC5ED",
+    Sector: "\uC139\uD130",
+    Theme: "\uD14C\uB9C8",
+    "Risk Level": "\uB9AC\uC2A4\uD06C \uC218\uC900",
+    Confidence: "\uC2E0\uB8B0\uB3C4",
+    Search: "\uAC80\uC0C9"
+  };
+  return labels[label] ?? label;
+}
+
 function investorActionText(value: string) {
   return value
     .replaceAll("Add only on weakness", "\uCD94\uACA9\uB9E4\uC218\uBCF4\uB2E4 \uB20C\uB9BC\uBAA9 \uC911\uC2EC \uC811\uADFC")
     .replaceAll("Keep valuation discipline", "\uBC38\uB958\uC5D0\uC774\uC158 \uBD80\uB2F4\uC744 \uAC10\uC548\uD574 \uBD84\uD560 \uC811\uADFC")
+    .replaceAll("keep valuation discipline", "\uBC38\uB958\uC5D0\uC774\uC158 \uBD80\uB2F4\uC744 \uAC10\uC548\uD574 \uBD84\uD560 \uC811\uADFC")
+    .replaceAll("avoid oversized duration exposure", "\uC7A5\uAE30 \uC131\uC7A5\uC8FC \uACFC\uB300\uB178\uCD9C \uC81C\uD55C")
     .replaceAll("Stagger accumulation", "\uD55C \uBC88\uC5D0 \uBE44\uC911\uD655\uB300\uD558\uC9C0 \uB9D0\uACE0 \uBD84\uD560 \uC811\uADFC")
     .replaceAll("Move candidates to thesis review", "\uD22C\uC790\uB17C\uB9AC \uD6FC\uC190 \uC5EC\uBD80 \uC7AC\uC810\uAC80")
     .replaceAll("Reduce position sizing", "\uC885\uBAA9\uBCC4 \uBE44\uC911 \uCD95\uC18C");
+}
+
+function macroIssueSummary(issue: MacroIssue) {
+  if (issue.title === "US real yield rebound") return "\uC2E4\uC9C8\uAE08\uB9AC \uBC18\uB4F1\uC73C\uB85C \uC131\uC7A5\uC8FC \uBC38\uB958\uC5D0\uC774\uC158 \uBD80\uB2F4\uC774 \uCEE4\uC84C\uC2B5\uB2C8\uB2E4.";
+  if (issue.title === "USD/KRW breakout risk") return "\uB2EC\uB7EC/\uC6D0 \uC0C1\uC2B9\uC740 \uC678\uAD6D\uC778 \uC218\uAE09\uACFC \uCF54\uC2A4\uB2E5 \uC131\uC7A5\uC8FC\uC5D0 \uBD80\uB2F4\uC785\uB2C8\uB2E4.";
+  if (issue.title === "Copper strength needs China confirmation") return "\uAD6C\uB9AC \uAC15\uC138\uB294 \uAE0D\uC815\uC801\uC774\uB098 \uC911\uAD6D \uC218\uC694 \uD655\uC778 \uC804\uAE4C\uC9C0 \uC120\uBCC4 \uC811\uADFC\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.";
+  if (issue.title === "Liquidity drag from TGA rebuild") return "TGA \uC7AC\uCD95\uC801\uC740 \uC21C\uC720\uB3D9\uC131\uC5D0 \uBD80\uB2F4\uC744 \uC8FC\uC5B4 \uBCA0\uD0C0 \uD655\uB300\uB97C \uC81C\uD55C\uD569\uB2C8\uB2E4.";
+  return investorActionText(issue.interpretation);
 }
 
 function Pill({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -1395,30 +1420,30 @@ function ExecutiveSummaryCard({ snapshot }: { snapshot: MarketSnapshot }) {
   const confidence = macroRegimeConfidence(snapshot, regime);
   const preferredAssets = assetAllocations.filter((item) => ["Overweight", "Neutral+"].includes(item.signal)).slice(0, 4);
   const preferredEtfs = [...etfAllocations].sort((a, b) => etfScore(b) - etfScore(a)).slice(0, 5);
-  const stockTypes = ["Core quality compounders", "AI infrastructure leaders", "Balance-sheet resilient mid caps"];
+  const stockTypes = ["\uD575\uC2EC \uD004\uB9AC\uD2F0 \uBCF5\uB9AC \uC131\uC7A5\uC8FC", "AI \uC778\uD504\uB77C \uB9AC\uB354", "\uC7AC\uBB34 \uC548\uC815\uC131\uC774 \uB192\uC740 \uBBF8\uB4DC\uCEA1"];
   const topRisks = riskAlerts.slice(0, 3).map((alert) => alert.title.replace(" Alert", ""));
-  const macroDrivers = ["US real yield rebound", "USD/KRW strength", "HY OAS stable-to-wider", "Korea export cycle constructive", "Copper/gold strength"];
-  const whatChanged = macroIssues.slice(0, 3).map((issue) => issue.title).join(" / ");
-  const watchList = ["CPI/PCE", "FOMC minutes", "Korea export 1-20 days", "China PMI"].join(", ");
+  const macroDrivers = ["\uBBF8\uAD6D \uC2E4\uC9C8\uAE08\uB9AC \uBC18\uB4F1", "\uB2EC\uB7EC/\uC6D0 \uAC15\uC138", "HY OAS \uC548\uC815~\uD655\uB300", "\uD55C\uAD6D \uC218\uCD9C \uC0AC\uC774\uD074 \uC591\uD638", "\uAD6C\uB9AC\u00B7\uAE08 \uAC15\uC138"];
+  const whatChanged = macroIssues.slice(0, 3).map((issue) => issueTitleKo[issue.title] ?? issue.title).join(" / ");
+  const watchList = ["CPI/PCE", "FOMC \uC758\uC0AC\uB85D", "\uD55C\uAD6D \uC218\uCD9C 1~20\uC77C", "\uC911\uAD6D PMI"].join(", ");
   return (
     <section className="panel rounded-lg border-accent/35 bg-accent/5 p-5">
-      <SectionHeader eyebrow="Executive Summary" title="1분 투자 배분 요약" icon={<RadioTower className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Executive Summary" title={"\u0031\uBD84 \uD22C\uC790 \uBC30\uBD84 \uC694\uC57D"} icon={<RadioTower className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
-        <StatCard label="Current Macro Regime" value={currentRegimeLabel()} detail={regime.quadrant} tone="positive" />
-        <StatCard label="Regime Confidence" value={`${confidence}/100`} detail={hasLogIssue(snapshot, /ISM Report on Business/i) ? "ISM data error penalty applied" : "Macro inputs available"} tone={confidence >= 70 ? "positive" : "caution"} />
-        <StatCard label="Overall Investment Stance" value="Neutral+" detail="Quality Bias" tone="positive" />
-        <StatCard label="Today's Action" value="Core Hold" detail="Selective accumulation, avoid low-quality cyclicals" tone="neutral" />
+        <StatCard label={"\uD604\uC7AC \uB9E4\uD06C\uB85C \uAD6D\uBA74"} value={currentRegimeLabel()} detail={regime.quadrant} tone="positive" />
+        <StatCard label={"\uAD6D\uBA74 \uC2E0\uB8B0\uB3C4"} value={`${confidence}/100`} detail={hasLogIssue(snapshot, /ISM Report on Business/i) ? "ISM \uB370\uC774\uD130 \uC624\uB958 \uD398\uB110\uD2F0 \uBC18\uC601" : "\uB9E4\uD06C\uB85C \uC785\uB825\uAC12 \uC0AC\uC6A9 \uAC00\uB2A5"} tone={confidence >= 70 ? "positive" : "caution"} />
+        <StatCard label={"\uC804\uCCB4 \uD22C\uC790 \uC2A4\uD0E0\uC2A4"} value={"\uC911\uB9BD+"} detail={"\uD004\uB9AC\uD2F0 \uC120\uD638"} tone="positive" />
+        <StatCard label={"\uC624\uB298\uC758 \uC6B4\uC6A9 \uC561\uC158"} value={"\uD575\uC2EC \uBCF4\uC720"} detail={"\uC120\uBCC4 \uBD84\uD560\uB9E4\uC218, \uC800\uD004\uB9AC\uD2F0 \uACBD\uAE30\uBBFC\uAC10\uC8FC \uD68C\uD53C"} tone="neutral" />
       </div>
       <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-4">
-        <InfoBlock label="Preferred Asset Classes" value={preferredAssets.map((item) => item.assetClass).join(", ")} />
-        <InfoBlock label="Preferred ETFs" value={preferredEtfs.map((item) => item.ticker).join(", ")} />
-        <InfoBlock label="Preferred Stock Types" value={stockTypes.join(", ")} />
-        <InfoBlock label="Key Risks" value={topRisks.join(", ")} />
-        <InfoBlock label="Key Macro Drivers" value={macroDrivers.join(", ")} />
-        <InfoBlock label="What Changed Today" value={whatChanged} />
-        <InfoBlock label="What to Watch This Week" value={watchList} />
-        <InfoBlock label="Regime Interpretation" value={currentRegimeInterpretation()} />
-        <InfoBlock label="Macro Risk / Data Confidence" value={`Risk: Medium-High · Confidence: ${confidence}/100`} />
+        <InfoBlock label={"\uC120\uD638 \uC790\uC0B0\uAD70"} value={preferredAssets.map((item) => item.assetClass).join(", ")} />
+        <InfoBlock label={"\uC120\uD638 ETF"} value={preferredEtfs.map((item) => item.ticker).join(", ")} />
+        <InfoBlock label={"\uC120\uD638 \uC885\uBAA9 \uC720\uD615"} value={stockTypes.join(", ")} />
+        <InfoBlock label={"\uD575\uC2EC \uB9AC\uC2A4\uD06C"} value={topRisks.join(", ")} />
+        <InfoBlock label={"\uD575\uC2EC \uB9E4\uD06C\uB85C \uB3D9\uC778"} value={macroDrivers.join(", ")} />
+        <InfoBlock label={"\uC624\uB298 \uB2EC\uB77C\uC9C4 \uC810"} value={whatChanged} />
+        <InfoBlock label={"\uC774\uBC88 \uC8FC \uCCB4\uD06C \uD3EC\uC778\uD2B8"} value={watchList} />
+        <InfoBlock label={"\uAD6D\uBA74 \uD574\uC11D"} value={currentRegimeInterpretation()} />
+        <InfoBlock label={"\uB9E4\uD06C\uB85C \uB9AC\uC2A4\uD06C / \uB370\uC774\uD130 \uC2E0\uB8B0\uB3C4"} value={"\uB9AC\uC2A4\uD06C: \uC911\uC0C1 / \uC2E0\uB8B0\uB3C4: " + confidence + "/100"} />
       </div>
     </section>
   );
@@ -1441,7 +1466,7 @@ function HomeView({ snapshot }: { snapshot: MarketSnapshot }) {
         <AllocationChanges />
         <TopIdeas />
         <details className="panel rounded-lg p-4">
-          <summary className="cursor-pointer list-none font-semibold text-white">More Dashboard Sections</summary>
+          <summary className="cursor-pointer list-none font-semibold text-white">{"\uCD94\uAC00 \uB300\uC2DC\uBCF4\uB4DC \uC139\uC158"}</summary>
           <div className="mt-4 space-y-4">
             <HomeRiskDataIssues snapshot={snapshot} />
             <MacroEventCalendar compact limit={4} />
@@ -1483,7 +1508,7 @@ function AllocationChanges() {
   const rows = assetAllocations.filter((row) => row.rebalanceNeeded !== "Within band" || row.assetClass.includes("Cash")).slice(0, 6);
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Allocation Changes" title="Portfolio bands and rebalance triggers" icon={<BriefcaseBusiness className="h-5 w-5" />} />
+      <SectionHeader eyebrow="배분 변화" title="포트폴리오 허용밴드와 리밸런싱 트리거" icon={<BriefcaseBusiness className="h-5 w-5" />} />
       <div className="thin-scrollbar overflow-x-auto">
         <table className="w-full min-w-[880px] text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
@@ -1513,7 +1538,7 @@ function TopIdeas() {
   const stocks = [...qualityStocks].sort((a, b) => qualityFormulaScore(b) - qualityFormulaScore(a)).slice(0, 5);
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="ETF / Quality Stock Top Ideas" title="Best execution vehicles from the top-down view" icon={<Gem className="h-5 w-5" />} />
+      <SectionHeader eyebrow="ETF / 퀄리티 종목 핵심 아이디어" title="탑다운 관점에서 우선 검토할 실행 수단" icon={<Gem className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
           <div className="mb-3 font-semibold text-white">ETF Top Ideas</div>
@@ -1546,7 +1571,7 @@ function HomeRiskDataIssues({ snapshot }: { snapshot: MarketSnapshot }) {
   const counts = sourceIssueCounts(snapshot);
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Risk & Data Issues" title="What can invalidate today's allocation" icon={<ShieldAlert className="h-5 w-5" />} />
+      <SectionHeader eyebrow="리스크·데이터 이슈" title="오늘의 배분 판단을 흔들 수 있는 요인" icon={<ShieldAlert className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <StatCard label="Macro Confidence" value={`${macroRegimeConfidence(snapshot, currentRegime())}/100`} tone="caution" />
         <StatCard label="Reliability" value={`${reliabilityScore(snapshot)}/100`} tone={reliabilityScore(snapshot) >= 85 ? "positive" : "caution"} />
@@ -1568,7 +1593,7 @@ function MacroSnapshot({ snapshot, compact = false, limit }: { snapshot: MarketS
   const groups = ["Rates", "FX", "Volatility", "Credit", "Liquidity", "Commodities", "Korea Macro", "Growth"] as MacroCategory[];
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Macro Snapshot" title="Core macro inputs before allocation" icon={<Gauge className="h-5 w-5" />} />
+      <SectionHeader eyebrow="매크로 스냅샷" title="자산배분 전 먼저 확인할 핵심 원자료" icon={<Gauge className="h-5 w-5" />} />
       <div className="space-y-3">
         {groups.map((group, index) => {
           const groupRows = visibleRows.filter((row) => row.category === group);
@@ -1636,17 +1661,27 @@ function MacroIssueTape({ compact = false, limit }: { compact?: boolean; limit?:
               </div>
               <div className="text-right text-xs text-muted">{issue.timestamp}</div>
             </div>
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-              <InfoBlock label={"\uAD00\uB828 \uC9C0\uD45C"} value={issue.relatedIndicators.join(", ")} />
-              <InfoBlock label={"\uC601\uD5A5 \uC790\uC0B0"} value={issue.affectedAssetClasses.join(", ")} />
-              <InfoBlock label={"\uC601\uD5A5 ETF"} value={issue.affectedEtfs.join(", ")} />
-              <InfoBlock label={"\uC601\uD5A5 \uC885\uBAA9"} value={issue.affectedStocks.join(", ")} />
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="rounded border border-white/10 bg-black/20 p-3">
+                <div className="text-xs uppercase tracking-[0.12em] text-white/50">요약</div>
+                <div className="mt-1 leading-relaxed text-white/80">{macroIssueSummary(issue)}</div>
+              </div>
+              <div className="rounded border border-white/10 bg-black/20 p-3">
+                <div className="text-xs uppercase tracking-[0.12em] text-white/50">영향</div>
+                <div className="mt-1 leading-relaxed text-white/80">
+                  {issue.affectedAssetClasses.join(", ")} / {issue.affectedEtfs.join(", ")} / {issue.affectedStocks.join(", ")}
+                </div>
+              </div>
+              <div className="rounded border border-white/10 bg-black/20 p-3">
+                <div className="text-xs uppercase tracking-[0.12em] text-white/50">대응</div>
+                <div className="mt-1 leading-relaxed text-accent">{investorActionText(issue.suggestedAction)}</div>
+              </div>
             </div>
-            <div className="mt-3 grid grid-cols-1 gap-3">
-              <InfoBlock label={"\uD574\uC11D"} value={issue.interpretation} />
-              <InfoBlock label={"\uB300\uC751 \uC804\uB7B5"} value={investorActionText(issue.suggestedAction)} />
-              <InfoBlock label={"\uCD9C\uCC98"} value={issue.source} />
-            </div>
+            <WhyDetails label="상세 보기">
+              <div>관련 지표: {issue.relatedIndicators.join(", ")}</div>
+              <div>출처: {issue.source}</div>
+              <div>업데이트 시각: {issue.timestamp}</div>
+            </WhyDetails>
           </article>
         ))}
       </div>
@@ -1670,7 +1705,7 @@ function GroupedMacroIndicators({ snapshot }: { snapshot: MarketSnapshot }) {
     ?? liquidityCreditMetrics.find((item) => item.id === id);
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Market Indicators" title="Grouped macro indicator board" icon={<Gauge className="h-5 w-5" />} />
+      <SectionHeader eyebrow="핵심 시장 지표" title="지표군별 매크로 보드" icon={<Gauge className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {groups.map((group) => (
           <div key={group.label} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
@@ -1770,7 +1805,7 @@ function RatesFxLiquidityDashboard({ snapshot }: { snapshot: MarketSnapshot }) {
   const sections = macroMonitorSections.filter((section) => ["Rates", "Liquidity & Credit", "FX & Korea"].includes(section.eyebrow));
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Rates / FX / Liquidity Dashboard" title="Macro pressure points for today's allocation" icon={<SlidersHorizontal className="h-5 w-5" />} />
+      <SectionHeader eyebrow="금리 / 환율 / 유동성" title="오늘의 배분에 영향을 주는 매크로 압력" icon={<SlidersHorizontal className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {sections.map((section) => {
           const rows = macroMetrics(snapshot, section.metrics).slice(0, 4);
@@ -1798,7 +1833,7 @@ function RatesFxLiquidityDashboard({ snapshot }: { snapshot: MarketSnapshot }) {
 function MacroImpactMap() {
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Macro to Sector/ETF Impact Map" title="How macro changes translate into allocation moves" icon={<Layers3 className="h-5 w-5" />} />
+      <SectionHeader eyebrow="매크로 → 섹터·ETF 영향 지도" title="매크로 변화가 배분 조정으로 이어지는 경로" icon={<Layers3 className="h-5 w-5" />} />
       <div className="thin-scrollbar overflow-x-auto">
         <table className="w-full min-w-[1040px] text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
@@ -1886,7 +1921,7 @@ function MacroRegimeSummary({ snapshot, compact = false }: { snapshot: MarketSna
   const confidence = macroRegimeConfidence(snapshot, regime);
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Macro Regime Summary" title={`${currentRegimeLabel()}: ${regime.quadrant}`} icon={<Globe2 className="h-5 w-5" />} />
+      <SectionHeader eyebrow="매크로 국면 요약" title={`${currentRegimeLabel()}: ${regime.quadrant}`} icon={<Globe2 className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1.1fr]">
         <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -1971,7 +2006,7 @@ function AssetAllocationView({ compact = false, limit }: { compact?: boolean; li
   const rows = compact ? filtered.slice(0, limit ?? 10) : filtered;
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Asset Allocation View" title="자산군별 권고 비중" icon={<BriefcaseBusiness className="h-5 w-5" />} />
+      <SectionHeader eyebrow="자산배분" title="자산군별 권고 비중" icon={<BriefcaseBusiness className="h-5 w-5" />} />
       {!compact ? (
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
           <Select label="Action" value={actionFilter} onChange={setActionFilter} options={["All", "Overweight", "Neutral+", "Neutral", "Neutral-", "Underweight", "Avoid"]} />
@@ -2051,7 +2086,7 @@ function SectorEtfBoard({ compact = false, limit }: { compact?: boolean; limit?:
     .sort((a, b) => etfScore(b) - etfScore(a));
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Sector & ETF Allocation Board" title="섹터 ETF와 원자재 ETF 평가" icon={<Layers3 className="h-5 w-5" />} />
+      <SectionHeader eyebrow="섹터·ETF 배분 보드" title="섹터 ETF와 원자재 ETF 평가" icon={<Layers3 className="h-5 w-5" />} />
       <p className="mb-4 text-sm text-muted">ETF Allocation Score = Macro Fit 30% + Trend 20% + Valuation/Mean Reversion 15% + Earnings or Commodity Cycle 15% + Liquidity 10% + Risk/Drawdown 10%</p>
       {!compact ? (
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4 xl:grid-cols-8">
@@ -2126,7 +2161,7 @@ function QualityStockCandidates({ compact = false, limit }: { compact?: boolean;
     .sort((a, b) => b.qualityScore - a.qualityScore);
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Quality Stock Candidates" title="퀄리티 종목 후보" icon={<Gem className="h-5 w-5" />} />
+      <SectionHeader eyebrow="퀄리티 종목 후보" title="퀄리티 종목 후보" icon={<Gem className="h-5 w-5" />} />
       <p className="mb-4 text-sm text-muted">Quality Stock Score = Business Quality 25% + Financial Quality 20% + Growth Durability 20% + Valuation Discipline 15% + Earnings Revision 10% + Liquidity/Risk 10%</p>
       {!compact ? (
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4 xl:grid-cols-8">
@@ -2221,7 +2256,7 @@ function MidSmallQualityWatchlist({ compact = false, limit }: { compact?: boolea
   const visibleRows = compact ? rows.slice(0, limit ?? rows.length) : rows;
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Mid/Small Cap Quality Watchlist" title="미드스몰캡 퀄리티 필터" icon={<Sprout className="h-5 w-5" />} />
+      <SectionHeader eyebrow="미드스몰캡 퀄리티 관심군" title="미드스몰캡 퀄리티 필터" icon={<Sprout className="h-5 w-5" />} />
       {!compact ? (
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4 xl:grid-cols-6">
           <NumberInput label="Min Market Cap" value={minMarketCap} onChange={setMinMarketCap} />
@@ -2302,7 +2337,7 @@ function CommodityResourceMonitor({ compact = false, limit }: { compact?: boolea
   const rows = compact ? filteredRows.slice(0, limit ?? 9) : filteredRows;
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Commodity & Resource Equity Monitor" title="원자재와 리소스 기업 모니터" icon={<Factory className="h-5 w-5" />} />
+      <SectionHeader eyebrow="원자재·리소스 기업 모니터" title="원자재와 리소스 기업 모니터" icon={<Factory className="h-5 w-5" />} />
       {!compact ? (
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-5">
           <Select label="Action" value={actionFilter} onChange={setActionFilter} options={["All", "Overweight", "Neutral+", "Neutral", "Neutral-", "Underweight", "Avoid"]} />
@@ -2365,7 +2400,7 @@ function RiskValuationAlerts({ snapshot, compact = false, limit }: { snapshot: M
   const rows = compact ? filteredRows.slice(0, limit ?? 6) : filteredRows;
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Risk & Valuation Alerts" title="리스크와 밸류에이션 알림" icon={<ShieldAlert className="h-5 w-5" />} />
+      <SectionHeader eyebrow="리스크·밸류에이션 알림" title="리스크와 밸류에이션 알림" icon={<ShieldAlert className="h-5 w-5" />} />
       {!compact ? (
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
           <Select label="Risk Level" value={severityFilter} onChange={setSeverityFilter} options={["All", "Red", "Orange", "Yellow"]} />
@@ -2434,7 +2469,7 @@ function MyWatchlistView({ compact = false }: { compact?: boolean }) {
 
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="My Watchlist" title="관심 ETF · 주식 · 원자재" icon={<Gem className="h-5 w-5" />} />
+      <SectionHeader eyebrow="내 관심자산" title="관심 ETF · 주식 · 원자재" icon={<Gem className="h-5 w-5" />} />
       {!compact ? (
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4 xl:grid-cols-7">
           <Input label="Search" value={query} onChange={setQuery} />
@@ -2486,7 +2521,7 @@ function MyWatchlistView({ compact = false }: { compact?: boolean }) {
 function PortfolioConstructionView() {
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Portfolio Construction View" title="Core / Satellite / Tactical 구조" icon={<Landmark className="h-5 w-5" />} />
+      <SectionHeader eyebrow="포트폴리오 구성" title="Core / Satellite / Tactical 구조" icon={<Landmark className="h-5 w-5" />} />
       <div className="thin-scrollbar overflow-x-auto">
         <table className="w-full min-w-[1000px] text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
@@ -2519,7 +2554,7 @@ function RiskBudgetView() {
   };
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Risk Budget View" title="Portfolio exposure limits and pressure points" icon={<ShieldAlert className="h-5 w-5" />} />
+      <SectionHeader eyebrow="리스크 예산" title="포트폴리오 노출 한도와 압력 요인" icon={<ShieldAlert className="h-5 w-5" />} />
       <div className="thin-scrollbar overflow-x-auto">
         <table className="w-full min-w-[920px] text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
@@ -2877,7 +2912,7 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
 function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[] }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs text-muted">{label}</span>
+      <span className="mb-1 block text-xs text-muted">{fieldLabel(label)}</span>
       <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none">
         {options.map((option) => <option key={option} value={option}>{localizedOption(option)}</option>)}
       </select>
@@ -2888,7 +2923,7 @@ function Select({ label, value, onChange, options }: { label: string; value: str
 function Input({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs text-muted">{label}</span>
+      <span className="mb-1 block text-xs text-muted">{fieldLabel(label)}</span>
       <input value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none" />
     </label>
   );
@@ -2897,7 +2932,7 @@ function Input({ label, value, onChange }: { label: string; value: string; onCha
 function NumberInput({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs text-muted">{label}</span>
+      <span className="mb-1 block text-xs text-muted">{fieldLabel(label)}</span>
       <input type="number" value={value} onChange={(event) => onChange(Number(event.target.value))} className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none" />
     </label>
   );
@@ -3012,18 +3047,18 @@ export function MarketDashboard() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-white">{ko.title}</h1>
-            <p className="mt-1 text-sm text-muted">Macro raw inputs · issue tape · events · sector ETF · quality stock allocation</p>
+            <p className="mt-1 text-sm text-muted">{ko.subtitle}</p>
           </div>
         </div>
         <div className="grid grid-cols-1 gap-2 text-xs text-muted sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
-          <HeaderStat label="Dashboard Generated At" value={formatFullDateTime(snapshot.generatedAt)} />
-          <HeaderStat label="Market Data Basis Date" value={basisDateForGroups(snapshot, ["price", "future", "volatility"])} />
-          <HeaderStat label="Macro Data Basis Date" value={basisDateForGroups(snapshot, ["macro", "rates", "inflation", "credit", "liquidity"])} />
-          <HeaderStat label="Flow Data Basis Date" value={basisDateForGroups(snapshot, ["flow"])} />
-          <HeaderStat label="Fundamental Data Basis Date" value={`${lastTradingDay(snapshot)} modeled`} />
-          <HeaderStat label="Issue Tape Updated At" value={issueTapeUpdatedAt()} />
-          <HeaderStat label="Next Expected Refresh" value={`${nextRefreshLabel(nextRefreshMs)} / ${refreshCadenceLabel(nextRefreshMs)}`} />
-          <HeaderStat label="Reliability / Load State" value={`${reliabilityScore(snapshot)}/100 · ${dataLoadLabel(snapshot, dataStatus)}`} />
+          <HeaderStat label="대시보드 생성 시각" value={formatFullDateTime(snapshot.generatedAt)} />
+          <HeaderStat label="시장 데이터 기준일" value={basisDateForGroups(snapshot, ["price", "future", "volatility"])} />
+          <HeaderStat label="매크로 데이터 기준일" value={basisDateForGroups(snapshot, ["macro", "rates", "inflation", "credit", "liquidity"])} />
+          <HeaderStat label="수급 데이터 기준일" value={basisDateForGroups(snapshot, ["flow"])} />
+          <HeaderStat label="펀더멘털 데이터 기준일" value={`${lastTradingDay(snapshot)} 모델값`} />
+          <HeaderStat label="이슈 흐름 업데이트" value={issueTapeUpdatedAt()} />
+          <HeaderStat label="다음 예상 갱신" value={`${nextRefreshLabel(nextRefreshMs)} / ${refreshCadenceLabel(nextRefreshMs)}`} />
+          <HeaderStat label="신뢰도 / 로드 상태" value={`${reliabilityScore(snapshot)}/100 · ${dataLoadLabel(snapshot, dataStatus)}`} />
         </div>
       </header>
 
