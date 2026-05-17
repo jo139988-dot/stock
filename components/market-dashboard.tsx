@@ -82,8 +82,13 @@ type MacroRegime = {
 type AssetAllocation = {
   assetClass: string;
   signal: AllocationAction;
+  currentWeight: number;
   suggestedWeight: number;
   previousWeight: number;
+  minWeight: number;
+  maxWeight: number;
+  rebalanceNeeded: string;
+  rebalanceTrigger: string;
   rationale: string;
   riskLevel: "Low" | "Medium" | "High";
   confidence: number;
@@ -190,9 +195,12 @@ type WatchlistItem = {
   asset: string;
   type: "ETF" | "Stock" | "Commodity" | "Asset Class";
   region: "US" | "Korea" | "Global" | "Macro";
+  currentWeight: number;
   targetWeight: number;
+  suggestedWeight: number;
   currentAction: InvestmentAction;
   currentScore: number;
+  macroSensitivity: string;
   dataStatus: UiDataStatus;
   rebalanceNeeded: string;
   keyRisk: string;
@@ -227,6 +235,7 @@ type MacroMetric = MacroMetricConfig & {
   value: number;
   change1d: number;
   dataStatus: UiDataStatus;
+  basisDate: string;
 };
 
 type MacroMonitorConfig = {
@@ -249,6 +258,7 @@ type MacroIssue = {
   suggestedAction: string;
   source: string;
   timestamp: string;
+  dataStatus: UiDataStatus;
 };
 
 type MacroEvent = {
@@ -271,6 +281,14 @@ type MacroImpact = {
   sectorEtfImpact: string;
   stockImpact: string;
   portfolioAction: string;
+};
+
+type RiskBudgetItem = {
+  item: string;
+  current: string;
+  limit: string;
+  status: "Within" | "Watch" | "Breach";
+  suggestedAction: string;
 };
 
 const toneClass: Record<IndicatorTone, string> = {
@@ -375,7 +393,13 @@ const assetAllocations: AssetAllocation[] = [
   rowAsset("Sector ETFs", "Neutral", 6, 6, "Use ETFs for regime exposure instead of lower-quality single names.", "Medium", 72),
   rowAsset("Bonds", "Neutral-", 4, 6, "Real yield is still restrictive; duration exposure should be measured.", "Medium", 61),
   rowAsset("Gold", "Neutral+", 3, 3, "Portfolio hedge against dollar, rate, and geopolitical risk.", "Medium", 69),
-  rowAsset("Cash", "Neutral", 1, 6, "Keep dry powder for valuation resets in quality names.", "Low", 78)
+  rowAsset("Cash / Tactical Buffer", "Neutral+", 5, 4, "Base Cash 1% plus Tactical Buffer 3-5% while macro confidence is below 65 and liquidity drag persists.", "Low", 78, "Modeled", {
+    currentWeight: 4,
+    minWeight: 4,
+    maxWeight: 6,
+    rebalanceNeeded: "Hold 4-6% range",
+    rebalanceTrigger: "Macro Confidence < 65 or Data Reliability < 85"
+  })
 ];
 
 const etfAllocations: EtfAllocation[] = [
@@ -469,13 +493,13 @@ const portfolioBuckets: PortfolioBucket[] = [
 ];
 
 const myWatchlist: WatchlistItem[] = [
-  { asset: "QUAL", type: "ETF", region: "US", targetWeight: 8, currentAction: "Overweight", currentScore: 76, dataStatus: "Modeled", rebalanceNeeded: "Add on weakness", keyRisk: "Quality factor crowding" },
-  { asset: "SMH", type: "ETF", region: "US", targetWeight: 6, currentAction: "Neutral+", currentScore: 74, dataStatus: "Modeled", rebalanceNeeded: "No chase", keyRisk: "Valuation and drawdown risk" },
-  { asset: "PAVE", type: "ETF", region: "US", targetWeight: 4, currentAction: "Overweight", currentScore: 71, dataStatus: "Modeled", rebalanceNeeded: "Accumulate", keyRisk: "Infrastructure cycle slowdown" },
-  { asset: "000660.KS", type: "Stock", region: "Korea", targetWeight: 5, currentAction: "Accumulate", currentScore: 84, dataStatus: "Modeled", rebalanceNeeded: "Maintain target", keyRisk: "HBM crowding" },
-  { asset: "NVDA", type: "Stock", region: "US", targetWeight: 5, currentAction: "Core Hold", currentScore: 92, dataStatus: "Modeled", rebalanceNeeded: "Position sizing", keyRisk: "Valuation expectations" },
-  { asset: "Copper", type: "Commodity", region: "Global", targetWeight: 3, currentAction: "Neutral+", currentScore: 69, dataStatus: "Modeled", rebalanceNeeded: "Wait for China confirmation", keyRisk: "China demand miss" },
-  { asset: "Gold", type: "Commodity", region: "Global", targetWeight: 3, currentAction: "Neutral+", currentScore: 68, dataStatus: "Modeled", rebalanceNeeded: "Hedge sleeve", keyRisk: "Real yield rebound" }
+  { asset: "QUAL", type: "ETF", region: "US", currentWeight: 6, targetWeight: 8, suggestedWeight: 8, currentAction: "Overweight", currentScore: 76, macroSensitivity: "Real yield down / quality spread stable", dataStatus: "Modeled", rebalanceNeeded: "Add on weakness", keyRisk: "Quality factor crowding" },
+  { asset: "SMH", type: "ETF", region: "US", currentWeight: 6, targetWeight: 6, suggestedWeight: 5, currentAction: "Neutral+", currentScore: 74, macroSensitivity: "Real yield and crowded AI trade", dataStatus: "Modeled", rebalanceNeeded: "No chase", keyRisk: "Valuation and drawdown risk" },
+  { asset: "PAVE", type: "ETF", region: "US", currentWeight: 3, targetWeight: 4, suggestedWeight: 4, currentAction: "Overweight", currentScore: 71, macroSensitivity: "Infrastructure cycle / rates", dataStatus: "Modeled", rebalanceNeeded: "Accumulate", keyRisk: "Infrastructure cycle slowdown" },
+  { asset: "000660.KS", type: "Stock", region: "Korea", currentWeight: 4, targetWeight: 5, suggestedWeight: 5, currentAction: "Accumulate", currentScore: 84, macroSensitivity: "USD/KRW, HBM export cycle", dataStatus: "Modeled", rebalanceNeeded: "Maintain target", keyRisk: "HBM crowding" },
+  { asset: "NVDA", type: "Stock", region: "US", currentWeight: 5, targetWeight: 5, suggestedWeight: 4, currentAction: "Core Hold", currentScore: 92, macroSensitivity: "Real yield, AI capex revisions", dataStatus: "Modeled", rebalanceNeeded: "Position sizing", keyRisk: "Valuation expectations" },
+  { asset: "Copper", type: "Commodity", region: "Global", currentWeight: 2, targetWeight: 3, suggestedWeight: 3, currentAction: "Neutral+", currentScore: 69, macroSensitivity: "China PMI and DXY", dataStatus: "Modeled", rebalanceNeeded: "Wait for China confirmation", keyRisk: "China demand miss" },
+  { asset: "Gold", type: "Commodity", region: "Global", currentWeight: 3, targetWeight: 3, suggestedWeight: 3, currentAction: "Neutral+", currentScore: 68, macroSensitivity: "Real yield, dollar, policy risk", dataStatus: "Modeled", rebalanceNeeded: "Hedge sleeve", keyRisk: "Real yield rebound" }
 ];
 
 const macroSnapshotConfigs: MacroMetricConfig[] = [
@@ -528,6 +552,9 @@ const inflationMonitorMetrics: MacroMetricConfig[] = [
 const growthMonitorMetrics: MacroMetricConfig[] = [
   { id: "ism-mfg", label: "ISM Manufacturing", category: "Growth", fallbackValue: 49.8, unit: "pt", change5d: -0.5, change20d: -0.8, regimeImpact: "Manufacturing is soft; Goldilocks needs services/export offset.", sectorImpact: "Industrials/materials need confirmation.", source: "ISM", status: "Fallback" },
   { id: "ism-services", label: "ISM Services", category: "Growth", fallbackValue: 52.1, unit: "pt", change5d: 0.6, change20d: 1.1, regimeImpact: "Services growth still supports soft landing.", sectorImpact: "Quality consumer and software resilience.", source: "ISM", status: "Fallback" },
+  { id: "ism-new-orders", label: "ISM New Orders", category: "Growth", fallbackValue: 51.1, unit: "pt", change5d: 0.4, change20d: 0.8, regimeImpact: "New orders stabilize the manufacturing cycle.", sectorImpact: "Industrials need sustained confirmation.", source: "ISM proxy", status: "Modeled" },
+  { id: "ism-employment", label: "ISM Employment", category: "Growth", fallbackValue: 48.6, unit: "pt", change5d: -0.3, change20d: -0.6, regimeImpact: "Labor components are cooling.", sectorImpact: "Supports lower-rate optionality if inflation allows.", source: "ISM proxy", status: "Modeled" },
+  { id: "ism-prices", label: "ISM Prices", category: "Inflation", fallbackValue: 60.9, unit: "pt", change5d: 1.8, change20d: 4.4, regimeImpact: "Prices paid raise reflation risk.", sectorImpact: "Materials/energy hedge value rises; growth multiples capped.", source: "ISM proxy", status: "Modeled" },
   { id: "pmi", label: "PMI", category: "Growth", fallbackValue: 51.2, unit: "pt", change5d: 0.4, change20d: 0.9, regimeImpact: "Composite cycle is mildly expansionary.", sectorImpact: "Keep cyclicals selective.", source: "S&P Global proxy", status: "Modeled" },
   { id: "retail-sales", label: "Retail Sales", category: "Growth", fallbackValue: 0.4, unit: "% MoM", change5d: 0.3, change20d: 0.4, regimeImpact: "Consumer is not rolling over.", sectorImpact: "Discretionary quality remains investable.", source: "US Census" },
   { id: "industrial-production", label: "Industrial Production", category: "Growth", fallbackValue: 0.1, unit: "% MoM", change5d: 0.1, change20d: 0.2, regimeImpact: "Industrial cycle stabilizing.", sectorImpact: "XLI/PAVE support.", source: "Federal Reserve proxy", status: "Modeled" },
@@ -540,6 +567,7 @@ const growthMonitorMetrics: MacroMetricConfig[] = [
   { id: "china-services-pmi", label: "China Services PMI", category: "Growth", fallbackValue: 51.2, unit: "pt", change5d: 0.3, change20d: 0.6, regimeImpact: "Domestic China services steadier than manufacturing.", sectorImpact: "Commodity demand still mixed.", source: "NBS/Caixin proxy", status: "Modeled" },
   ...macroSnapshotConfigs.filter((item) => ["copper"].includes(item.id)),
   { id: "iron-ore", label: "Iron Ore", category: "Commodities", fallbackValue: 118, unit: "USD/t", change5d: 1.5, change20d: 3.2, regimeImpact: "China steel demand proxy is improving but not decisive.", sectorImpact: "Steel/materials still selective.", source: "SGX proxy", status: "Modeled" },
+  { id: "china-property-steel", label: "China property / steel / iron ore proxy", category: "Growth", fallbackValue: 46.8, unit: "index", change5d: 0.6, change20d: 1.4, regimeImpact: "China fixed-asset demand is still below expansion threshold.", sectorImpact: "Materials rebound needs confirmation.", source: "Internal China demand proxy", status: "Modeled" },
   { id: "oecd-cli", label: "OECD CLI", category: "Growth", fallbackValue: 100.3, unit: "pt", change5d: 0.1, change20d: 0.4, regimeImpact: "Global cycle is stabilizing.", sectorImpact: "Supports diversified cyclicals only with quality screens.", source: "OECD proxy", status: "Modeled" }
 ];
 
@@ -563,6 +591,13 @@ const fxKoreaMetrics: MacroMetricConfig[] = [
   { id: "institution-flow", label: "Institution Net Buying", category: "Korea Macro", fallbackValue: 1260, unit: "KRW bn", change5d: 2100, change20d: 4200, regimeImpact: "Institution support offsets some foreign selling.", sectorImpact: "Quality large caps preferred.", source: "KRX", status: "Stale" },
   ...macroSnapshotConfigs.filter((item) => ["kr-export-20d"].includes(item.id)),
   { id: "kr-semi-export", label: "Semiconductor Export Proxy", category: "Korea Macro", fallbackValue: 45.5, unit: "% YoY", change5d: 2.1, change20d: 8.8, regimeImpact: "HBM/export cycle supports Korea quality tech.", sectorImpact: "Semis and power equipment.", source: "Korea Customs proxy", status: "Modeled" }
+];
+
+const commodityMacroMetrics: MacroMetricConfig[] = [
+  ...macroSnapshotConfigs.filter((item) => ["wti", "copper", "gold"].includes(item.id)),
+  { id: "gasoline", label: "Gasoline", category: "Commodities", fallbackValue: 3.62, unit: "USD/gal", change5d: 1.2, change20d: 3.5, regimeImpact: "Gasoline can lift inflation expectations.", sectorImpact: "Consumer and transport margins need monitoring.", source: "EIA proxy", status: "Modeled" },
+  { id: "iron-ore", label: "Iron Ore", category: "Commodities", fallbackValue: 118, unit: "USD/t", change5d: 1.5, change20d: 3.2, regimeImpact: "China steel demand proxy is improving but not decisive.", sectorImpact: "Steel/materials still selective.", source: "SGX proxy", status: "Modeled" },
+  { id: "uranium", label: "Uranium", category: "Commodities", fallbackValue: 91, unit: "USD/lb", change5d: 2.1, change20d: 5.4, regimeImpact: "Nuclear fuel tightness supports resource satellite.", sectorImpact: "URA/URNM and nuclear equipment positive.", source: "UxC proxy", status: "Modeled" }
 ];
 
 const macroMonitorSections: MacroMonitorConfig[] = [
@@ -635,6 +670,19 @@ const macroMonitorSections: MacroMonitorConfig[] = [
       "Sector Impact": "Favor HBM, power equipment, shipbuilding quality; avoid weak balance-sheet growth.",
       "Suggested Investor Action": "Stage Korea accumulation and keep FX-sensitive risk under review."
     }
+  },
+  {
+    title: "Commodities Monitor",
+    eyebrow: "Commodities",
+    metrics: commodityMacroMetrics,
+    interpretation: {
+      "Commodity Direction": "Copper, gold, and uranium are firm; oil is constructive but volatile.",
+      "Inflation Link": "Energy and gasoline are the direct inflation swing factors.",
+      "China Demand Signal": "Copper and iron ore require China PMI/property confirmation.",
+      "Sector Impact": "Power equipment, infrastructure, and selected resource equities stay favored.",
+      "ETF Impact": "PAVE/GRID preferred; COPX/URA/URNM as satellite sleeves.",
+      "Suggested Investor Action": "Keep commodity beta sized as hedge, not core equity replacement."
+    }
   }
 ];
 
@@ -651,7 +699,8 @@ const macroIssues: MacroIssue[] = [
     interpretation: "Higher real yields pressure long-duration valuation even if earnings quality remains strong.",
     suggestedAction: "Add only on weakness; keep valuation discipline and avoid oversized duration exposure.",
     source: "FRED / ICE",
-    timestamp: "2026-05-17 09:10 KST"
+    timestamp: "2026-05-17 09:10 KST",
+    dataStatus: "Modeled"
   },
   {
     severity: "High",
@@ -665,7 +714,8 @@ const macroIssues: MacroIssue[] = [
     interpretation: "KRW weakness can delay foreign inflows and compress Korea growth multiples.",
     suggestedAction: "Stagger accumulation and favor export quality over low-quality domestic growth.",
     source: "Bank of Korea / KRX",
-    timestamp: "2026-05-17 09:10 KST"
+    timestamp: "2026-05-17 09:10 KST",
+    dataStatus: "Stale"
   },
   {
     severity: "Medium",
@@ -679,7 +729,8 @@ const macroIssues: MacroIssue[] = [
     interpretation: "Copper momentum supports reflation hedge, but China PMI is not yet a clean green light.",
     suggestedAction: "Maintain Neutral+ commodity sleeve; prefer power equipment quality leaders.",
     source: "CME/LME proxy / China PMI",
-    timestamp: "2026-05-17 09:10 KST"
+    timestamp: "2026-05-17 09:10 KST",
+    dataStatus: "Modeled"
   },
   {
     severity: "Medium",
@@ -693,7 +744,8 @@ const macroIssues: MacroIssue[] = [
     interpretation: "Net liquidity is not supportive enough for broad beta expansion.",
     suggestedAction: "Keep cash buffer and raise quality threshold for new positions.",
     source: "Federal Reserve / Treasury / NY Fed",
-    timestamp: "2026-05-17 09:10 KST"
+    timestamp: "2026-05-17 09:10 KST",
+    dataStatus: "Live"
   }
 ];
 
@@ -701,9 +753,16 @@ const macroEvents: MacroEvent[] = [
   { date: "2026-05-20", time: "21:30 KST", country: "US", event: "CPI", consensus: "0.3% MoM", previous: "0.4% MoM", actual: "-", importance: "High", likelyMarketImpact: "Real yields and QQQ/SMH multiples", assetsToWatch: "QQQ, SMH, TLT, DXY", positioningNote: "Do not add high-multiple exposure before print unless position size is small." },
   { date: "2026-05-21", time: "03:00 KST", country: "US", event: "FOMC minutes", consensus: "-", previous: "-", actual: "-", importance: "High", likelyMarketImpact: "Rate-cut timing and real-yield path", assetsToWatch: "TLT, IEF, QQQ, Gold", positioningNote: "Watch language on inflation confidence and balance-sheet runoff." },
   { date: "2026-05-21", time: "09:00 KST", country: "Korea", event: "Korea export 1-20 days", consensus: "+10% YoY", previous: "+11.8% YoY", actual: "-", importance: "High", likelyMarketImpact: "Korea semis and export large caps", assetsToWatch: "005930.KS, 000660.KS, PAVE/GRID themes", positioningNote: "Use confirmation for Korea quality accumulation." },
+  { date: "2026-05-22", time: "21:30 KST", country: "US", event: "PCE", consensus: "+0.2% MoM", previous: "+0.3% MoM", actual: "-", importance: "High", likelyMarketImpact: "Fed path, real yields, quality growth multiples", assetsToWatch: "QQQ, QUAL, TLT, GLD", positioningNote: "If core PCE cools, add quality growth gradually rather than chase beta." },
   { date: "2026-05-23", time: "21:30 KST", country: "US", event: "Retail Sales", consensus: "+0.3% MoM", previous: "+0.4% MoM", actual: "-", importance: "Medium", likelyMarketImpact: "Soft-landing and consumer quality", assetsToWatch: "SPY, XLY, VIG", positioningNote: "Weak print with lower yields may help quality growth." },
+  { date: "2026-05-24", time: "TBD", country: "US", event: "Fed speeches", consensus: "-", previous: "-", actual: "-", importance: "Medium", likelyMarketImpact: "Rate-cut timing and dollar tone", assetsToWatch: "US 2Y, DXY, TLT", positioningNote: "Hawkish inflation language supports cash buffer." },
+  { date: "2026-05-27", time: "21:30 KST", country: "US", event: "GDP", consensus: "+1.8% QoQ SAAR", previous: "+1.6% QoQ SAAR", actual: "-", importance: "Medium", likelyMarketImpact: "Growth confidence and cyclicals", assetsToWatch: "SPY, XLI, COPX", positioningNote: "Growth upside with hot prices is reflationary, not pure Goldilocks." },
   { date: "2026-05-28", time: "10:00 KST", country: "Korea", event: "BOK rate decision", consensus: "Hold", previous: "Hold", actual: "-", importance: "High", likelyMarketImpact: "KRW, KOSDAQ growth, Korea duration", assetsToWatch: "USD/KRW, KOSDAQ, Korea growth names", positioningNote: "Watch FX comments more than headline rate." },
+  { date: "2026-05-29", time: "TBD", country: "Japan", event: "BOJ", consensus: "Hold", previous: "Hold", actual: "-", importance: "Medium", likelyMarketImpact: "JPY, Asia FX, Korea sensitivity", assetsToWatch: "USD/JPY, USD/KRW, EWY", positioningNote: "JPY volatility can spill into Korea FX-sensitive exposure." },
+  { date: "2026-05-29", time: "TBD", country: "Europe", event: "ECB", consensus: "Hold", previous: "Hold", actual: "-", importance: "Medium", likelyMarketImpact: "DXY and global duration", assetsToWatch: "DXY, Gold, TLT", positioningNote: "Dovish ECB can lift DXY and pressure EM/Korea." },
   { date: "2026-05-30", time: "10:30 KST", country: "China", event: "China PMI", consensus: "50.0", previous: "49.5", actual: "-", importance: "High", likelyMarketImpact: "Copper, materials, Korea cyclicals", assetsToWatch: "COPX, XLB, Korea materials", positioningNote: "Copper strength needs PMI confirmation." },
+  { date: "2026-05-30", time: "After close", country: "US", event: "Big Tech earnings", consensus: "Positive AI capex commentary", previous: "-", actual: "-", importance: "High", likelyMarketImpact: "Mega-cap growth concentration", assetsToWatch: "QQQ, MSFT, NVDA, META", positioningNote: "Use earnings quality to confirm core holds; trim if guidance relies only on multiple expansion." },
+  { date: "2026-05-31", time: "After close", country: "US/Korea", event: "Semiconductor earnings", consensus: "HBM demand strong", previous: "-", actual: "-", importance: "High", likelyMarketImpact: "AI memory and semiconductor ETF leadership", assetsToWatch: "SMH, SOXX, 000660.KS, AVGO", positioningNote: "Confirm backlog and margin durability before raising semiconductor concentration." },
   { date: "2026-06-01", time: "23:00 KST", country: "US", event: "ISM Manufacturing", consensus: "50.1", previous: "49.8", actual: "-", importance: "High", likelyMarketImpact: "Growth/reflation mix", assetsToWatch: "XLI, XLB, PAVE", positioningNote: "Sub-50 with price pressure is stagflationary." },
   { date: "2026-06-04", time: "23:00 KST", country: "US", event: "ISM Services", consensus: "52.0", previous: "52.1", actual: "-", importance: "High", likelyMarketImpact: "Soft landing and services inflation", assetsToWatch: "SPY, QQQ, DXY", positioningNote: "Prices-paid component matters for rate path." },
   { date: "2026-06-05", time: "21:30 KST", country: "US", event: "Payrolls", consensus: "180k", previous: "175k", actual: "-", importance: "High", likelyMarketImpact: "Rates, DXY, equity beta", assetsToWatch: "US 2Y, DXY, QQQ, IWM", positioningNote: "Hot payrolls plus wage pressure is negative for duration." },
@@ -720,8 +779,35 @@ const macroImpactMap: MacroImpact[] = [
   { driver: "Net Liquidity Down", signal: "Fed assets down, TGA up, RRP offset fading", sectorEtfImpact: "Equity beta down, BIL/cash up, IWM weak", stockImpact: "Illiquid mid/small caps need position-size review", portfolioAction: "Keep dry powder and reduce speculative beta." }
 ];
 
-function rowAsset(assetClass: string, signal: AllocationAction, suggestedWeight: number, previousWeight: number, rationale: string, riskLevel: AssetAllocation["riskLevel"], confidence = 70, dataStatus: UiDataStatus = "Modeled"): AssetAllocation {
-  return { assetClass, signal, suggestedWeight, previousWeight, rationale, riskLevel, confidence, dataStatus };
+const riskBudgetItems: RiskBudgetItem[] = [
+  { item: "Equity Beta", current: "0.82", limit: "0.90", status: "Within", suggestedAction: "Keep beta below limit until liquidity improves." },
+  { item: "Growth Factor Exposure", current: "38%", limit: "42%", status: "Watch", suggestedAction: "Prefer QUAL/MOAT over adding pure QQQ beta." },
+  { item: "Mega-cap Growth Concentration", current: "29%", limit: "32%", status: "Watch", suggestedAction: "Rebalance if big-tech earnings fail to broaden." },
+  { item: "Semiconductor/AI Concentration", current: "17%", limit: "20%", status: "Watch", suggestedAction: "Hold leaders, add only after valuation reset." },
+  { item: "Korea FX-sensitive Exposure", current: "11%", limit: "13%", status: "Watch", suggestedAction: "Stage accumulation while USD/KRW is elevated." },
+  { item: "Small/Mid Cap Liquidity Risk", current: "7%", limit: "10%", status: "Within", suggestedAction: "Require trading-value confirmation before adding." },
+  { item: "Commodity Beta", current: "8%", limit: "12%", status: "Within", suggestedAction: "Use as reflation hedge, not core risk." },
+  { item: "Duration Exposure", current: "5%", limit: "8%", status: "Within", suggestedAction: "Keep TLT underweight until real-yield trend turns." },
+  { item: "Cash Buffer", current: "4%", limit: "4-6% target", status: "Watch", suggestedAction: "Maintain tactical buffer while macro confidence is below 65." }
+];
+
+function rowAsset(
+  assetClass: string,
+  signal: AllocationAction,
+  suggestedWeight: number,
+  previousWeight: number,
+  rationale: string,
+  riskLevel: AssetAllocation["riskLevel"],
+  confidence = 70,
+  dataStatus: UiDataStatus = "Modeled",
+  options: Partial<Pick<AssetAllocation, "currentWeight" | "minWeight" | "maxWeight" | "rebalanceNeeded" | "rebalanceTrigger">> = {}
+): AssetAllocation {
+  const currentWeight = options.currentWeight ?? previousWeight;
+  const minWeight = options.minWeight ?? Math.max(0, suggestedWeight - 3);
+  const maxWeight = options.maxWeight ?? suggestedWeight + 3;
+  const rebalanceNeeded = options.rebalanceNeeded ?? (currentWeight < minWeight ? "Increase toward band" : currentWeight > maxWeight ? "Trim toward band" : "Within band");
+  const rebalanceTrigger = options.rebalanceTrigger ?? "Signal changes, regime confidence drops, or weight moves outside allowed band";
+  return { assetClass, signal, currentWeight, suggestedWeight, previousWeight, minWeight, maxWeight, rebalanceNeeded, rebalanceTrigger, rationale, riskLevel, confidence, dataStatus };
 }
 
 function etf(ticker: string, name: string, assetClass: string, sector: string, macroFitScore: number, trendScore: number, valuationScore: number, cycleScore: number, liquidityScore: number, drawdownRisk: number, correlationToPortfolio: number, action: AllocationAction, rationale: string): EtfAllocation {
@@ -789,7 +875,8 @@ function macroMetric(snapshot: MarketSnapshot, config: MacroMetricConfig): Macro
     value: indicator?.value ?? config.fallbackValue,
     unit: indicator?.unit ?? config.unit,
     change1d: macroChange1d(indicator, config),
-    dataStatus: config.status ?? (indicator ? uiStatusForIndicator(indicator) : "Modeled")
+    dataStatus: config.status ?? (indicator ? uiStatusForIndicator(indicator) : "Modeled"),
+    basisDate: indicator?.quality.tradeDate ?? indicator?.quality.baseDate ?? lastTradingDay(snapshot)
   };
 }
 
@@ -969,6 +1056,57 @@ function currentRegime() {
   return macroRegimes.reduce((best, item) => (item.probability > best.probability ? item : best), macroRegimes[0]);
 }
 
+function secondaryRegime() {
+  return [...macroRegimes].sort((a, b) => b.probability - a.probability)[1] ?? macroRegimes[1];
+}
+
+function currentRegimeLabel() {
+  const regime = currentRegime();
+  const second = secondaryRegime();
+  if (regime.probability < 45 && second.probability >= 20) return `${regime.name}-biased Mixed Regime`;
+  return regime.name;
+}
+
+function currentRegimeInterpretation() {
+  const regime = currentRegime();
+  const second = secondaryRegime();
+  return `${regime.name} is the leading regime but not a confirmed state; ${second.name} probability is ${second.probability}%, so the portfolio should pair Quality Growth with Commodity/Industrial hedges.`;
+}
+
+function basisDateForGroups(snapshot: MarketSnapshot, groups: Indicator["group"][]) {
+  const dates = snapshot.indicators
+    .filter((indicator) => groups.includes(indicator.group))
+    .map((indicator) => indicator.quality.tradeDate ?? indicator.quality.baseDate)
+    .filter(Boolean)
+    .sort();
+  return dates.at(-1) ?? lastTradingDay(snapshot);
+}
+
+function issueTapeUpdatedAt() {
+  return macroIssues.map((issue) => issue.timestamp).sort().at(-1) ?? "-";
+}
+
+function sourceIssueCounts(snapshot: MarketSnapshot) {
+  return sourceLogs(snapshot).reduce(
+    (counts, log) => {
+      if (log.status === "Stale") counts.stale += 1;
+      if (log.status === "Error") counts.error += 1;
+      if (log.source.toLowerCase().includes("fallback")) counts.fallback += 1;
+      return counts;
+    },
+    { stale: 0, error: 0, fallback: 0 }
+  );
+}
+
+function dataLoadLabel(snapshot: MarketSnapshot, state: "loaded" | "live" | "fallback") {
+  const counts = sourceIssueCounts(snapshot);
+  if (state === "fallback") return "Fallback / Modeled data included";
+  if (counts.error || counts.stale) return `Loaded with ${counts.stale} stale sources and ${counts.error} error`;
+  const modeledCount = allDataStatuses(snapshot).filter((status) => status === "Modeled" || status === "Fallback").length;
+  if (modeledCount) return "Partially Updated";
+  return "Loaded";
+}
+
 function regimeInputs(snapshot: MarketSnapshot) {
   const inputIds = [
     ["ISM Manufacturing", "ism-mfg"],
@@ -1005,6 +1143,42 @@ function etfScore(row: EtfAllocation) {
 
 function qualityFormulaScore(row: QualityStock) {
   return Math.round(row.businessQualityScore * 0.25 + row.financialQualityScore * 0.2 + row.growthDurabilityScore * 0.2 + row.valuationScore * 0.15 + row.earningsRevisionScore * 0.1 + (100 - (row.liquidityRisk + row.balanceSheetRisk) / 2) * 0.1);
+}
+
+function assetWhy(row: AssetAllocation) {
+  const map: Record<string, string[]> = {
+    "US Equity": ["+ Quality growth earnings leadership remains intact", "- Real yield rebound creates valuation pressure", "- DXY strength tightens global liquidity", "Conclusion: Keep core exposure, but prefer QUAL/MOAT over adding pure QQQ beta."],
+    "Korea Equity": ["+ Export cycle is constructive", "- USD/KRW strength and foreign-flow uncertainty cap conviction", "Conclusion: Hold large export quality; be selective in KOSDAQ growth."],
+    "Quality Large Cap": ["+ Balance-sheet strength and earnings visibility fit mixed macro", "- Crowding can rise when macro confidence is low", "Conclusion: Maintain overweight as the core risk sleeve."],
+    "Mid/Small Cap Quality": ["+ Select compounders can outperform after liquidity resets", "- Credit and liquidity signals are not broad small-cap friendly", "Conclusion: Keep exposure narrow and require trading-value confirmation."],
+    "Semiconductor/AI": ["+ AI capex and HBM demand remain durable", "- Valuation and concentration risk are elevated", "Conclusion: Hold leaders and add only on weakness."],
+    "Commodity Equity": ["+ Copper and energy provide reflation hedge", "- China demand confirmation is incomplete", "Conclusion: Keep Neutral+ hedge, favor quality resource cash flow."],
+    "Sector ETFs": ["+ ETFs express macro views with lower single-name risk", "- Correlation can rise during liquidity stress", "Conclusion: Use ETFs for regime sleeves and rebalance when scores fall below 55."],
+    Bonds: ["+ Useful if growth weakens and real yields roll over", "- Current real yields and term premium still pressure duration", "Conclusion: Keep duration measured; prefer IEF over TLT."],
+    Gold: ["+ Hedge against policy, FX, and real-yield uncertainty", "- Real-yield rebound can cap upside", "Conclusion: Maintain hedge sleeve rather than aggressive overweight."],
+    "Cash / Tactical Buffer": ["+ Macro confidence below 65 argues for dry powder", "+ Liquidity drag supports tactical cash buffer", "Conclusion: Base Cash 1% plus 3-5% tactical buffer until confidence or reliability improves."]
+  };
+  return map[row.assetClass] ?? [row.rationale, "Conclusion: Keep weight inside the allowed band until macro signal changes."];
+}
+
+function etfWhy(row: EtfAllocation) {
+  return [
+    `+ Macro Fit ${row.macroFitScore}: ${row.macroFitScore >= 75 ? "strong fit with current top-down regime" : "acceptable but not a clear regime leader"}`,
+    `+ Trend ${row.trendScore}: ${row.trendScore >= 70 ? "price leadership remains constructive" : "trend confirmation is incomplete"}`,
+    `- Valuation ${row.valuationScore}: ${row.valuationScore < 45 ? "valuation discipline limits new overweight" : "valuation is not the main constraint"}`,
+    `- Drawdown Risk ${row.drawdownRisk}: ${row.drawdownRisk > 55 ? "position size should stay controlled" : "drawdown risk is manageable"}`,
+    `Conclusion: ${row.rationale}`
+  ];
+}
+
+function stockWhy(row: QualityStock) {
+  return [
+    `+ Business Quality ${row.businessQualityScore}: ${row.businessQualityScore >= 85 ? "durable franchise or technology leadership" : "quality case needs monitoring"}`,
+    `+ Financial Quality ${row.financialQualityScore}: ${row.financialQualityScore >= 80 ? "balance sheet and profitability support core ownership" : "financial quality is not yet best-in-class"}`,
+    `+ Growth Durability ${row.growthDurabilityScore}: ${row.growthDurabilityScore >= 80 ? "medium-term growth visibility is strong" : "growth durability requires confirmation"}`,
+    `- Valuation ${row.valuationScore}: ${row.valuationScore < 50 ? "valuation risk argues against chasing" : "valuation discipline is acceptable"}`,
+    `Conclusion: ${row.investmentThesis}`
+  ];
 }
 
 function stockRiskLevel(row: QualityStock) {
@@ -1129,7 +1303,7 @@ function ExecutiveSummaryCard({ snapshot }: { snapshot: MarketSnapshot }) {
     <section className="panel rounded-lg border-accent/35 bg-accent/5 p-5">
       <SectionHeader eyebrow="Executive Summary" title="1분 투자 배분 요약" icon={<RadioTower className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
-        <StatCard label="Current Macro Regime" value={regime.name} detail={regime.quadrant} tone="positive" />
+        <StatCard label="Current Macro Regime" value={currentRegimeLabel()} detail={regime.quadrant} tone="positive" />
         <StatCard label="Regime Confidence" value={`${confidence}/100`} detail={hasLogIssue(snapshot, /ISM Report on Business/i) ? "ISM data error penalty applied" : "Macro inputs available"} tone={confidence >= 70 ? "positive" : "caution"} />
         <StatCard label="Overall Investment Stance" value="Neutral+" detail="Quality Bias" tone="positive" />
         <StatCard label="Today's Action" value="Core Hold" detail="Selective accumulation, avoid low-quality cyclicals" tone="neutral" />
@@ -1142,6 +1316,7 @@ function ExecutiveSummaryCard({ snapshot }: { snapshot: MarketSnapshot }) {
         <InfoBlock label="Key Macro Drivers" value={macroDrivers.join(", ")} />
         <InfoBlock label="What Changed Today" value={whatChanged} />
         <InfoBlock label="What to Watch This Week" value={watchList} />
+        <InfoBlock label="Regime Interpretation" value={currentRegimeInterpretation()} />
         <InfoBlock label="Macro Risk / Data Confidence" value={`Risk: Medium-High · Confidence: ${confidence}/100`} />
       </div>
     </section>
@@ -1153,29 +1328,22 @@ function HomeView({ snapshot }: { snapshot: MarketSnapshot }) {
     <div className="space-y-6">
       <ExecutiveSummaryCard snapshot={snapshot} />
       <div className="hidden space-y-6 lg:block">
-        <MacroSnapshot snapshot={snapshot} compact />
-        <GroupedMacroIndicators snapshot={snapshot} />
-        <MacroIssueTape compact />
-        <RatesFxLiquidityDashboard snapshot={snapshot} />
-        <MacroRegimeSummary snapshot={snapshot} compact />
-        <AssetAllocationView compact />
-        <SectorEtfBoard compact />
-        <QualityStockCandidates compact />
-        <RiskAndDataView snapshot={snapshot} compact />
+        <TopMacroDrivers snapshot={snapshot} />
+        <MacroIssueTape compact limit={4} />
+        <AllocationChanges />
+        <TopIdeas />
+        <HomeRiskDataIssues snapshot={snapshot} />
       </div>
       <div className="space-y-4 lg:hidden">
-        <MacroSnapshot snapshot={snapshot} compact limit={6} />
-        <MacroIssueTape compact limit={3} />
-        <AssetAllocationView compact limit={5} />
-        <SectorEtfBoard compact limit={5} />
-        <QualityStockCandidates compact limit={5} />
+        <TopMacroDrivers snapshot={snapshot} />
+        <MacroIssueTape compact limit={4} />
+        <AllocationChanges />
+        <TopIdeas />
         <details className="panel rounded-lg p-4">
           <summary className="cursor-pointer list-none font-semibold text-white">More Dashboard Sections</summary>
           <div className="mt-4 space-y-4">
-            <GroupedMacroIndicators snapshot={snapshot} />
-            <RatesFxLiquidityDashboard snapshot={snapshot} />
-            <MacroRegimeSummary snapshot={snapshot} compact />
-            <RiskAndDataView snapshot={snapshot} compact />
+            <HomeRiskDataIssues snapshot={snapshot} />
+            <MacroEventCalendar compact limit={4} />
           </div>
         </details>
       </div>
@@ -1183,33 +1351,161 @@ function HomeView({ snapshot }: { snapshot: MarketSnapshot }) {
   );
 }
 
-function MacroSnapshot({ snapshot, compact = false, limit }: { snapshot: MarketSnapshot; compact?: boolean; limit?: number }) {
-  const rows = macroMetrics(snapshot, macroSnapshotConfigs);
-  const visibleRows = compact ? rows.slice(0, limit ?? rows.length) : rows;
+function TopMacroDrivers({ snapshot }: { snapshot: MarketSnapshot }) {
+  const drivers = macroMetrics(snapshot, macroSnapshotConfigs).filter((row) => ["real-yield-10y", "usd-krw", "hy-oas", "kr-export-20d", "copper"].includes(row.id));
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Macro Snapshot" title="Core macro inputs before allocation" icon={<Gauge className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Top 5 Macro Drivers" title="Today's inputs that matter most" icon={<TrendingUp className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-5">
+        {drivers.map((row) => (
+          <div key={row.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-white">{row.label}</div>
+                <div className="mt-1 font-mono text-xl text-white">{formatMacroValue(row)}</div>
+              </div>
+              <DataStatusPill status={row.dataStatus} />
+            </div>
+            <div className="mt-3 flex justify-between text-xs">
+              <span className="text-muted">20D</span>
+              <span className={row.change20d >= 0 ? "text-caution" : "text-positive"}>{formatMacroDelta(row, row.change20d)}</span>
+            </div>
+            <p className="mt-3 text-xs text-white/70">{row.regimeImpact}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AllocationChanges() {
+  const rows = assetAllocations.filter((row) => row.rebalanceNeeded !== "Within band" || row.assetClass.includes("Cash")).slice(0, 6);
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Allocation Changes" title="Portfolio bands and rebalance triggers" icon={<BriefcaseBusiness className="h-5 w-5" />} />
       <div className="thin-scrollbar overflow-x-auto">
-        <table className="w-full min-w-[1180px] text-left text-sm">
+        <table className="w-full min-w-[880px] text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-            <tr>{["indicator", "category", "current value", "1D", "5D", "20D", "regime impact", "sector impact", "data"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+            <tr>{["asset", "current", "suggested", "band", "action", "rebalance needed", "trigger"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
           </thead>
           <tbody>
-            {visibleRows.map((row) => (
-              <tr key={row.id} className="border-t border-white/10">
-                <td className="px-4 py-3 font-medium text-white">{row.label}</td>
-                <td className="px-4 py-3 text-muted">{row.category}</td>
-                <td className="px-4 py-3 font-mono text-white">{formatMacroValue(row)}</td>
-                <td className={row.change1d >= 0 ? "px-4 py-3 text-caution" : "px-4 py-3 text-positive"}>{formatMacroDelta(row, row.change1d)}</td>
-                <td className={row.change5d >= 0 ? "px-4 py-3 text-caution" : "px-4 py-3 text-positive"}>{formatMacroDelta(row, row.change5d)}</td>
-                <td className={row.change20d >= 0 ? "px-4 py-3 text-caution" : "px-4 py-3 text-positive"}>{formatMacroDelta(row, row.change20d)}</td>
-                <td className="px-4 py-3 text-white/75">{row.regimeImpact}</td>
-                <td className="px-4 py-3 text-muted">{row.sectorImpact}</td>
-                <td className="px-4 py-3"><DataStatusPill status={row.dataStatus} /></td>
+            {rows.map((row) => (
+              <tr key={row.assetClass} className="border-t border-white/10">
+                <td className="px-4 py-3 font-medium text-white">{row.assetClass}</td>
+                <td className="px-4 py-3 font-mono text-white">{row.currentWeight}%</td>
+                <td className="px-4 py-3 font-mono text-positive">{row.suggestedWeight}%</td>
+                <td className="px-4 py-3 font-mono text-muted">{row.minWeight}-{row.maxWeight}%</td>
+                <td className="px-4 py-3"><ActionPill action={row.signal} /></td>
+                <td className="px-4 py-3 text-accent">{row.rebalanceNeeded}</td>
+                <td className="px-4 py-3 text-muted">{row.rebalanceTrigger}</td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+    </section>
+  );
+}
+
+function TopIdeas() {
+  const etfs = [...etfAllocations].sort((a, b) => etfScore(b) - etfScore(a)).slice(0, 5);
+  const stocks = [...qualityStocks].sort((a, b) => qualityFormulaScore(b) - qualityFormulaScore(a)).slice(0, 5);
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="ETF / Quality Stock Top Ideas" title="Best execution vehicles from the top-down view" icon={<Gem className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+          <div className="mb-3 font-semibold text-white">ETF Top Ideas</div>
+          <div className="space-y-2">
+            {etfs.map((row) => (
+              <div key={row.ticker} className="flex items-center justify-between gap-3 rounded border border-white/10 bg-black/20 px-3 py-2">
+                <div><span className="font-mono text-white">{row.ticker}</span><span className="ml-2 text-sm text-muted">{row.sector}</span></div>
+                <div className="flex items-center gap-2"><span className="font-mono text-white">{etfScore(row)}</span><ActionPill action={row.action} /></div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+          <div className="mb-3 font-semibold text-white">Quality Stock Top Ideas</div>
+          <div className="space-y-2">
+            {stocks.map((row) => (
+              <div key={row.ticker} className="flex items-center justify-between gap-3 rounded border border-white/10 bg-black/20 px-3 py-2">
+                <div><span className="font-mono text-white">{row.ticker}</span><span className="ml-2 text-sm text-muted">{row.name}</span></div>
+                <div className="flex items-center gap-2"><span className="font-mono text-white">{qualityFormulaScore(row)}</span><ActionPill action={row.action} /></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HomeRiskDataIssues({ snapshot }: { snapshot: MarketSnapshot }) {
+  const counts = sourceIssueCounts(snapshot);
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Risk & Data Issues" title="What can invalidate today's allocation" icon={<ShieldAlert className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <StatCard label="Macro Confidence" value={`${macroRegimeConfidence(snapshot, currentRegime())}/100`} tone="caution" />
+        <StatCard label="Reliability" value={`${reliabilityScore(snapshot)}/100`} tone={reliabilityScore(snapshot) >= 85 ? "positive" : "caution"} />
+        <StatCard label="Stale Sources" value={counts.stale} tone={counts.stale ? "caution" : "positive"} />
+        <StatCard label="Errors" value={counts.error} tone={counts.error ? "negative" : "positive"} />
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
+        {riskAlerts.slice(0, 4).map((alert) => (
+          <InfoBlock key={alert.title} label={alert.title} value={alert.suggestedInvestorAction} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MacroSnapshot({ snapshot, compact = false, limit }: { snapshot: MarketSnapshot; compact?: boolean; limit?: number }) {
+  const rows = macroMetrics(snapshot, macroSnapshotConfigs);
+  const visibleRows = compact ? rows.slice(0, limit ?? rows.length) : rows;
+  const groups = ["Rates", "FX", "Volatility", "Credit", "Liquidity", "Commodities", "Korea Macro", "Growth"] as MacroCategory[];
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Macro Snapshot" title="Core macro inputs before allocation" icon={<Gauge className="h-5 w-5" />} />
+      <div className="space-y-3">
+        {groups.map((group, index) => {
+          const groupRows = visibleRows.filter((row) => row.category === group);
+          if (!groupRows.length) return null;
+          return (
+            <details key={group} className="rounded-lg border border-white/10 bg-white/[0.03] p-4" open={compact ? index < 2 : true}>
+              <summary className="cursor-pointer list-none font-semibold text-white">{group}</summary>
+              <div className="thin-scrollbar mt-3 overflow-x-auto">
+                <table className="w-full min-w-[980px] text-left text-sm">
+                  <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
+                    <tr>{["indicator", "current value", "1D", "20D", "data status", "key impact", "detail"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {groupRows.map((row) => (
+                      <tr key={row.id} className="border-t border-white/10">
+                        <td className="px-4 py-3 font-medium text-white">{row.label}</td>
+                        <td className="px-4 py-3 font-mono text-white">{formatMacroValue(row)}</td>
+                        <td className={row.change1d >= 0 ? "px-4 py-3 text-caution" : "px-4 py-3 text-positive"}>{formatMacroDelta(row, row.change1d)}</td>
+                        <td className={row.change20d >= 0 ? "px-4 py-3 text-caution" : "px-4 py-3 text-positive"}>{formatMacroDelta(row, row.change20d)}</td>
+                        <td className="px-4 py-3"><DataStatusPill status={row.dataStatus} /></td>
+                        <td className="px-4 py-3 text-white/75">{row.sectorImpact}</td>
+                        <td className="px-4 py-3">
+                          <WhyDetails label="Detail">
+                            <div>5D: {formatMacroDelta(row, row.change5d)}</div>
+                            <div>Regime impact: {row.regimeImpact}</div>
+                            <div>Sector impact: {row.sectorImpact}</div>
+                            <div>Source: {row.source}</div>
+                            <div>Data basis date: {row.basisDate}</div>
+                          </WhyDetails>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          );
+        })}
       </div>
     </section>
   );
@@ -1225,30 +1521,33 @@ function MacroIssueTape({ compact = false, limit }: { compact?: boolean; limit?:
   return (
     <section className="panel rounded-lg p-5">
       <SectionHeader eyebrow="Today's Macro Issue Tape" title="Macro issue flow and allocation consequences" icon={<AlertTriangle className="h-5 w-5" />} />
-      <div className="thin-scrollbar overflow-x-auto">
-        <table className="w-full min-w-[1320px] text-left text-sm">
-          <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-            <tr>{["severity", "issue title", "category", "related indicators", "affected assets", "affected sectors", "ETFs", "stocks", "interpretation", "suggested action", "source", "timestamp"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
-          </thead>
-          <tbody>
-            {rows.map((issue) => (
-              <tr key={issue.title} className="border-t border-white/10">
-                <td className="px-4 py-3"><Pill className={severityClass[issue.severity]}>{issue.severity}</Pill></td>
-                <td className="px-4 py-3 font-medium text-white">{issue.title}</td>
-                <td className="px-4 py-3 text-muted">{issue.category}</td>
-                <td className="px-4 py-3 text-muted">{issue.relatedIndicators.join(", ")}</td>
-                <td className="px-4 py-3 text-muted">{issue.affectedAssetClasses.join(", ")}</td>
-                <td className="px-4 py-3 text-muted">{issue.affectedSectors.join(", ")}</td>
-                <td className="px-4 py-3 font-mono text-white">{issue.affectedEtfs.join(", ")}</td>
-                <td className="px-4 py-3 text-muted">{issue.affectedStocks.join(", ")}</td>
-                <td className="px-4 py-3 text-white/75">{issue.interpretation}</td>
-                <td className="px-4 py-3 text-accent">{issue.suggestedAction}</td>
-                <td className="px-4 py-3 text-muted">{issue.source}</td>
-                <td className="px-4 py-3 text-muted">{issue.timestamp}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {rows.map((issue) => (
+          <article key={issue.title} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Pill className={severityClass[issue.severity]}>{issue.severity}</Pill>
+                  <Pill className={toneClass.neutral}>{issue.category}</Pill>
+                  <DataStatusPill status={issue.dataStatus} />
+                </div>
+                <h3 className="mt-3 text-lg font-semibold text-white">{issue.title}</h3>
+              </div>
+              <div className="text-right text-xs text-muted">{issue.timestamp}</div>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <InfoBlock label="Related Indicators" value={issue.relatedIndicators.join(", ")} />
+              <InfoBlock label="Affected Assets" value={issue.affectedAssetClasses.join(", ")} />
+              <InfoBlock label="Affected ETFs" value={issue.affectedEtfs.join(", ")} />
+              <InfoBlock label="Affected Stocks" value={issue.affectedStocks.join(", ")} />
+            </div>
+            <div className="mt-3 grid grid-cols-1 gap-3">
+              <InfoBlock label="Interpretation" value={issue.interpretation} />
+              <InfoBlock label="Suggested Action" value={issue.suggestedAction} />
+              <InfoBlock label="Source" value={issue.source} />
+            </div>
+          </article>
+        ))}
       </div>
     </section>
   );
@@ -1421,7 +1720,8 @@ function MacroImpactMap() {
   );
 }
 
-function MacroEventCalendar() {
+function MacroEventCalendar({ compact = false, limit }: { compact?: boolean; limit?: number }) {
+  const rows = compact ? macroEvents.slice(0, limit ?? 5) : macroEvents;
   return (
     <section className="panel rounded-lg p-5">
       <SectionHeader eyebrow="Macro Event Calendar" title="Upcoming catalysts and pre-event positioning notes" icon={<Bell className="h-5 w-5" />} />
@@ -1431,7 +1731,7 @@ function MacroEventCalendar() {
             <tr>{["date", "time", "country", "event", "consensus", "previous", "actual", "importance", "likely market impact", "assets to watch", "pre-event positioning note"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
           </thead>
           <tbody>
-            {macroEvents.map((event) => (
+            {rows.map((event) => (
               <tr key={`${event.date}-${event.event}`} className="border-t border-white/10">
                 <td className="px-4 py-3 font-mono text-white">{event.date}</td>
                 <td className="px-4 py-3 text-muted">{event.time}</td>
@@ -1464,6 +1764,7 @@ function MacroCockpitView({ snapshot }: { snapshot: MarketSnapshot }) {
       <MacroMonitorSection snapshot={snapshot} section={macroMonitorSections[2]} />
       <MacroMonitorSection snapshot={snapshot} section={macroMonitorSections[3]} />
       <MacroMonitorSection snapshot={snapshot} section={macroMonitorSections[4]} />
+      <MacroMonitorSection snapshot={snapshot} section={macroMonitorSections[5]} />
       <MacroImpactMap />
       <MacroEventCalendar />
     </div>
@@ -1484,13 +1785,13 @@ function MacroRegimeSummary({ snapshot, compact = false }: { snapshot: MarketSna
   const confidence = macroRegimeConfidence(snapshot, regime);
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Macro Regime Summary" title={`${regime.name}: ${regime.quadrant}`} icon={<Globe2 className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Macro Regime Summary" title={`${currentRegimeLabel()}: ${regime.quadrant}`} icon={<Globe2 className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1.1fr]">
         <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="text-xs uppercase tracking-[0.14em] text-muted">현재 국면</div>
-              <div className="mt-2 text-3xl font-semibold text-white">{regime.name}</div>
+              <div className="mt-2 text-3xl font-semibold text-white">{currentRegimeLabel()}</div>
               <div className="mt-1 text-sm text-muted">{regime.quadrant}</div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -1531,6 +1832,9 @@ function MacroRegimeSummary({ snapshot, compact = false }: { snapshot: MarketSna
           </div>
           {!compact ? <MacroInputs snapshot={snapshot} /> : null}
         </div>
+      </div>
+      <div className="mt-4">
+        <InfoBlock label="Interpretation" value={currentRegimeInterpretation()} />
       </div>
       {compact ? <MacroInputs snapshot={snapshot} /> : null}
     </section>
@@ -1590,28 +1894,26 @@ function AssetAllocationView({ compact = false, limit }: { compact?: boolean; li
           </ResponsiveContainer>
         </div>
         <div className="thin-scrollbar overflow-x-auto">
-          <table className="w-full min-w-[980px] text-left text-sm">
+          <table className="w-full min-w-[1280px] text-left text-sm">
             <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-              <tr>{["Asset Class", "Current Signal", "Suggested", "Previous", "Change", "Risk", "Data", "Confidence", "Rationale"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+              <tr>{["Asset Class", "Action", "Current", "Suggested", "Min", "Max", "Rebalance", "Trigger", "Risk", "Data", "Why"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
             </thead>
             <tbody>
               {rows.map((row) => (
                 <tr key={row.assetClass} className="border-t border-white/10">
                   <td className="px-4 py-3 font-medium text-white">{row.assetClass}</td>
                   <td className="px-4 py-3"><ActionPill action={row.signal} /></td>
-                  <td className="px-4 py-3 font-mono text-white">{row.suggestedWeight}%</td>
-                  <td className="px-4 py-3 font-mono text-muted">{row.previousWeight}%</td>
-                  <td className={(row.suggestedWeight - row.previousWeight) >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-caution"}>{row.suggestedWeight - row.previousWeight >= 0 ? "+" : ""}{row.suggestedWeight - row.previousWeight}%p</td>
+                  <td className="px-4 py-3 font-mono text-white">{row.currentWeight}%</td>
+                  <td className="px-4 py-3 font-mono text-positive">{row.suggestedWeight}%</td>
+                  <td className="px-4 py-3 font-mono text-muted">{row.minWeight}%</td>
+                  <td className="px-4 py-3 font-mono text-muted">{row.maxWeight}%</td>
+                  <td className="px-4 py-3 text-accent">{row.rebalanceNeeded}</td>
+                  <td className="px-4 py-3 text-muted">{row.rebalanceTrigger}</td>
                   <td className="px-4 py-3 text-muted">{row.riskLevel}</td>
                   <td className="px-4 py-3"><DataStatusPill status={row.dataStatus} /></td>
-                  <td className="px-4 py-3 font-mono text-white">{row.confidence}</td>
                   <td className="px-4 py-3 text-muted">
-                    {row.rationale}
                     <WhyDetails>
-                      <div>Signal: {row.signal}</div>
-                      <div>Suggested/Previous: {row.suggestedWeight}% / {row.previousWeight}%</div>
-                      <div>Risk level: {row.riskLevel}</div>
-                      <div>Conclusion: keep allocation aligned with regime fit and valuation discipline.</div>
+                      {assetWhy(row).map((line) => <div key={line}>{line}</div>)}
                     </WhyDetails>
                   </td>
                 </tr>
@@ -1683,12 +1985,8 @@ function EtfTable({ rows }: { rows: EtfAllocation[] }) {
               <td className="px-4 py-3">
                 <ActionPill action={row.action} />
                 <WhyDetails>
-                  <div className="text-positive">+ Macro Fit {row.macroFitScore}</div>
-                  <div className="text-positive">+ Trend {row.trendScore}</div>
-                  <div className={row.valuationScore < 45 ? "text-caution" : "text-white/75"}>- Valuation {row.valuationScore}</div>
-                  <div className={row.drawdownRisk > 55 ? "text-caution" : "text-white/75"}>- Drawdown Risk {row.drawdownRisk}</div>
+                  {etfWhy(row).map((line) => <div key={line}>{line}</div>)}
                   <div>Cycle {row.cycleScore}, Liquidity {row.liquidityScore}, Correlation {row.correlationToPortfolio.toFixed(2)}</div>
-                  <div>Conclusion: {row.rationale}</div>
                 </WhyDetails>
               </td>
               <td className="px-4 py-3"><DataStatusPill status={row.dataStatus} /></td>
@@ -1765,9 +2063,7 @@ function QualityStockTable({ rows }: { rows: QualityStock[] }) {
               <td className="px-4 py-3">
                 <ActionPill action={row.action} />
                 <WhyDetails>
-                  <div>Business Quality {row.businessQualityScore}</div>
-                  <div>Financial Quality {row.financialQualityScore}</div>
-                  <div>Growth Durability {row.growthDurabilityScore}</div>
+                  {stockWhy(row).map((line) => <div key={line}>{line}</div>)}
                   <div>Liquidity Risk {row.liquidityRisk}, Balance Sheet Risk {row.balanceSheetRisk}</div>
                   <div>Key risk: {row.keyRisk}</div>
                 </WhyDetails>
@@ -2050,9 +2346,9 @@ function MyWatchlistView({ compact = false }: { compact?: boolean }) {
         </div>
       ) : null}
       <div className="thin-scrollbar overflow-x-auto">
-        <table className="w-full min-w-[1040px] text-left text-sm">
+        <table className="w-full min-w-[1280px] text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-            <tr>{["asset", "type", "region", "targetWeight", "currentAction", "currentScore", "dataStatus", "rebalanceNeeded", "keyRisk"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+            <tr>{["asset", "type", "region", "currentWeight", "targetWeight", "suggestedWeight", "action", "rebalanceNeeded", "macroSensitivity", "dataStatus", "keyRisk"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
           </thead>
           <tbody>
             {visibleRows.map((row) => (
@@ -2060,19 +2356,22 @@ function MyWatchlistView({ compact = false }: { compact?: boolean }) {
                 <td className="px-4 py-3 font-mono text-white">{row.asset}</td>
                 <td className="px-4 py-3 text-muted">{row.type}</td>
                 <td className="px-4 py-3 text-muted">{row.region}</td>
+                <td className="px-4 py-3 font-mono text-white">{row.currentWeight}%</td>
                 <td className="px-4 py-3 font-mono text-white">{row.targetWeight}%</td>
+                <td className="px-4 py-3 font-mono text-positive">{row.suggestedWeight}%</td>
                 <td className="px-4 py-3">
                   <ActionPill action={row.currentAction} />
                   <WhyDetails>
                     <div>Score: {row.currentScore}/100</div>
                     <div>Risk level: {riskLevel(row)}</div>
-                    <div>Target weight: {row.targetWeight}%</div>
+                    <div>Current / Target / Suggested: {row.currentWeight}% / {row.targetWeight}% / {row.suggestedWeight}%</div>
+                    <div>Macro sensitivity: {row.macroSensitivity}</div>
                     <div>Conclusion: {row.rebalanceNeeded}</div>
                   </WhyDetails>
                 </td>
-                <td className="px-4 py-3 font-mono text-white">{row.currentScore}</td>
-                <td className="px-4 py-3"><DataStatusPill status={row.dataStatus} /></td>
                 <td className="px-4 py-3 text-muted">{row.rebalanceNeeded}</td>
+                <td className="px-4 py-3 text-muted">{row.macroSensitivity}</td>
+                <td className="px-4 py-3"><DataStatusPill status={row.dataStatus} /></td>
                 <td className="px-4 py-3 text-muted">{row.keyRisk}</td>
               </tr>
             ))}
@@ -2102,6 +2401,37 @@ function PortfolioConstructionView() {
                 <td className="px-4 py-3 font-mono text-white">{row.regimeFit}</td>
                 <td className="px-4 py-3 text-muted">{row.rebalanceTrigger}</td>
                 <td className="px-4 py-3 text-muted">{row.riskComment}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function RiskBudgetView() {
+  const statusClassMap: Record<RiskBudgetItem["status"], string> = {
+    Within: toneClass.positive,
+    Watch: toneClass.caution,
+    Breach: toneClass.negative
+  };
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Risk Budget View" title="Portfolio exposure limits and pressure points" icon={<ShieldAlert className="h-5 w-5" />} />
+      <div className="thin-scrollbar overflow-x-auto">
+        <table className="w-full min-w-[920px] text-left text-sm">
+          <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
+            <tr>{["risk budget", "current", "limit", "status", "suggested action"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+          </thead>
+          <tbody>
+            {riskBudgetItems.map((row) => (
+              <tr key={row.item} className="border-t border-white/10">
+                <td className="px-4 py-3 font-medium text-white">{row.item}</td>
+                <td className="px-4 py-3 font-mono text-white">{row.current}</td>
+                <td className="px-4 py-3 font-mono text-muted">{row.limit}</td>
+                <td className="px-4 py-3"><Pill className={statusClassMap[row.status]}>{row.status}</Pill></td>
+                <td className="px-4 py-3 text-muted">{row.suggestedAction}</td>
               </tr>
             ))}
           </tbody>
@@ -2243,6 +2573,29 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
   );
 }
 
+function UnitLegend() {
+  const rows = [
+    ["Rates", "bp change"],
+    ["Spreads", "bp change"],
+    ["FX / Indices / Commodities", "% change"],
+    ["YoY indicators", "pp change"],
+    ["Flows", "amount basis + direction"]
+  ];
+  return (
+    <section className="panel rounded-lg p-4">
+      <div className="text-xs uppercase tracking-[0.16em] text-muted">Number Unit Legend</div>
+      <div className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-5">
+        {rows.map(([label, value]) => (
+          <div key={label} className="rounded border border-white/10 bg-black/20 px-3 py-2">
+            <div className="text-white/50">{label}</div>
+            <div className="mt-1 text-white/80">{value}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function HeaderStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
@@ -2255,7 +2608,7 @@ function HeaderStat({ label, value }: { label: string; value: string }) {
 export function MarketDashboard() {
   const [active, setActive] = React.useState<NavItem>("Home");
   const [snapshot, setSnapshot] = React.useState<MarketSnapshot>(marketSnapshot);
-  const [dataStatus, setDataStatus] = React.useState<"loading" | "live" | "fallback">("loading");
+  const [dataStatus, setDataStatus] = React.useState<"loaded" | "live" | "fallback">("loaded");
   const [lastRefreshAt, setLastRefreshAt] = React.useState<string | null>(null);
   const [nextRefreshMs, setNextRefreshMs] = React.useState(() => refreshIntervalMs());
 
@@ -2306,7 +2659,7 @@ export function MarketDashboard() {
     if (active === "Sector & ETF") return <SectorEtfBoard />;
     if (active === "Quality Stocks") return <><QualityStockCandidates /><MidSmallQualityWatchlist /></>;
     if (active === "Commodity") return <CommodityResourceMonitor />;
-    if (active === "Portfolio") return <><PortfolioConstructionView /><MyWatchlistView /></>;
+    if (active === "Portfolio") return <><PortfolioConstructionView /><RiskBudgetView /><MyWatchlistView /></>;
     return <RiskAndDataView snapshot={snapshot} />;
   };
 
@@ -2319,16 +2672,18 @@ export function MarketDashboard() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-white">Macro Cockpit + Top-down Allocation Dashboard</h1>
-            <p className="mt-1 text-sm text-muted">Macro · Sector ETF · Commodity · Quality Stock Allocation</p>
+            <p className="mt-1 text-sm text-muted">Macro raw inputs · issue tape · events · sector ETF · quality stock allocation</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-2 text-xs text-muted sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
-          <HeaderStat label="Last Updated" value={formatFullDateTime(lastRefreshAt ?? snapshot.generatedAt)} />
-          <HeaderStat label="Last Trading Day" value={lastTradingDay(snapshot)} />
-          <HeaderStat label="Market Status" value={marketStatusSummary()} />
-          <HeaderStat label="Data Basis" value={dataBasis(snapshot)} />
+        <div className="grid grid-cols-1 gap-2 text-xs text-muted sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
+          <HeaderStat label="Dashboard Generated At" value={formatFullDateTime(snapshot.generatedAt)} />
+          <HeaderStat label="Market Data Basis Date" value={basisDateForGroups(snapshot, ["price", "future", "volatility"])} />
+          <HeaderStat label="Macro Data Basis Date" value={basisDateForGroups(snapshot, ["macro", "rates", "inflation", "credit", "liquidity"])} />
+          <HeaderStat label="Flow Data Basis Date" value={basisDateForGroups(snapshot, ["flow"])} />
+          <HeaderStat label="Fundamental Data Basis Date" value={`${lastTradingDay(snapshot)} modeled`} />
+          <HeaderStat label="Issue Tape Updated At" value={issueTapeUpdatedAt()} />
           <HeaderStat label="Next Expected Refresh" value={`${nextRefreshLabel(nextRefreshMs)} / ${refreshCadenceLabel(nextRefreshMs)}`} />
-          <HeaderStat label="Reliability" value={`${reliabilityScore(snapshot)}/100 · ${dataStatus === "live" ? "Live API" : dataStatus === "loading" ? "Loading" : "Fallback"}`} />
+          <HeaderStat label="Reliability / Load State" value={`${reliabilityScore(snapshot)}/100 · ${dataLoadLabel(snapshot, dataStatus)}`} />
         </div>
       </header>
 
@@ -2363,7 +2718,10 @@ export function MarketDashboard() {
             </div>
           </div>
         </aside>
-        <section className="min-w-0 space-y-6">{renderContent()}</section>
+        <section className="min-w-0 space-y-6">
+          {renderContent()}
+          <UnitLegend />
+        </section>
       </div>
     </main>
   );
