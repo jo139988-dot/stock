@@ -1,15 +1,18 @@
-# Market Regime Monitor
+# Top-down Quality Investment Dashboard
 
-한국·미국 주식시장의 위험선호/위험회피 국면을 한눈에 보는 Next.js 대시보드입니다.
+Macro · Sector ETF · Commodity · Quality Stock Allocation
+
+탑다운으로 매크로 국면과 자산군 비중을 판단한 뒤, 섹터 ETF, 원자재 관련 기업, 퀄리티 대형주와 미드스몰캡 후보를 함께 검토하는 Next.js 대시보드입니다.
 
 ## 포함된 기능
 
-- Market Pulse, Korea Dashboard, US Dashboard, Macro & Liquidity, Theme Monitor, Alerts, Data Source & Quality 화면
-- 100점 만점 Market Regime Score 산식
-- 가격, 선물, 내부강도, 수급, 금리, 유동성, 신용위험, 인플레이션, 테마, 이벤트 데이터 모델
-- 모든 데이터 카드의 기준일, 업데이트 시간, 출처, 전일 대비 변화율 표시
-- stale 데이터 경고, 무료/유료 데이터 구분
-- `/api/snapshot` Cloudflare Worker API route
+- Macro Regime Summary, Asset Allocation View, Sector & ETF Allocation Board
+- Quality Stock Candidates, Mid/Small Cap Quality Watchlist, Commodity & Resource Equity Monitor
+- Risk & Valuation Alerts, Key Market Indicators, Data Reliability
+- Goldilocks, Reflation, Slowdown, Stagflation 4분면 Macro Regime Matrix
+- 자산군별 Overweight, Neutral+, Neutral, Neutral-, Underweight, Avoid 권고
+- 퀄리티 종목별 Core Hold, Accumulate, Buy on Weakness, Valuation Watch, Trim, Avoid 액션
+- 지표군별 Market Price, Flow, Macro, ETF, Fundamental, Commodity Reliability 분리 표시
 - SQLite 시작용 스키마: `db/schema.sql`
 
 ## 실행
@@ -23,7 +26,7 @@ npm.cmd run dev
 
 ## Cloudflare 배포
 
-이 앱은 Cloudflare Workers static assets 방식으로 배포합니다. 화면은 Next.js 정적 산출물로 제공하고, `/api/snapshot`은 Worker가 직접 반환합니다.
+이 앱은 Cloudflare Workers static assets 방식으로 배포합니다.
 
 ```powershell
 npm.cmd run deploy
@@ -43,24 +46,3 @@ CLI 배포 전에는 Cloudflare 계정 로그인이 필요합니다.
 ```powershell
 npx wrangler login
 ```
-
-## 데이터 확장 방향
-
-초기 버전은 UI와 데이터 계약을 검증하기 위한 샘플 스냅샷을 사용합니다. 실데이터 전환 시에는 다음 순서가 자연스럽습니다.
-
-1. `db/schema.sql`로 SQLite 데이터베이스 생성
-2. KRX, FRED, CBOE, CFTC, FRED, BLS, BEA, 한국은행 등 수집기 추가
-3. APScheduler 또는 cron으로 장중/일간/주간/월간 주기 분리
-4. API 실패 시 `indicator_observations`의 마지막 정상 값을 반환하고 `quality_status='stale'` 처리
-5. 데이터량이 커지면 PostgreSQL로 이전 후 `indicator_observations`, `market_scores`, `theme_momentum`를 TimescaleDB hypertable로 전환
-
-## 점수 산식
-
-- 가격 추세: 25점
-- 시장 내부강도: 20점
-- 유동성: 20점
-- 금리·신용: 15점
-- 수급: 10점
-- 심리·변동성: 10점
-
-점수 구간은 80~100 강한 위험선호, 60~79 완만한 상승, 40~59 중립/혼조, 20~39 위험관리, 0~19 강한 위험회피로 표시됩니다.

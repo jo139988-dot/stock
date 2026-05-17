@@ -1,4 +1,4 @@
--- SQLite-first schema for the action-oriented Market Regime Monitor.
+-- SQLite-first schema for the top-down quality investment dashboard.
 -- Every analytical table keeps tradeDate, lastUpdated, source, and status so it can
 -- later move to PostgreSQL/TimescaleDB without losing freshness metadata.
 
@@ -169,12 +169,12 @@ create table if not exists stock_signals (
   rsi14 real,
   foreignFlow5D real,
   institutionFlow5D real,
-  signalType text not null check (signalType in ('Breakout', 'Pullback', 'Pullback Buy', 'Trend Leader', 'Momentum Fade', 'Reversal', 'Overheated', 'Breakdown', 'Avoid')),
+  signalType text not null check (signalType in ('Breakout', 'Pullback', 'Pullback Buy', 'Trend Leader', 'Momentum Fade', 'Reversal', 'Valuation Stretched', 'Fundamental Deterioration', 'Avoid')),
   signalScore real not null,
   reason text not null,
-  actionTag text not null check (actionTag in ('Buy Watch', 'Hold', 'Take Profit', 'Reduce', 'Avoid')),
+  actionTag text not null check (actionTag in ('Core Hold', 'Accumulate', 'Accumulate Watch', 'Buy on Weakness', 'Valuation Watch', 'Deep Dive Needed', 'Trim', 'Trim / Rebalance', 'Risk Review', 'Thesis Review', 'Position Sizing', 'Avoid')),
   riskComment text,
-  candidateGroup text check (candidateGroup in ('Long Candidate', 'Watch Candidate', 'Risk-Off Candidate')),
+  candidateGroup text check (candidateGroup in ('Core Quality Candidate', 'Accumulate Watch', 'Risk Review Candidate')),
   lastUpdated text not null,
   source text not null,
   status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),

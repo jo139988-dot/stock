@@ -315,8 +315,8 @@ const stockSignals: StockSignal[] = [
     signalType: "Trend Leader",
     score: 82,
     reason: "Price is above 20/60/120-day averages with rising volume and improving relative strength.",
-    actionTag: "Buy Watch",
-    candidateGroup: "Long Candidate",
+    actionTag: "Accumulate Watch",
+    candidateGroup: "Accumulate Watch",
     maStatus: { ma20: true, ma60: true, ma120: true }
   },
   {
@@ -336,8 +336,8 @@ const stockSignals: StockSignal[] = [
     signalType: "Breakout",
     score: 88,
     reason: "New 60-day high with leadership in the AI memory basket.",
-    actionTag: "Hold",
-    candidateGroup: "Long Candidate",
+    actionTag: "Core Hold",
+    candidateGroup: "Core Quality Candidate",
     maStatus: { ma20: true, ma60: true, ma120: true }
   },
   {
@@ -354,11 +354,11 @@ const stockSignals: StockSignal[] = [
     rsi: 76.8,
     relativeStrength: 96,
     fundFlow: "ETF inflow proxy positive",
-    signalType: "Overheated",
+    signalType: "Valuation Stretched",
     score: 79,
     reason: "Leadership remains intact, but RSI and short-term extension are elevated.",
-    actionTag: "Take Profit",
-    candidateGroup: "Watch Candidate",
+    actionTag: "Trim / Rebalance",
+    candidateGroup: "Risk Review Candidate",
     maStatus: { ma20: true, ma60: true, ma120: true }
   },
   {
@@ -375,11 +375,11 @@ const stockSignals: StockSignal[] = [
     rsi: 38.6,
     relativeStrength: 32,
     fundFlow: "Outflow proxy negative",
-    signalType: "Breakdown",
+    signalType: "Fundamental Deterioration",
     score: 28,
     reason: "Below 20/60-day averages with weak breadth and poor relative strength.",
     actionTag: "Avoid",
-    candidateGroup: "Risk-Off Candidate",
+    candidateGroup: "Risk Review Candidate",
     maStatus: { ma20: false, ma60: false, ma120: true }
   },
   {
@@ -399,8 +399,8 @@ const stockSignals: StockSignal[] = [
     signalType: "Pullback",
     score: 64,
     reason: "Pullback toward 20-day average while 60-day trend remains positive.",
-    actionTag: "Buy Watch",
-    candidateGroup: "Watch Candidate",
+    actionTag: "Accumulate Watch",
+    candidateGroup: "Accumulate Watch",
     maStatus: { ma20: false, ma60: true, ma120: true }
   },
   {
@@ -420,8 +420,8 @@ const stockSignals: StockSignal[] = [
     signalType: "Reversal",
     score: 42,
     reason: "Oversold RSI is improving, but price remains below key moving averages.",
-    actionTag: "Hold",
-    candidateGroup: "Risk-Off Candidate",
+    actionTag: "Thesis Review",
+    candidateGroup: "Risk Review Candidate",
     maStatus: { ma20: false, ma60: false, ma120: false }
   }
 ];
@@ -431,8 +431,8 @@ const backtestMetrics: BacktestMetric[] = [
   { signalType: "Pullback", sampleSize: 0, status: "collecting" },
   { signalType: "Trend Leader", sampleSize: 0, status: "collecting" },
   { signalType: "Reversal", sampleSize: 0, status: "planned" },
-  { signalType: "Overheated", sampleSize: 0, status: "planned" },
-  { signalType: "Breakdown", sampleSize: 0, status: "planned" }
+  { signalType: "Valuation Stretched", sampleSize: 0, status: "planned" },
+  { signalType: "Fundamental Deterioration", sampleSize: 0, status: "planned" }
 ];
 
 export const marketSnapshot: MarketSnapshot = {

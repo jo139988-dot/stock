@@ -152,14 +152,18 @@ export type SourceFetchLog = {
   affectedIndicatorIds: string[];
 };
 
-export type SignalType = "Breakout" | "Pullback" | "Pullback Buy" | "Trend Leader" | "Momentum Fade" | "Reversal" | "Overheated" | "Breakdown" | "Avoid";
+export type SignalType =
+  | "Breakout"
+  | "Pullback"
+  | "Pullback Buy"
+  | "Trend Leader"
+  | "Momentum Fade"
+  | "Reversal"
+  | "Valuation Stretched"
+  | "Fundamental Deterioration"
+  | "Avoid";
 
 export type ActionTag =
-  | "Buy Watch"
-  | "Hold"
-  | "Take Profit"
-  | "Reduce"
-  | "Avoid"
   | "Core Hold"
   | "Accumulate"
   | "Accumulate Watch"
@@ -170,7 +174,8 @@ export type ActionTag =
   | "Trim / Rebalance"
   | "Risk Review"
   | "Thesis Review"
-  | "Position Sizing";
+  | "Position Sizing"
+  | "Avoid";
 
 export type StockSignal = {
   date: string;
@@ -206,7 +211,7 @@ export type StockSignal = {
   reason: string;
   riskComment?: string;
   actionTag: ActionTag;
-  candidateGroup: "Long Candidate" | "Watch Candidate" | "Risk-Off Candidate";
+  candidateGroup: "Core Quality Candidate" | "Accumulate Watch" | "Risk Review Candidate";
   maStatus: {
     ma20: boolean;
     ma60: boolean;

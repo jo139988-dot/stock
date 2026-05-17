@@ -67,7 +67,9 @@ type MacroRegime = {
   name: RegimeName;
   quadrant: string;
   probability: number;
+  previousRegime: RegimeName;
   changeMoM: number;
+  confidenceScore: number;
   preferredAssets: string[];
   preferredSectors: string[];
   avoidSectors: string[];
@@ -82,6 +84,7 @@ type AssetAllocation = {
   previousWeight: number;
   rationale: string;
   riskLevel: "Low" | "Medium" | "High";
+  confidence: number;
 };
 
 type EtfAllocation = {
@@ -147,6 +150,7 @@ type CommodityMonitor = {
   relatedEtfs: string[];
   relatedStocks: string[];
   action: AllocationAction | QualityAction;
+  rationale: string;
 };
 
 type RiskAlert = {
@@ -205,7 +209,9 @@ const macroRegimes: MacroRegime[] = [
     name: "Goldilocks",
     quadrant: "Growth Up / Inflation Down",
     probability: 37,
+    previousRegime: "Reflation",
     changeMoM: 5,
+    confidenceScore: 78,
     preferredAssets: ["Quality Growth", "Semiconductor/AI", "Mid-cap compounders"],
     preferredSectors: ["Technology", "Industrials", "Healthcare"],
     avoidSectors: ["Deep cyclicals with weak balance sheets"],
@@ -216,7 +222,9 @@ const macroRegimes: MacroRegime[] = [
     name: "Reflation",
     quadrant: "Growth Up / Inflation Up",
     probability: 28,
+    previousRegime: "Goldilocks",
     changeMoM: 3,
+    confidenceScore: 70,
     preferredAssets: ["Commodity Equity", "Value cyclicals", "Infrastructure"],
     preferredSectors: ["Energy", "Materials", "Industrials", "Financials"],
     avoidSectors: ["Long-duration expensive growth"],
@@ -227,7 +235,9 @@ const macroRegimes: MacroRegime[] = [
     name: "Slowdown",
     quadrant: "Growth Down / Inflation Down",
     probability: 22,
+    previousRegime: "Reflation",
     changeMoM: -4,
+    confidenceScore: 63,
     preferredAssets: ["Quality defensive", "Bonds", "Cash optionality"],
     preferredSectors: ["Healthcare", "Utilities", "Dividend quality"],
     avoidSectors: ["Small-cap leverage", "Early-cycle cyclicals"],
@@ -238,7 +248,9 @@ const macroRegimes: MacroRegime[] = [
     name: "Stagflation",
     quadrant: "Growth Down / Inflation Up",
     probability: 13,
+    previousRegime: "Slowdown",
     changeMoM: -4,
+    confidenceScore: 58,
     preferredAssets: ["Gold", "Oil & gas cash flow", "Short-duration cash"],
     preferredSectors: ["Energy", "Gold miners", "Defensives"],
     avoidSectors: ["Unprofitable growth", "Levered small caps"],
@@ -248,16 +260,16 @@ const macroRegimes: MacroRegime[] = [
 ];
 
 const assetAllocations: AssetAllocation[] = [
-  rowAsset("US Equity", "Neutral+", 24, 22, "Quality growth leadership remains intact, but valuation discipline is needed.", "Medium"),
-  rowAsset("Korea Equity", "Neutral", 13, 14, "Export cycle is constructive, while foreign flow and KRW volatility limit aggression.", "Medium"),
-  rowAsset("Quality Large Cap", "Overweight", 20, 18, "Balance-sheet strength and earnings visibility fit the current regime.", "Low"),
-  rowAsset("Mid/Small Cap Quality", "Neutral", 8, 7, "Selective allocation only where liquidity and governance risks are controlled.", "High"),
-  rowAsset("Semiconductor/AI", "Overweight", 14, 12, "AI infrastructure capex cycle supports durable growth, but crowding is rising.", "Medium"),
-  rowAsset("Commodity Equity", "Neutral+", 7, 6, "Copper, power equipment, and energy cash-flow names hedge reflation risk.", "High"),
-  rowAsset("Sector ETFs", "Neutral", 6, 6, "Use ETFs for regime exposure instead of lower-quality single names.", "Medium"),
-  rowAsset("Bonds", "Neutral-", 4, 6, "Real yield is still restrictive; duration exposure should be measured.", "Medium"),
-  rowAsset("Gold", "Neutral+", 3, 3, "Portfolio hedge against dollar, rate, and geopolitical risk.", "Medium"),
-  rowAsset("Cash", "Neutral", 1, 6, "Keep dry powder for valuation resets in quality names.", "Low")
+  rowAsset("US Equity", "Neutral+", 24, 22, "Quality growth leadership remains intact, but valuation discipline is needed.", "Medium", 76),
+  rowAsset("Korea Equity", "Neutral", 13, 14, "Export cycle is constructive, while foreign flow and KRW volatility limit aggression.", "Medium", 64),
+  rowAsset("Quality Large Cap", "Overweight", 20, 18, "Balance-sheet strength and earnings visibility fit the current regime.", "Low", 82),
+  rowAsset("Mid/Small Cap Quality", "Neutral", 8, 7, "Selective allocation only where liquidity and governance risks are controlled.", "High", 58),
+  rowAsset("Semiconductor/AI", "Overweight", 14, 12, "AI infrastructure capex cycle supports durable growth, but crowding is rising.", "Medium", 74),
+  rowAsset("Commodity Equity", "Neutral+", 7, 6, "Copper, power equipment, and energy cash-flow names hedge reflation risk.", "High", 67),
+  rowAsset("Sector ETFs", "Neutral", 6, 6, "Use ETFs for regime exposure instead of lower-quality single names.", "Medium", 72),
+  rowAsset("Bonds", "Neutral-", 4, 6, "Real yield is still restrictive; duration exposure should be measured.", "Medium", 61),
+  rowAsset("Gold", "Neutral+", 3, 3, "Portfolio hedge against dollar, rate, and geopolitical risk.", "Medium", 69),
+  rowAsset("Cash", "Neutral", 1, 6, "Keep dry powder for valuation resets in quality names.", "Low", 78)
 ];
 
 const etfAllocations: EtfAllocation[] = [
@@ -317,15 +329,15 @@ const midSmallQuality: MidSmallQuality[] = [
 ];
 
 const commodityMonitors: CommodityMonitor[] = [
-  commodity("Oil & Gas", "Up but volatile", "Backwardation", "Drawdown", "Medium", "Medium", ["XLE", "XOP", "OIH"], ["XOM", "CVX", "COP"], "Neutral+"),
-  commodity("Copper", "Improving", "Mild contango", "Tightening", "High", "High", ["COPX", "CPER"], ["FCX", "SCCO", "풍산"], "Neutral+"),
-  commodity("Gold Miners", "Uptrend", "Spot-led", "Stable", "Medium", "Low", ["GLD", "IAU", "GDX"], ["NEM", "AEM", "GOLD"], "Neutral+"),
-  commodity("Uranium", "Structural upcycle", "Tight physical", "Low inventory", "Low", "Medium", ["URA", "URNM"], ["CCJ", "CEG", "UEC"], "Neutral+"),
-  commodity("Steel", "Mixed", "Contango", "Elevated", "High", "High", ["SLX"], ["POSCO홀딩스", "NUE"], "Neutral-"),
-  commodity("Battery Materials", "Weak stabilization", "Contango", "High", "High", "High", ["LIT"], ["ALB", "SQM", "에코프로비엠"], "Underweight"),
-  commodity("Power Equipment", "Strong", "Order-book driven", "Tight supply", "Medium", "Medium", ["GRID", "PAVE"], ["ETN", "PWR", "HD Hyundai Electric"], "Overweight"),
-  commodity("Infrastructure", "Stable uptrend", "Demand-led", "Neutral", "Low", "Medium", ["PAVE", "XLI"], ["CAT", "URI", "GEV"], "Overweight"),
-  commodity("Shipping", "Cycle rebound", "Freight-led", "Tightening", "High", "High", ["BOAT"], ["HMM", "ZIM", "MATX"], "Neutral")
+  commodity("Oil & Gas", "Up but volatile", "Backwardation", "Drawdown", "Medium", "Medium", ["XLE", "XOP", "OIH"], ["XOM", "CVX", "COP"], "Neutral+", "Energy cash-flow quality is useful in reflation, but avoid over-sizing because oil beta can reverse quickly."),
+  commodity("Copper", "Improving", "Mild contango", "Tightening", "High", "High", ["COPX", "CPER"], ["FCX", "SCCO", "풍산"], "Neutral+", "Copper exposure fits grid and AI power demand, with China demand as the main confirmation variable."),
+  commodity("Gold Miners", "Uptrend", "Spot-led", "Stable", "Medium", "Low", ["GLD", "IAU", "GDX"], ["NEM", "AEM", "GOLD"], "Neutral+", "Gold miners add operating leverage to gold, but position sizing should reflect high drawdown risk."),
+  commodity("Uranium", "Structural upcycle", "Tight physical", "Low inventory", "Low", "Medium", ["URA", "URNM"], ["CCJ", "CEG", "UEC"], "Neutral+", "Nuclear demand supports a satellite allocation, with liquidity and volatility controls."),
+  commodity("Steel", "Mixed", "Contango", "Elevated", "High", "High", ["SLX"], ["POSCO홀딩스", "NUE"], "Neutral-", "Steel needs better China and inventory signals before moving above neutral."),
+  commodity("Battery Materials", "Weak stabilization", "Contango", "High", "High", "High", ["LIT"], ["ALB", "SQM", "에코프로비엠"], "Underweight", "Oversupply and weak pricing argue for fundamental review before allocation is increased."),
+  commodity("Power Equipment", "Strong", "Order-book driven", "Tight supply", "Medium", "Medium", ["GRID", "PAVE"], ["ETN", "PWR", "HD Hyundai Electric"], "Overweight", "Grid capex and transformer shortage support quality industrial compounders."),
+  commodity("Infrastructure", "Stable uptrend", "Demand-led", "Neutral", "Low", "Medium", ["PAVE", "XLI"], ["CAT", "URI", "GEV"], "Overweight", "Infrastructure provides top-down exposure with more diversified earnings drivers than single commodities."),
+  commodity("Shipping", "Cycle rebound", "Freight-led", "Tightening", "High", "High", ["BOAT"], ["HMM", "ZIM", "MATX"], "Neutral", "Freight momentum is improving, but cyclicality keeps this as a tactical satellite.")
 ];
 
 const riskAlerts: RiskAlert[] = [
@@ -350,8 +362,8 @@ const portfolioBuckets: PortfolioBucket[] = [
   bucket("Cash/Bonds", 16, 8, 28, 62, "Risk assets reset or duration fit improves", "Cash is dry powder for quality names; bonds remain duration-sensitive.")
 ];
 
-function rowAsset(assetClass: string, signal: AllocationAction, suggestedWeight: number, previousWeight: number, rationale: string, riskLevel: AssetAllocation["riskLevel"]): AssetAllocation {
-  return { assetClass, signal, suggestedWeight, previousWeight, rationale, riskLevel };
+function rowAsset(assetClass: string, signal: AllocationAction, suggestedWeight: number, previousWeight: number, rationale: string, riskLevel: AssetAllocation["riskLevel"], confidence = 70): AssetAllocation {
+  return { assetClass, signal, suggestedWeight, previousWeight, rationale, riskLevel, confidence };
 }
 
 function etf(ticker: string, name: string, assetClass: string, sector: string, macroFitScore: number, trendScore: number, valuationScore: number, cycleScore: number, liquidityScore: number, drawdownRisk: number, correlationToPortfolio: number, action: AllocationAction, rationale: string): EtfAllocation {
@@ -366,8 +378,8 @@ function mid(ticker: string, name: string, market: MidSmallQuality["market"], se
   return { ...stock(ticker, name, market, sector, theme, marketCap, tradingValue, qualityScore, businessQualityScore, financialQualityScore, growthDurabilityScore, valuationScore, earningsRevisionScore, momentumScore, liquidityRisk, balanceSheetRisk, action, investmentThesis, keyRisk), salesGrowth, operatingMargin, roe, roic, netDebtToEbitda, fcfPositive, consensusRevisionUp, drawdownFrom52wHigh, foreignInstitutionFlow, governanceRisk, earningsVisibilityRisk, overhangRisk };
 }
 
-function commodity(category: string, commodityTrend: string, futuresCurve: string, inventoryTrend: string, dollarSensitivity: CommodityMonitor["dollarSensitivity"], chinaDemandSensitivity: CommodityMonitor["chinaDemandSensitivity"], relatedEtfs: string[], relatedStocks: string[], action: CommodityMonitor["action"]): CommodityMonitor {
-  return { category, commodityTrend, futuresCurve, inventoryTrend, dollarSensitivity, chinaDemandSensitivity, relatedEtfs, relatedStocks, action };
+function commodity(category: string, commodityTrend: string, futuresCurve: string, inventoryTrend: string, dollarSensitivity: CommodityMonitor["dollarSensitivity"], chinaDemandSensitivity: CommodityMonitor["chinaDemandSensitivity"], relatedEtfs: string[], relatedStocks: string[], action: CommodityMonitor["action"], rationale = "Use as a macro allocation sleeve; position size should follow commodity trend, balance-sheet quality, and portfolio correlation."): CommodityMonitor {
+  return { category, commodityTrend, futuresCurve, inventoryTrend, dollarSensitivity, chinaDemandSensitivity, relatedEtfs, relatedStocks, action, rationale };
 }
 
 function risk(title: string, severity: RiskAlert["severity"], trigger: string, affectedAssetClasses: string[], affectedSectors: string[], affectedEtfs: string[], affectedStocks: string[], suggestedInvestorAction: string, type: RiskAlert["type"]): RiskAlert {
@@ -407,6 +419,87 @@ function reliabilityScore(snapshot: MarketSnapshot) {
   const weights: Record<DataStatus, number> = { Fresh: 100, Delayed: 72, Stale: 32, Error: 0 };
   if (!snapshot.indicators.length) return 0;
   return Math.round(snapshot.indicators.reduce((sum, item) => sum + weights[indicatorStatus(item)], 0) / snapshot.indicators.length);
+}
+
+function clampScore(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function scoreToStatus(score: number): DataStatus {
+  if (score >= 85) return "Fresh";
+  if (score >= 65) return "Delayed";
+  if (score >= 35) return "Stale";
+  return "Error";
+}
+
+function reliabilityFromIndicators(items: Indicator[]) {
+  const weights: Record<DataStatus, number> = { Fresh: 100, Delayed: 72, Stale: 32, Error: 0 };
+  if (!items.length) return 0;
+  return Math.round(items.reduce((sum, item) => sum + weights[indicatorStatus(item)], 0) / items.length);
+}
+
+function hasLogIssue(snapshot: MarketSnapshot, sourcePattern: RegExp) {
+  return sourceLogs(snapshot).some((log) => sourcePattern.test(log.source) && (log.status === "Stale" || log.status === "Error"));
+}
+
+function macroRegimeConfidence(snapshot: MarketSnapshot, regime: MacroRegime) {
+  const ismPenalty = hasLogIssue(snapshot, /ISM Report on Business/i) ? 12 : 0;
+  const macroPenalty = reliabilityGroups(snapshot).find((group) => group.label === "Macro Reliability")?.penalty ?? 0;
+  return clampScore(regime.confidenceScore - ismPenalty - Math.round(macroPenalty / 3));
+}
+
+function flowScoreConfidence(snapshot: MarketSnapshot) {
+  const flowReliability = reliabilityGroups(snapshot).find((group) => group.label === "Flow Reliability");
+  return flowReliability ? flowReliability.score : 0;
+}
+
+function reliabilityGroups(snapshot: MarketSnapshot) {
+  const byGroup = (groups: Indicator["group"][]) => snapshot.indicators.filter((item) => groups.includes(item.group));
+  const krxFlowIssue = hasLogIssue(snapshot, /KRX investor flow endpoints/i);
+  const ismIssue = hasLogIssue(snapshot, /ISM Report on Business/i);
+  const marketPriceScore = reliabilityFromIndicators(byGroup(["price", "future", "volatility"]));
+  const flowBase = reliabilityFromIndicators(byGroup(["flow"]));
+  const macroBase = reliabilityFromIndicators(byGroup(["macro", "rates", "credit", "inflation", "liquidity"]));
+  const groups = [
+    {
+      label: "Market Price Reliability",
+      score: clampScore(marketPriceScore),
+      penalty: 0,
+      detail: "Index, futures, FX, and volatility market feeds."
+    },
+    {
+      label: "Flow Reliability",
+      score: clampScore(flowBase - (krxFlowIssue ? 20 : 0)),
+      penalty: krxFlowIssue ? 20 : 0,
+      detail: krxFlowIssue ? "KRX investor flow endpoints are stale, so Flow Score Confidence is reduced." : "Investor flow, ETF flow, and positioning proxies."
+    },
+    {
+      label: "Macro Reliability",
+      score: clampScore(macroBase - (ismIssue ? 18 : 0)),
+      penalty: ismIssue ? 18 : 0,
+      detail: ismIssue ? "ISM Report on Business error lowers Macro Regime Confidence." : "Official macro, rates, inflation, credit, and liquidity data."
+    },
+    {
+      label: "ETF Reliability",
+      score: clampScore(Math.min(88, marketPriceScore - 4)),
+      penalty: 0,
+      detail: "ETF allocation uses live market proxies plus the configured ETF universe."
+    },
+    {
+      label: "Fundamental Reliability",
+      score: 76,
+      penalty: 0,
+      detail: "Quality stock data is modeled until the fundamentals database feed is connected."
+    },
+    {
+      label: "Commodity Reliability",
+      score: 74,
+      penalty: 0,
+      detail: "Commodity categories use proxy trend, inventory, and futures-curve assumptions."
+    }
+  ];
+
+  return groups.map((group) => ({ ...group, status: scoreToStatus(group.score) }));
 }
 
 function sourceLogs(snapshot: MarketSnapshot): SourceFetchLog[] {
@@ -525,6 +618,7 @@ function HomeView({ snapshot }: { snapshot: MarketSnapshot }) {
       <MidSmallQualityWatchlist compact />
       <CommodityResourceMonitor compact />
       <RiskValuationAlerts compact />
+      <KeyIndicatorPanel snapshot={snapshot} />
       <DataReliability snapshot={snapshot} compact />
     </div>
   );
@@ -532,6 +626,7 @@ function HomeView({ snapshot }: { snapshot: MarketSnapshot }) {
 
 function MacroRegimeSummary({ snapshot, compact = false }: { snapshot: MarketSnapshot; compact?: boolean }) {
   const regime = currentRegime();
+  const confidence = macroRegimeConfidence(snapshot, regime);
   return (
     <section className="panel rounded-lg p-5">
       <SectionHeader eyebrow="Macro Regime Summary" title={`${regime.name}: ${regime.quadrant}`} icon={<Globe2 className="h-5 w-5" />} />
@@ -546,6 +641,8 @@ function MacroRegimeSummary({ snapshot, compact = false }: { snapshot: MarketSna
             <div className="grid grid-cols-2 gap-3">
               <StatCard label="Probability" value={`${regime.probability}%`} tone="positive" />
               <StatCard label="MoM Change" value={formatPercent(regime.changeMoM)} tone={regime.changeMoM >= 0 ? "positive" : "caution"} />
+              <StatCard label="Previous" value={regime.previousRegime} tone="neutral" />
+              <StatCard label="Confidence" value={`${confidence}/100`} tone={confidence >= 70 ? "positive" : confidence >= 55 ? "caution" : "negative"} />
             </div>
           </div>
           <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -566,7 +663,10 @@ function MacroRegimeSummary({ snapshot, compact = false }: { snapshot: MarketSna
                     <div className="font-semibold text-white">{item.name}</div>
                     <div className="text-xs text-muted">{item.quadrant}</div>
                   </div>
-                  <div className="font-mono text-xl text-white">{item.probability}%</div>
+                  <div className="text-right">
+                    <div className="font-mono text-xl text-white">{item.probability}%</div>
+                    <div className="text-xs text-muted">Conf. {macroRegimeConfidence(snapshot, item)}</div>
+                  </div>
                 </div>
                 <div className="mt-2 h-1.5 rounded bg-white/10">
                   <div className="h-1.5 rounded bg-positive" style={{ width: `${item.probability}%` }} />
@@ -620,7 +720,7 @@ function AssetAllocationView({ compact = false }: { compact?: boolean }) {
         <div className="thin-scrollbar overflow-x-auto">
           <table className="w-full min-w-[980px] text-left text-sm">
             <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-              <tr>{["Asset Class", "Current Signal", "Suggested", "Previous", "Change", "Risk", "Rationale"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+              <tr>{["Asset Class", "Current Signal", "Suggested", "Previous", "Change", "Risk", "Confidence", "Rationale"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
             </thead>
             <tbody>
               {rows.map((row) => (
@@ -631,6 +731,7 @@ function AssetAllocationView({ compact = false }: { compact?: boolean }) {
                   <td className="px-4 py-3 font-mono text-muted">{row.previousWeight}%</td>
                   <td className={(row.suggestedWeight - row.previousWeight) >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-caution"}>{row.suggestedWeight - row.previousWeight >= 0 ? "+" : ""}{row.suggestedWeight - row.previousWeight}%p</td>
                   <td className="px-4 py-3 text-muted">{row.riskLevel}</td>
+                  <td className="px-4 py-3 font-mono text-white">{row.confidence}</td>
                   <td className="px-4 py-3 text-muted">{row.rationale}</td>
                 </tr>
               ))}
@@ -747,27 +848,59 @@ function QualityStockTable({ rows }: { rows: QualityStock[] }) {
 function MidSmallQualityWatchlist({ compact = false }: { compact?: boolean }) {
   const [minMarketCap, setMinMarketCap] = React.useState(0);
   const [minTradingValue, setMinTradingValue] = React.useState(0);
+  const [minRevenueGrowth, setMinRevenueGrowth] = React.useState(0);
+  const [minOperatingMargin, setMinOperatingMargin] = React.useState(-100);
+  const [minRoe, setMinRoe] = React.useState(-100);
+  const [minRoic, setMinRoic] = React.useState(-100);
+  const [maxNetDebt, setMaxNetDebt] = React.useState(5);
+  const [revisionOnly, setRevisionOnly] = React.useState(false);
+  const [maxDrawdown, setMaxDrawdown] = React.useState(100);
+  const [minForeignFlow, setMinForeignFlow] = React.useState(-999);
+  const [minInstitutionFlow, setMinInstitutionFlow] = React.useState(-999);
+  const [maxGovernanceRisk, setMaxGovernanceRisk] = React.useState(100);
+  const [maxCbOverhangRisk, setMaxCbOverhangRisk] = React.useState(100);
   const [fcfOnly, setFcfOnly] = React.useState(false);
   const rows = midSmallQuality
     .filter((row) => row.marketCap >= minMarketCap)
     .filter((row) => row.tradingValue >= minTradingValue)
+    .filter((row) => row.salesGrowth >= minRevenueGrowth)
+    .filter((row) => row.operatingMargin >= minOperatingMargin)
+    .filter((row) => row.roe >= minRoe)
+    .filter((row) => row.roic >= minRoic)
+    .filter((row) => row.netDebtToEbitda <= maxNetDebt)
     .filter((row) => !fcfOnly || row.fcfPositive)
+    .filter((row) => !revisionOnly || row.consensusRevisionUp)
+    .filter((row) => Math.abs(row.drawdownFrom52wHigh) <= maxDrawdown)
+    .filter((row) => row.foreignInstitutionFlow >= minForeignFlow)
+    .filter((row) => row.foreignInstitutionFlow * 0.6 >= minInstitutionFlow)
+    .filter((row) => row.governanceRisk <= maxGovernanceRisk)
+    .filter((row) => row.overhangRisk <= maxCbOverhangRisk)
     .sort((a, b) => b.qualityScore - a.qualityScore);
   return (
     <section className="panel rounded-lg p-5">
       <SectionHeader eyebrow="Mid/Small Cap Quality Watchlist" title="미드스몰캡 퀄리티 필터" icon={<Sprout className="h-5 w-5" />} />
       {!compact ? (
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4 xl:grid-cols-6">
           <NumberInput label="Min Market Cap" value={minMarketCap} onChange={setMinMarketCap} />
           <NumberInput label="Min Trading Value" value={minTradingValue} onChange={setMinTradingValue} />
-          <Toggle label="FCF 흑자만" checked={fcfOnly} onChange={setFcfOnly} />
-          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs text-muted">필터: 성장률, OPM, ROE, ROIC, 순차입금/EBITDA, 컨센서스, 낙폭, 수급, 오너리스크/CB/오버행 리스크</div>
+          <NumberInput label="Min Revenue Growth" value={minRevenueGrowth} onChange={setMinRevenueGrowth} />
+          <NumberInput label="Min Operating Margin" value={minOperatingMargin} onChange={setMinOperatingMargin} />
+          <NumberInput label="Min ROE" value={minRoe} onChange={setMinRoe} />
+          <NumberInput label="Min ROIC" value={minRoic} onChange={setMinRoic} />
+          <NumberInput label="Max Net Debt/EBITDA" value={maxNetDebt} onChange={setMaxNetDebt} />
+          <NumberInput label="Max 52W Drawdown" value={maxDrawdown} onChange={setMaxDrawdown} />
+          <NumberInput label="Min Foreign Flow" value={minForeignFlow} onChange={setMinForeignFlow} />
+          <NumberInput label="Min Institution Flow" value={minInstitutionFlow} onChange={setMinInstitutionFlow} />
+          <NumberInput label="Max Governance Risk" value={maxGovernanceRisk} onChange={setMaxGovernanceRisk} />
+          <NumberInput label="Max CB Overhang Risk" value={maxCbOverhangRisk} onChange={setMaxCbOverhangRisk} />
+          <Toggle label="FCF positive only" checked={fcfOnly} onChange={setFcfOnly} />
+          <Toggle label="Revision up only" checked={revisionOnly} onChange={setRevisionOnly} />
         </div>
       ) : null}
       <div className="thin-scrollbar overflow-x-auto">
         <table className="w-full min-w-[1500px] text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-            <tr>{["ticker", "name", "marketCap", "tradingValue", "salesGrowth", "OPM", "ROE", "ROIC", "netDebt/EBITDA", "FCF", "revision", "52W drawdown", "flow", "liquidityRisk", "governanceRisk", "balanceSheetRisk", "visibilityRisk", "overhangRisk", "action"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+            <tr>{["ticker", "name", "marketCap", "tradingValue", "revenueGrowth", "OPM", "ROE", "ROIC", "netDebt/EBITDA", "FCF", "revision", "52W drawdown", "foreignFlow", "institutionFlow", "liquidityRisk", "governanceRisk", "balanceSheetRisk", "visibilityRisk", "CBOverhangRisk", "action"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
           </thead>
           <tbody>
             {rows.map((row) => (
@@ -785,6 +918,7 @@ function MidSmallQualityWatchlist({ compact = false }: { compact?: boolean }) {
                 <td className="px-4 py-3">{row.consensusRevisionUp ? <Pill className={toneClass.positive}>Up</Pill> : <Pill className={toneClass.caution}>Flat/Down</Pill>}</td>
                 <td className="px-4 py-3 text-caution">{formatPercent(row.drawdownFrom52wHigh)}</td>
                 <td className={row.foreignInstitutionFlow >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatNumber(row.foreignInstitutionFlow)}</td>
+                <td className={row.foreignInstitutionFlow >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatNumber(row.foreignInstitutionFlow * 0.6)}</td>
                 <td className="px-4 py-3 text-caution">{row.liquidityRisk}</td>
                 <td className="px-4 py-3 text-caution">{row.governanceRisk}</td>
                 <td className="px-4 py-3 text-caution">{row.balanceSheetRisk}</td>
@@ -823,6 +957,7 @@ function CommodityResourceMonitor({ compact = false }: { compact?: boolean }) {
               <InfoBlock label="Dollar / China Sensitivity" value={`${row.dollarSensitivity} / ${row.chinaDemandSensitivity}`} />
               <InfoBlock label="Related ETFs" value={row.relatedEtfs.join(", ")} />
               <InfoBlock label="Related Stocks" value={row.relatedStocks.join(", ")} />
+              <InfoBlock label="Rationale" value={row.rationale} />
             </div>
           </details>
         ))}
@@ -898,6 +1033,7 @@ function DataReliability({ snapshot, compact = false }: { snapshot: MarketSnapsh
     stale: snapshot.indicators.filter((item) => indicatorStatus(item) === "Stale").length,
     error: snapshot.indicators.filter((item) => indicatorStatus(item) === "Error").length
   };
+  const groups = reliabilityGroups(snapshot);
   return (
     <section className="panel rounded-lg p-5">
       <SectionHeader eyebrow="Data Reliability" title="데이터 신뢰도" icon={<Database className="h-5 w-5" />} />
@@ -907,6 +1043,27 @@ function DataReliability({ snapshot, compact = false }: { snapshot: MarketSnapsh
         <StatCard label="Delayed" value={counts.delayed} tone="neutral" />
         <StatCard label="Stale" value={counts.stale} tone="caution" />
         <StatCard label="Error" value={counts.error} tone="negative" />
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {groups.map((group) => (
+          <div key={group.label} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-white">{group.label}</div>
+                <div className="mt-1 text-xs text-muted">{group.detail}</div>
+              </div>
+              <Pill className={statusClass[group.status]}>{group.status}</Pill>
+            </div>
+            <div className="mt-3 flex items-end justify-between">
+              <div className="font-mono text-2xl font-semibold text-white">{group.score}/100</div>
+              {group.penalty ? <div className="text-xs text-caution">Penalty -{group.penalty}</div> : <div className="text-xs text-muted">No penalty</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <StatCard label="Macro Regime Confidence" value={`${macroRegimeConfidence(snapshot, currentRegime())}/100`} detail="Reduced when ISM Report on Business is stale or errors." tone={macroRegimeConfidence(snapshot, currentRegime()) >= 70 ? "positive" : "caution"} />
+        <StatCard label="Flow Score Confidence" value={`${flowScoreConfidence(snapshot)}/100`} detail="Reduced when KRX investor flow endpoints are stale." tone={flowScoreConfidence(snapshot) >= 70 ? "positive" : "caution"} />
       </div>
       <details className="mt-4 rounded-lg border border-white/10 bg-white/[0.03] p-4" open={!compact}>
         <summary className="cursor-pointer list-none font-semibold text-white">Source fetch logs</summary>
@@ -1076,7 +1233,7 @@ export function MarketDashboard() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-white">Top-down Quality Investment Dashboard</h1>
-            <p className="mt-1 text-sm text-muted">Macro · Sector · ETF · Quality Stock Allocation · KST {formatDateTime(snapshot.generatedAt)}</p>
+            <p className="mt-1 text-sm text-muted">Macro · Sector ETF · Commodity · Quality Stock Allocation · KST {formatDateTime(snapshot.generatedAt)}</p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs text-muted sm:grid-cols-5">
