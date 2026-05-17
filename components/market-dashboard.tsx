@@ -55,13 +55,17 @@ const navItems = [
   "Commodity Monitor",
   "Portfolio Construction",
   "Risk & Valuation Alerts",
+  "My Watchlist",
   "Data Reliability"
 ] as const;
 
 type NavItem = (typeof navItems)[number];
 type AllocationAction = "Overweight" | "Neutral+" | "Neutral" | "Neutral-" | "Underweight" | "Avoid";
 type QualityAction = "Core Hold" | "Accumulate" | "Buy on Weakness" | "Valuation Watch" | "Deep Dive Needed" | "Trim" | "Avoid";
+type InvestmentAction = AllocationAction | QualityAction | "Accumulate Watch" | "Risk Review" | "Trim / Rebalance" | "Thesis Review" | "Position Sizing";
 type RegimeName = "Goldilocks" | "Reflation" | "Slowdown" | "Stagflation";
+type UiDataStatus = "Live" | "Delayed" | "Stale" | "Modeled" | "Fallback" | "Error";
+type ConfidenceLevel = "High" | "Medium" | "Low";
 
 type MacroRegime = {
   name: RegimeName;
@@ -85,6 +89,7 @@ type AssetAllocation = {
   rationale: string;
   riskLevel: "Low" | "Medium" | "High";
   confidence: number;
+  dataStatus: UiDataStatus;
 };
 
 type EtfAllocation = {
@@ -101,6 +106,9 @@ type EtfAllocation = {
   correlationToPortfolio: number;
   action: AllocationAction;
   rationale: string;
+  region: "US" | "Global" | "Macro";
+  dataStatus: UiDataStatus;
+  confidence: number;
 };
 
 type QualityStock = {
@@ -123,6 +131,8 @@ type QualityStock = {
   action: QualityAction;
   investmentThesis: string;
   keyRisk: string;
+  dataStatus: UiDataStatus;
+  confidence: number;
 };
 
 type MidSmallQuality = QualityStock & {
@@ -149,8 +159,10 @@ type CommodityMonitor = {
   chinaDemandSensitivity: "Low" | "Medium" | "High";
   relatedEtfs: string[];
   relatedStocks: string[];
-  action: AllocationAction | QualityAction;
+  action: InvestmentAction;
   rationale: string;
+  dataStatus: UiDataStatus;
+  confidence: number;
 };
 
 type RiskAlert = {
@@ -176,6 +188,18 @@ type PortfolioBucket = {
   riskComment: string;
 };
 
+type WatchlistItem = {
+  asset: string;
+  type: "ETF" | "Stock" | "Commodity" | "Asset Class";
+  region: "US" | "Korea" | "Global" | "Macro";
+  targetWeight: number;
+  currentAction: InvestmentAction;
+  currentScore: number;
+  dataStatus: UiDataStatus;
+  rebalanceNeeded: string;
+  keyRisk: string;
+};
+
 const toneClass: Record<IndicatorTone, string> = {
   positive: "border-positive/35 bg-positive/10 text-positive",
   neutral: "border-white/10 bg-white/5 text-muted",
@@ -183,26 +207,34 @@ const toneClass: Record<IndicatorTone, string> = {
   negative: "border-negative/40 bg-negative/10 text-negative"
 };
 
-const statusClass: Record<DataStatus, string> = {
+const statusClass: Record<DataStatus | UiDataStatus, string> = {
   Fresh: "border-positive/35 bg-positive/10 text-positive",
-  Delayed: "border-accent/35 bg-accent/10 text-accent",
-  Stale: "border-caution/35 bg-caution/10 text-caution",
+  Live: "border-positive/35 bg-positive/10 text-positive",
+  Delayed: "border-yellow-400/45 bg-yellow-400/10 text-yellow-200",
+  Stale: "border-orange-400/45 bg-orange-400/10 text-orange-200",
+  Modeled: "border-purple-400/45 bg-purple-400/10 text-purple-200",
+  Fallback: "border-accent/45 bg-accent/10 text-accent",
   Error: "border-negative/40 bg-negative/10 text-negative"
 };
 
-const actionClass: Record<AllocationAction | QualityAction, string> = {
+const actionClass: Record<InvestmentAction, string> = {
   Overweight: "border-positive/40 bg-positive/10 text-positive",
   "Neutral+": "border-positive/30 bg-positive/5 text-positive",
   Neutral: "border-white/10 bg-white/5 text-white",
   "Neutral-": "border-caution/35 bg-caution/10 text-caution",
-  Underweight: "border-caution/45 bg-caution/10 text-caution",
+  Underweight: "border-orange-400/45 bg-orange-400/10 text-orange-200",
   Avoid: "border-negative/40 bg-negative/10 text-negative",
-  "Core Hold": "border-accent/35 bg-accent/10 text-accent",
+  "Core Hold": "border-white/10 bg-white/5 text-white",
   Accumulate: "border-positive/40 bg-positive/10 text-positive",
+  "Accumulate Watch": "border-positive/35 bg-positive/5 text-positive",
   "Buy on Weakness": "border-positive/35 bg-positive/5 text-positive",
   "Valuation Watch": "border-caution/40 bg-caution/10 text-caution",
   "Deep Dive Needed": "border-white/10 bg-white/5 text-white",
-  Trim: "border-caution/45 bg-caution/10 text-caution"
+  Trim: "border-orange-400/45 bg-orange-400/10 text-orange-200",
+  "Trim / Rebalance": "border-orange-400/45 bg-orange-400/10 text-orange-200",
+  "Risk Review": "border-negative/40 bg-negative/10 text-negative",
+  "Thesis Review": "border-caution/40 bg-caution/10 text-caution",
+  "Position Sizing": "border-accent/45 bg-accent/10 text-accent"
 };
 
 const macroRegimes: MacroRegime[] = [
@@ -363,16 +395,28 @@ const portfolioBuckets: PortfolioBucket[] = [
   bucket("Cash/Bonds", 16, 8, 28, 62, "Risk assets reset or duration fit improves", "Cash is dry powder for quality names; bonds remain duration-sensitive.")
 ];
 
-function rowAsset(assetClass: string, signal: AllocationAction, suggestedWeight: number, previousWeight: number, rationale: string, riskLevel: AssetAllocation["riskLevel"], confidence = 70): AssetAllocation {
-  return { assetClass, signal, suggestedWeight, previousWeight, rationale, riskLevel, confidence };
+const myWatchlist: WatchlistItem[] = [
+  { asset: "QUAL", type: "ETF", region: "US", targetWeight: 8, currentAction: "Overweight", currentScore: 76, dataStatus: "Modeled", rebalanceNeeded: "Add on weakness", keyRisk: "Quality factor crowding" },
+  { asset: "SMH", type: "ETF", region: "US", targetWeight: 6, currentAction: "Neutral+", currentScore: 74, dataStatus: "Modeled", rebalanceNeeded: "No chase", keyRisk: "Valuation and drawdown risk" },
+  { asset: "PAVE", type: "ETF", region: "US", targetWeight: 4, currentAction: "Overweight", currentScore: 71, dataStatus: "Modeled", rebalanceNeeded: "Accumulate", keyRisk: "Infrastructure cycle slowdown" },
+  { asset: "000660.KS", type: "Stock", region: "Korea", targetWeight: 5, currentAction: "Accumulate", currentScore: 84, dataStatus: "Modeled", rebalanceNeeded: "Maintain target", keyRisk: "HBM crowding" },
+  { asset: "NVDA", type: "Stock", region: "US", targetWeight: 5, currentAction: "Core Hold", currentScore: 92, dataStatus: "Modeled", rebalanceNeeded: "Position sizing", keyRisk: "Valuation expectations" },
+  { asset: "Copper", type: "Commodity", region: "Global", targetWeight: 3, currentAction: "Neutral+", currentScore: 69, dataStatus: "Modeled", rebalanceNeeded: "Wait for China confirmation", keyRisk: "China demand miss" },
+  { asset: "Gold", type: "Commodity", region: "Global", targetWeight: 3, currentAction: "Neutral+", currentScore: 68, dataStatus: "Modeled", rebalanceNeeded: "Hedge sleeve", keyRisk: "Real yield rebound" }
+];
+
+function rowAsset(assetClass: string, signal: AllocationAction, suggestedWeight: number, previousWeight: number, rationale: string, riskLevel: AssetAllocation["riskLevel"], confidence = 70, dataStatus: UiDataStatus = "Modeled"): AssetAllocation {
+  return { assetClass, signal, suggestedWeight, previousWeight, rationale, riskLevel, confidence, dataStatus };
 }
 
 function etf(ticker: string, name: string, assetClass: string, sector: string, macroFitScore: number, trendScore: number, valuationScore: number, cycleScore: number, liquidityScore: number, drawdownRisk: number, correlationToPortfolio: number, action: AllocationAction, rationale: string): EtfAllocation {
-  return { ticker, name, assetClass, sector, macroFitScore, trendScore, valuationScore, cycleScore, liquidityScore, drawdownRisk, correlationToPortfolio, action, rationale };
+  const region: EtfAllocation["region"] = assetClass === "Bonds" || assetClass === "Cash" || assetClass === "Currency" ? "Macro" : assetClass.includes("Commodity") || assetClass === "Commodity" ? "Global" : "US";
+  return { ticker, name, assetClass, sector, macroFitScore, trendScore, valuationScore, cycleScore, liquidityScore, drawdownRisk, correlationToPortfolio, action, rationale, region, dataStatus: "Modeled", confidence: Math.round((macroFitScore + trendScore + liquidityScore + (100 - drawdownRisk)) / 4) };
 }
 
 function stock(ticker: string, name: string, market: QualityStock["market"], sector: string, theme: string, marketCap: number, tradingValue: number, qualityScore: number, businessQualityScore: number, financialQualityScore: number, growthDurabilityScore: number, valuationScore: number, earningsRevisionScore: number, momentumScore: number, liquidityRisk: number, balanceSheetRisk: number, action: QualityAction, investmentThesis: string, keyRisk: string): QualityStock {
-  return { ticker, name, market, sector, theme, marketCap, tradingValue, qualityScore, businessQualityScore, financialQualityScore, growthDurabilityScore, valuationScore, earningsRevisionScore, momentumScore, liquidityRisk, balanceSheetRisk, action, investmentThesis, keyRisk };
+  const confidence = Math.round((qualityScore + earningsRevisionScore + (100 - liquidityRisk) + (100 - balanceSheetRisk)) / 4);
+  return { ticker, name, market, sector, theme, marketCap, tradingValue, qualityScore, businessQualityScore, financialQualityScore, growthDurabilityScore, valuationScore, earningsRevisionScore, momentumScore, liquidityRisk, balanceSheetRisk, action, investmentThesis, keyRisk, dataStatus: "Modeled", confidence };
 }
 
 function mid(ticker: string, name: string, market: MidSmallQuality["market"], sector: string, theme: string, marketCap: number, tradingValue: number, qualityScore: number, businessQualityScore: number, financialQualityScore: number, growthDurabilityScore: number, valuationScore: number, earningsRevisionScore: number, momentumScore: number, liquidityRisk: number, balanceSheetRisk: number, action: QualityAction, investmentThesis: string, keyRisk: string, salesGrowth: number, operatingMargin: number, roe: number, roic: number, netDebtToEbitda: number, fcfPositive: boolean, consensusRevisionUp: boolean, drawdownFrom52wHigh: number, foreignInstitutionFlow: number, governanceRisk: number, earningsVisibilityRisk: number, overhangRisk: number): MidSmallQuality {
@@ -380,7 +424,7 @@ function mid(ticker: string, name: string, market: MidSmallQuality["market"], se
 }
 
 function commodity(category: string, commodityTrend: string, futuresCurve: string, inventoryTrend: string, dollarSensitivity: CommodityMonitor["dollarSensitivity"], chinaDemandSensitivity: CommodityMonitor["chinaDemandSensitivity"], relatedEtfs: string[], relatedStocks: string[], action: CommodityMonitor["action"], rationale = "Use as a macro allocation sleeve; position size should follow commodity trend, balance-sheet quality, and portfolio correlation."): CommodityMonitor {
-  return { category, commodityTrend, futuresCurve, inventoryTrend, dollarSensitivity, chinaDemandSensitivity, relatedEtfs, relatedStocks, action, rationale };
+  return { category, commodityTrend, futuresCurve, inventoryTrend, dollarSensitivity, chinaDemandSensitivity, relatedEtfs, relatedStocks, action, rationale, dataStatus: "Modeled", confidence: 68 };
 }
 
 function risk(title: string, severity: RiskAlert["severity"], trigger: string, affectedAssetClasses: string[], affectedSectors: string[], affectedEtfs: string[], affectedStocks: string[], suggestedInvestorAction: string, type: RiskAlert["type"], confidence = 70): RiskAlert {
@@ -405,6 +449,12 @@ function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }).format(date);
 }
 
+function formatFullDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }).format(date);
+}
+
 function getIndicator(snapshot: MarketSnapshot, id: string) {
   return snapshot.indicators.find((indicator) => indicator.id === id);
 }
@@ -417,10 +467,15 @@ function indicatorStatus(indicator: Indicator): DataStatus {
 }
 
 function reliabilityScore(snapshot: MarketSnapshot) {
-  const weights: Record<DataStatus, number> = { Fresh: 100, Delayed: 72, Stale: 32, Error: 0 };
-  const statuses = allDataStatuses(snapshot);
-  if (!statuses.length) return 0;
-  return Math.round(statuses.reduce((sum, status) => sum + weights[status], 0) / statuses.length);
+  const weights: Record<string, number> = {
+    "Market Price Reliability": 0.25,
+    "Flow Reliability": 0.15,
+    "Macro Reliability": 0.25,
+    "ETF Reliability": 0.1,
+    "Fundamental Reliability": 0.15,
+    "Commodity Reliability": 0.1
+  };
+  return Math.round(reliabilityGroups(snapshot).reduce((sum, group) => sum + group.score * (weights[group.label] ?? 0), 0));
 }
 
 function clampScore(value: number) {
@@ -432,6 +487,16 @@ function scoreToStatus(score: number): DataStatus {
   if (score >= 65) return "Delayed";
   if (score >= 35) return "Stale";
   return "Error";
+}
+
+function uiStatusFromDataStatus(status: DataStatus): UiDataStatus {
+  if (status === "Fresh") return "Live";
+  return status;
+}
+
+function uiStatusForIndicator(indicator: Indicator): UiDataStatus {
+  if (indicator.quality.source.toLowerCase().includes("fallback")) return "Fallback";
+  return uiStatusFromDataStatus(indicatorStatus(indicator));
 }
 
 function reliabilityFromIndicators(items: Indicator[]) {
@@ -446,18 +511,24 @@ function hasLogIssue(snapshot: MarketSnapshot, sourcePattern: RegExp) {
 
 function allDataStatuses(snapshot: MarketSnapshot) {
   return [
-    ...snapshot.indicators.map((item) => indicatorStatus(item)),
-    ...sourceLogs(snapshot).map((log) => log.status)
+    ...snapshot.indicators.map((item) => uiStatusForIndicator(item)),
+    ...sourceLogs(snapshot).map((log) => log.source.toLowerCase().includes("fallback") ? "Fallback" as UiDataStatus : uiStatusFromDataStatus(log.status)),
+    ...assetAllocations.map((item) => item.dataStatus),
+    ...etfAllocations.map((item) => item.dataStatus),
+    ...qualityStocks.map((item) => item.dataStatus),
+    ...midSmallQuality.map((item) => item.dataStatus),
+    ...commodityMonitors.map((item) => item.dataStatus),
+    ...myWatchlist.map((item) => item.dataStatus)
   ];
 }
 
 function dataStatusCounts(snapshot: MarketSnapshot) {
-  return allDataStatuses(snapshot).reduce<Record<Lowercase<DataStatus>, number>>(
+  return allDataStatuses(snapshot).reduce<Record<Lowercase<UiDataStatus>, number>>(
     (counts, status) => {
-      counts[status.toLowerCase() as Lowercase<DataStatus>] += 1;
+      counts[status.toLowerCase() as Lowercase<UiDataStatus>] += 1;
       return counts;
     },
-    { fresh: 0, delayed: 0, stale: 0, error: 0 }
+    { live: 0, delayed: 0, stale: 0, modeled: 0, fallback: 0, error: 0 }
   );
 }
 
@@ -584,6 +655,13 @@ function qualityFormulaScore(row: QualityStock) {
   return Math.round(row.businessQualityScore * 0.25 + row.financialQualityScore * 0.2 + row.growthDurabilityScore * 0.2 + row.valuationScore * 0.15 + row.earningsRevisionScore * 0.1 + (100 - (row.liquidityRisk + row.balanceSheetRisk) / 2) * 0.1);
 }
 
+function stockRiskLevel(row: QualityStock) {
+  const risk = (row.liquidityRisk + row.balanceSheetRisk) / 2;
+  if (risk >= 55) return "High";
+  if (risk >= 30) return "Medium";
+  return "Low";
+}
+
 function timeParts(timeZone: string) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date()).map((part) => [part.type, part.value]));
   return { weekday: parts.weekday ?? "Mon", minutes: Number(parts.hour ?? 0) * 60 + Number(parts.minute ?? 0) };
@@ -613,6 +691,35 @@ function refreshCadenceLabel(ms: number) {
   return ms < 60_000 ? `${Math.round(ms / 1000)}s` : `${Math.round(ms / 60_000)}m`;
 }
 
+function nextRefreshLabel(ms: number) {
+  const next = new Date(Date.now() + ms);
+  return new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }).format(next);
+}
+
+function marketStatusSummary() {
+  const korea = marketSession("korea");
+  const us = marketSession("us");
+  const weekend = korea === "Closed" && us === "Closed" && ["Sat", "Sun"].includes(timeParts("Asia/Seoul").weekday);
+  return weekend ? "Weekend / Last Trading Day Data" : `Korea ${korea} / US ${us}`;
+}
+
+function lastTradingDay(snapshot: MarketSnapshot) {
+  const dates = snapshot.indicators.map((indicator) => indicator.quality.tradeDate ?? indicator.quality.baseDate).filter(Boolean).sort();
+  return dates.at(-1) ?? "-";
+}
+
+function dataBasis(snapshot: MarketSnapshot) {
+  const koreaDate = snapshot.indicators.find((indicator) => indicator.region === "korea")?.quality.baseDate ?? "-";
+  const usDate = snapshot.indicators.find((indicator) => indicator.region === "us")?.quality.baseDate ?? "-";
+  return `${koreaDate} Korea data + ${usDate} US close`;
+}
+
+function confidenceLevel(score: number): ConfidenceLevel {
+  if (score >= 75) return "High";
+  if (score >= 55) return "Medium";
+  return "Low";
+}
+
 function Pill({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <span className={`inline-flex items-center rounded border px-2 py-1 text-xs font-semibold ${className}`}>{children}</span>;
 }
@@ -639,22 +746,82 @@ function StatCard({ label, value, detail, tone = "neutral" }: { label: string; v
   );
 }
 
-function ActionPill({ action }: { action: AllocationAction | QualityAction }) {
+function ActionPill({ action }: { action: InvestmentAction }) {
   return <Pill className={actionClass[action]}>{action}</Pill>;
+}
+
+function DataStatusPill({ status }: { status: UiDataStatus | DataStatus }) {
+  return <Pill className={statusClass[status]}>{status === "Fresh" ? "Live" : status}</Pill>;
+}
+
+function WhyDetails({ label = "Why", children }: { label?: string; children: React.ReactNode }) {
+  return (
+    <details className="mt-2 rounded border border-white/10 bg-black/20 px-2 py-1 text-xs">
+      <summary className="cursor-pointer list-none font-semibold text-accent">{label}</summary>
+      <div className="mt-2 space-y-1 text-white/75">{children}</div>
+    </details>
+  );
+}
+
+function ExecutiveSummaryCard({ snapshot }: { snapshot: MarketSnapshot }) {
+  const regime = currentRegime();
+  const confidence = macroRegimeConfidence(snapshot, regime);
+  const preferredAssets = assetAllocations.filter((item) => ["Overweight", "Neutral+"].includes(item.signal)).slice(0, 4);
+  const preferredEtfs = [...etfAllocations].sort((a, b) => etfScore(b) - etfScore(a)).slice(0, 5);
+  const stockTypes = ["Core quality compounders", "AI infrastructure leaders", "Balance-sheet resilient mid caps"];
+  const topRisks = riskAlerts.slice(0, 3).map((alert) => alert.title.replace(" Alert", ""));
+  return (
+    <section className="panel rounded-lg border-accent/35 bg-accent/5 p-5">
+      <SectionHeader eyebrow="Executive Summary" title="1분 투자 배분 요약" icon={<RadioTower className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
+        <StatCard label="Current Macro Regime" value={regime.name} detail={regime.quadrant} tone="positive" />
+        <StatCard label="Regime Confidence" value={`${confidence}/100`} detail={hasLogIssue(snapshot, /ISM Report on Business/i) ? "ISM data error penalty applied" : "Macro inputs available"} tone={confidence >= 70 ? "positive" : "caution"} />
+        <StatCard label="Overall Investment Stance" value="Neutral+" detail="Quality Bias" tone="positive" />
+        <StatCard label="Today's Action" value="Core Hold" detail="Selective accumulation, avoid low-quality cyclicals" tone="neutral" />
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-4">
+        <InfoBlock label="Preferred Asset Classes" value={preferredAssets.map((item) => item.assetClass).join(", ")} />
+        <InfoBlock label="Preferred ETFs" value={preferredEtfs.map((item) => item.ticker).join(", ")} />
+        <InfoBlock label="Preferred Stock Types" value={stockTypes.join(", ")} />
+        <InfoBlock label="Key Risks" value={topRisks.join(", ")} />
+      </div>
+    </section>
+  );
 }
 
 function HomeView({ snapshot }: { snapshot: MarketSnapshot }) {
   return (
     <div className="space-y-6">
-      <MacroRegimeSummary snapshot={snapshot} compact />
-      <AssetAllocationView compact />
-      <SectorEtfBoard compact />
-      <QualityStockCandidates compact />
-      <MidSmallQualityWatchlist compact />
-      <CommodityResourceMonitor compact />
-      <RiskValuationAlerts snapshot={snapshot} compact />
-      <KeyIndicatorPanel snapshot={snapshot} />
-      <DataReliability snapshot={snapshot} compact />
+      <ExecutiveSummaryCard snapshot={snapshot} />
+      <div className="hidden space-y-6 lg:block">
+        <MacroRegimeSummary snapshot={snapshot} compact />
+        <AssetAllocationView compact />
+        <SectorEtfBoard compact />
+        <QualityStockCandidates compact />
+        <MidSmallQualityWatchlist compact />
+        <CommodityResourceMonitor compact />
+        <RiskValuationAlerts snapshot={snapshot} compact />
+        <KeyIndicatorPanel snapshot={snapshot} />
+        <DataReliability snapshot={snapshot} compact />
+        <MyWatchlistView compact />
+      </div>
+      <div className="space-y-4 lg:hidden">
+        <AssetAllocationView compact limit={5} />
+        <SectorEtfBoard compact limit={5} />
+        <QualityStockCandidates compact limit={5} />
+        <RiskValuationAlerts snapshot={snapshot} compact limit={5} />
+        <details className="panel rounded-lg p-4">
+          <summary className="cursor-pointer list-none font-semibold text-white">More Dashboard Sections</summary>
+          <div className="mt-4 space-y-4">
+            <MacroRegimeSummary snapshot={snapshot} compact />
+            <MidSmallQualityWatchlist compact limit={5} />
+            <CommodityResourceMonitor compact limit={5} />
+            <KeyIndicatorPanel snapshot={snapshot} />
+            <DataReliability snapshot={snapshot} compact />
+            <MyWatchlistView compact />
+          </div>
+        </details>
+      </div>
     </div>
   );
 }
@@ -733,11 +900,28 @@ function MacroInputs({ snapshot }: { snapshot: MarketSnapshot }) {
   );
 }
 
-function AssetAllocationView({ compact = false }: { compact?: boolean }) {
-  const rows = compact ? assetAllocations.slice(0, 10) : assetAllocations;
+function AssetAllocationView({ compact = false, limit }: { compact?: boolean; limit?: number }) {
+  const [actionFilter, setActionFilter] = React.useState("All");
+  const [riskFilter, setRiskFilter] = React.useState("All");
+  const [statusFilter, setStatusFilter] = React.useState("All");
+  const [confidenceFilter, setConfidenceFilter] = React.useState("All");
+  const filtered = assetAllocations
+    .filter((row) => actionFilter === "All" || row.signal === actionFilter)
+    .filter((row) => riskFilter === "All" || row.riskLevel === riskFilter)
+    .filter((row) => statusFilter === "All" || row.dataStatus === statusFilter)
+    .filter((row) => confidenceFilter === "All" || confidenceLevel(row.confidence) === confidenceFilter);
+  const rows = compact ? filtered.slice(0, limit ?? 10) : filtered;
   return (
     <section className="panel rounded-lg p-5">
       <SectionHeader eyebrow="Asset Allocation View" title="자산군별 권고 비중" icon={<BriefcaseBusiness className="h-5 w-5" />} />
+      {!compact ? (
+        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+          <Select label="Action" value={actionFilter} onChange={setActionFilter} options={["All", "Overweight", "Neutral+", "Neutral", "Neutral-", "Underweight", "Avoid"]} />
+          <Select label="Risk Level" value={riskFilter} onChange={setRiskFilter} options={["All", "Low", "Medium", "High"]} />
+          <Select label="Data Status" value={statusFilter} onChange={setStatusFilter} options={["All", "Live", "Delayed", "Stale", "Modeled", "Fallback", "Error"]} />
+          <Select label="Confidence" value={confidenceFilter} onChange={setConfidenceFilter} options={["All", "High", "Medium", "Low"]} />
+        </div>
+      ) : null}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[0.8fr_1.2fr]">
         <div className="h-72 rounded-lg border border-white/10 bg-white/[0.03] p-3">
           <ResponsiveContainer width="100%" height="100%">
@@ -755,7 +939,7 @@ function AssetAllocationView({ compact = false }: { compact?: boolean }) {
         <div className="thin-scrollbar overflow-x-auto">
           <table className="w-full min-w-[980px] text-left text-sm">
             <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-              <tr>{["Asset Class", "Current Signal", "Suggested", "Previous", "Change", "Risk", "Confidence", "Rationale"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+              <tr>{["Asset Class", "Current Signal", "Suggested", "Previous", "Change", "Risk", "Data", "Confidence", "Rationale"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
             </thead>
             <tbody>
               {rows.map((row) => (
@@ -766,8 +950,17 @@ function AssetAllocationView({ compact = false }: { compact?: boolean }) {
                   <td className="px-4 py-3 font-mono text-muted">{row.previousWeight}%</td>
                   <td className={(row.suggestedWeight - row.previousWeight) >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-caution"}>{row.suggestedWeight - row.previousWeight >= 0 ? "+" : ""}{row.suggestedWeight - row.previousWeight}%p</td>
                   <td className="px-4 py-3 text-muted">{row.riskLevel}</td>
+                  <td className="px-4 py-3"><DataStatusPill status={row.dataStatus} /></td>
                   <td className="px-4 py-3 font-mono text-white">{row.confidence}</td>
-                  <td className="px-4 py-3 text-muted">{row.rationale}</td>
+                  <td className="px-4 py-3 text-muted">
+                    {row.rationale}
+                    <WhyDetails>
+                      <div>Signal: {row.signal}</div>
+                      <div>Suggested/Previous: {row.suggestedWeight}% / {row.previousWeight}%</div>
+                      <div>Risk level: {row.riskLevel}</div>
+                      <div>Conclusion: keep allocation aligned with regime fit and valuation discipline.</div>
+                    </WhyDetails>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -778,12 +971,26 @@ function AssetAllocationView({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function SectorEtfBoard({ compact = false }: { compact?: boolean }) {
+function SectorEtfBoard({ compact = false, limit }: { compact?: boolean; limit?: number }) {
   const [query, setQuery] = React.useState("");
   const [assetClass, setAssetClass] = React.useState("All");
+  const [actionFilter, setActionFilter] = React.useState("All");
+  const [regionFilter, setRegionFilter] = React.useState("All");
+  const [sectorFilter, setSectorFilter] = React.useState("All");
+  const [riskFilter, setRiskFilter] = React.useState("All");
+  const [statusFilter, setStatusFilter] = React.useState("All");
+  const [confidenceFilter, setConfidenceFilter] = React.useState("All");
   const options = ["All", ...Array.from(new Set(etfAllocations.map((item) => item.assetClass)))];
+  const sectorOptions = ["All", ...Array.from(new Set(etfAllocations.map((item) => item.sector)))];
+  const etfRiskLevel = (row: EtfAllocation) => row.drawdownRisk >= 60 ? "High" : row.drawdownRisk >= 40 ? "Medium" : "Low";
   const rows = etfAllocations
     .filter((row) => assetClass === "All" || row.assetClass === assetClass)
+    .filter((row) => actionFilter === "All" || row.action === actionFilter)
+    .filter((row) => regionFilter === "All" || row.region === regionFilter)
+    .filter((row) => sectorFilter === "All" || row.sector === sectorFilter)
+    .filter((row) => riskFilter === "All" || etfRiskLevel(row) === riskFilter)
+    .filter((row) => statusFilter === "All" || row.dataStatus === statusFilter)
+    .filter((row) => confidenceFilter === "All" || confidenceLevel(row.confidence) === confidenceFilter)
     .filter((row) => `${row.ticker} ${row.name} ${row.sector}`.toLowerCase().includes(query.toLowerCase()))
     .sort((a, b) => etfScore(b) - etfScore(a));
   return (
@@ -791,12 +998,18 @@ function SectorEtfBoard({ compact = false }: { compact?: boolean }) {
       <SectionHeader eyebrow="Sector & ETF Allocation Board" title="섹터 ETF와 원자재 ETF 평가" icon={<Layers3 className="h-5 w-5" />} />
       <p className="mb-4 text-sm text-muted">ETF Allocation Score = Macro Fit 30% + Trend 20% + Valuation/Mean Reversion 15% + Earnings or Commodity Cycle 15% + Liquidity 10% + Risk/Drawdown 10%</p>
       {!compact ? (
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4 xl:grid-cols-8">
           <Input label="Search" value={query} onChange={setQuery} />
           <Select label="Asset Class" value={assetClass} onChange={setAssetClass} options={options} />
+          <Select label="Action" value={actionFilter} onChange={setActionFilter} options={["All", "Overweight", "Neutral+", "Neutral", "Neutral-", "Underweight", "Avoid"]} />
+          <Select label="Region" value={regionFilter} onChange={setRegionFilter} options={["All", "US", "Global", "Macro"]} />
+          <Select label="Sector" value={sectorFilter} onChange={setSectorFilter} options={sectorOptions} />
+          <Select label="Risk Level" value={riskFilter} onChange={setRiskFilter} options={["All", "Low", "Medium", "High"]} />
+          <Select label="Data Status" value={statusFilter} onChange={setStatusFilter} options={["All", "Live", "Delayed", "Stale", "Modeled", "Fallback", "Error"]} />
+          <Select label="Confidence" value={confidenceFilter} onChange={setConfidenceFilter} options={["All", "High", "Medium", "Low"]} />
         </div>
       ) : null}
-      <EtfTable rows={compact ? rows.slice(0, 12) : rows} />
+      <EtfTable rows={compact ? rows.slice(0, limit ?? 12) : rows} />
     </section>
   );
 }
@@ -804,25 +1017,31 @@ function SectorEtfBoard({ compact = false }: { compact?: boolean }) {
 function EtfTable({ rows }: { rows: EtfAllocation[] }) {
   return (
     <div className="thin-scrollbar overflow-x-auto">
-      <table className="w-full min-w-[1500px] text-left text-sm">
+      <table className="w-full min-w-[1180px] text-left text-sm">
         <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-          <tr>{["ticker", "name", "assetClass", "sector", "allocationScore", "macroFit", "trend", "valuation", "liquidity", "drawdownRisk", "correlation", "action", "rationale"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+          <tr>{["ticker", "name", "allocationScore", "action", "data", "macroFit", "valuation", "drawdownRisk", "rationale"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.ticker} className="border-t border-white/10">
               <td className="px-4 py-3 font-mono text-white">{row.ticker}</td>
               <td className="px-4 py-3 font-medium text-ink">{row.name}</td>
-              <td className="px-4 py-3 text-muted">{row.assetClass}</td>
-              <td className="px-4 py-3 text-muted">{row.sector}</td>
               <td className="px-4 py-3 font-mono text-white">{etfScore(row)}</td>
+              <td className="px-4 py-3">
+                <ActionPill action={row.action} />
+                <WhyDetails>
+                  <div className="text-positive">+ Macro Fit {row.macroFitScore}</div>
+                  <div className="text-positive">+ Trend {row.trendScore}</div>
+                  <div className={row.valuationScore < 45 ? "text-caution" : "text-white/75"}>- Valuation {row.valuationScore}</div>
+                  <div className={row.drawdownRisk > 55 ? "text-caution" : "text-white/75"}>- Drawdown Risk {row.drawdownRisk}</div>
+                  <div>Cycle {row.cycleScore}, Liquidity {row.liquidityScore}, Correlation {row.correlationToPortfolio.toFixed(2)}</div>
+                  <div>Conclusion: {row.rationale}</div>
+                </WhyDetails>
+              </td>
+              <td className="px-4 py-3"><DataStatusPill status={row.dataStatus} /></td>
               <td className="px-4 py-3 font-mono text-white">{row.macroFitScore}</td>
-              <td className="px-4 py-3 font-mono text-white">{row.trendScore}</td>
               <td className="px-4 py-3 font-mono text-white">{row.valuationScore}</td>
-              <td className="px-4 py-3 font-mono text-white">{row.liquidityScore}</td>
               <td className="px-4 py-3 font-mono text-caution">{row.drawdownRisk}</td>
-              <td className="px-4 py-3 font-mono text-muted">{row.correlationToPortfolio.toFixed(2)}</td>
-              <td className="px-4 py-3"><ActionPill action={row.action} /></td>
               <td className="px-4 py-3 text-muted">{row.rationale}</td>
             </tr>
           ))}
@@ -832,13 +1051,44 @@ function EtfTable({ rows }: { rows: EtfAllocation[] }) {
   );
 }
 
-function QualityStockCandidates({ compact = false }: { compact?: boolean }) {
-  const rows = [...qualityStocks].sort((a, b) => b.qualityScore - a.qualityScore);
+function QualityStockCandidates({ compact = false, limit }: { compact?: boolean; limit?: number }) {
+  const [query, setQuery] = React.useState("");
+  const [actionFilter, setActionFilter] = React.useState("All");
+  const [regionFilter, setRegionFilter] = React.useState("All");
+  const [sectorFilter, setSectorFilter] = React.useState("All");
+  const [themeFilter, setThemeFilter] = React.useState("All");
+  const [riskFilter, setRiskFilter] = React.useState("All");
+  const [statusFilter, setStatusFilter] = React.useState("All");
+  const [confidenceFilter, setConfidenceFilter] = React.useState("All");
+  const sectors = ["All", ...Array.from(new Set(qualityStocks.map((item) => item.sector)))];
+  const themes = ["All", ...Array.from(new Set(qualityStocks.map((item) => item.theme)))];
+  const rows = [...qualityStocks]
+    .filter((row) => `${row.ticker} ${row.name} ${row.sector} ${row.theme}`.toLowerCase().includes(query.toLowerCase()))
+    .filter((row) => actionFilter === "All" || row.action === actionFilter)
+    .filter((row) => regionFilter === "All" || row.market === regionFilter)
+    .filter((row) => sectorFilter === "All" || row.sector === sectorFilter)
+    .filter((row) => themeFilter === "All" || row.theme === themeFilter)
+    .filter((row) => riskFilter === "All" || stockRiskLevel(row) === riskFilter)
+    .filter((row) => statusFilter === "All" || row.dataStatus === statusFilter)
+    .filter((row) => confidenceFilter === "All" || confidenceLevel(row.confidence) === confidenceFilter)
+    .sort((a, b) => b.qualityScore - a.qualityScore);
   return (
     <section className="panel rounded-lg p-5">
       <SectionHeader eyebrow="Quality Stock Candidates" title="퀄리티 종목 후보" icon={<Gem className="h-5 w-5" />} />
       <p className="mb-4 text-sm text-muted">Quality Stock Score = Business Quality 25% + Financial Quality 20% + Growth Durability 20% + Valuation Discipline 15% + Earnings Revision 10% + Liquidity/Risk 10%</p>
-      <QualityStockTable rows={compact ? rows.slice(0, 8) : rows} />
+      {!compact ? (
+        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4 xl:grid-cols-8">
+          <Input label="Search" value={query} onChange={setQuery} />
+          <Select label="Action" value={actionFilter} onChange={setActionFilter} options={["All", "Core Hold", "Accumulate", "Buy on Weakness", "Valuation Watch", "Deep Dive Needed", "Trim", "Avoid"]} />
+          <Select label="Region" value={regionFilter} onChange={setRegionFilter} options={["All", "KOSPI", "KOSDAQ", "NASDAQ", "S&P500"]} />
+          <Select label="Sector" value={sectorFilter} onChange={setSectorFilter} options={sectors} />
+          <Select label="Theme" value={themeFilter} onChange={setThemeFilter} options={themes} />
+          <Select label="Risk Level" value={riskFilter} onChange={setRiskFilter} options={["All", "Low", "Medium", "High"]} />
+          <Select label="Data Status" value={statusFilter} onChange={setStatusFilter} options={["All", "Live", "Delayed", "Stale", "Modeled", "Fallback", "Error"]} />
+          <Select label="Confidence" value={confidenceFilter} onChange={setConfidenceFilter} options={["All", "High", "Medium", "Low"]} />
+        </div>
+      ) : null}
+      <QualityStockTable rows={compact ? rows.slice(0, limit ?? 8) : rows} />
     </section>
   );
 }
@@ -846,32 +1096,31 @@ function QualityStockCandidates({ compact = false }: { compact?: boolean }) {
 function QualityStockTable({ rows }: { rows: QualityStock[] }) {
   return (
     <div className="thin-scrollbar overflow-x-auto">
-      <table className="w-full min-w-[1700px] text-left text-sm">
+      <table className="w-full min-w-[1280px] text-left text-sm">
         <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-          <tr>{["ticker", "name", "market", "sector", "theme", "marketCap", "tradingValue", "qualityScore", "businessQuality", "financialQuality", "growthDurability", "valuation", "earningsRevision", "momentum", "liquidityRisk", "balanceSheetRisk", "action", "investmentThesis", "keyRisk"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+          <tr>{["ticker", "name", "qualityScore", "valuation", "earningsRevision", "riskLevel", "action", "fundamentalData", "investmentThesis"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.ticker} className="border-t border-white/10">
               <td className="px-4 py-3 font-mono text-white">{row.ticker}</td>
               <td className="px-4 py-3 font-medium text-ink">{row.name}</td>
-              <td className="px-4 py-3 text-muted">{row.market}</td>
-              <td className="px-4 py-3 text-muted">{row.sector}</td>
-              <td className="px-4 py-3 text-muted">{row.theme}</td>
-              <td className="px-4 py-3 font-mono text-muted">{formatNumber(row.marketCap)}</td>
-              <td className="px-4 py-3 font-mono text-muted">{formatNumber(row.tradingValue)}</td>
               <td className="px-4 py-3 font-mono text-positive">{qualityFormulaScore(row)}</td>
-              <td className="px-4 py-3 font-mono text-white">{row.businessQualityScore}</td>
-              <td className="px-4 py-3 font-mono text-white">{row.financialQualityScore}</td>
-              <td className="px-4 py-3 font-mono text-white">{row.growthDurabilityScore}</td>
               <td className="px-4 py-3 font-mono text-white">{row.valuationScore}</td>
               <td className="px-4 py-3 font-mono text-white">{row.earningsRevisionScore}</td>
-              <td className="px-4 py-3 font-mono text-white">{row.momentumScore}</td>
-              <td className="px-4 py-3 font-mono text-caution">{row.liquidityRisk}</td>
-              <td className="px-4 py-3 font-mono text-caution">{row.balanceSheetRisk}</td>
-              <td className="px-4 py-3"><ActionPill action={row.action} /></td>
+              <td className="px-4 py-3 text-muted">{stockRiskLevel(row)}</td>
+              <td className="px-4 py-3">
+                <ActionPill action={row.action} />
+                <WhyDetails>
+                  <div>Business Quality {row.businessQualityScore}</div>
+                  <div>Financial Quality {row.financialQualityScore}</div>
+                  <div>Growth Durability {row.growthDurabilityScore}</div>
+                  <div>Liquidity Risk {row.liquidityRisk}, Balance Sheet Risk {row.balanceSheetRisk}</div>
+                  <div>Key risk: {row.keyRisk}</div>
+                </WhyDetails>
+              </td>
+              <td className="px-4 py-3"><DataStatusPill status={row.dataStatus} /></td>
               <td className="px-4 py-3 text-muted">{row.investmentThesis}</td>
-              <td className="px-4 py-3 text-muted">{row.keyRisk}</td>
             </tr>
           ))}
         </tbody>
@@ -880,7 +1129,7 @@ function QualityStockTable({ rows }: { rows: QualityStock[] }) {
   );
 }
 
-function MidSmallQualityWatchlist({ compact = false }: { compact?: boolean }) {
+function MidSmallQualityWatchlist({ compact = false, limit }: { compact?: boolean; limit?: number }) {
   const [minMarketCap, setMinMarketCap] = React.useState(0);
   const [minTradingValue, setMinTradingValue] = React.useState(0);
   const [minRevenueGrowth, setMinRevenueGrowth] = React.useState(0);
@@ -895,6 +1144,10 @@ function MidSmallQualityWatchlist({ compact = false }: { compact?: boolean }) {
   const [maxGovernanceRisk, setMaxGovernanceRisk] = React.useState(100);
   const [maxCbOverhangRisk, setMaxCbOverhangRisk] = React.useState(100);
   const [fcfOnly, setFcfOnly] = React.useState(false);
+  const [actionFilter, setActionFilter] = React.useState("All");
+  const [riskFilter, setRiskFilter] = React.useState("All");
+  const [statusFilter, setStatusFilter] = React.useState("All");
+  const [confidenceFilter, setConfidenceFilter] = React.useState("All");
   const rows = midSmallQuality
     .filter((row) => row.marketCap >= minMarketCap)
     .filter((row) => row.tradingValue >= minTradingValue)
@@ -910,7 +1163,12 @@ function MidSmallQualityWatchlist({ compact = false }: { compact?: boolean }) {
     .filter((row) => row.foreignInstitutionFlow * 0.6 >= minInstitutionFlow)
     .filter((row) => row.governanceRisk <= maxGovernanceRisk)
     .filter((row) => row.overhangRisk <= maxCbOverhangRisk)
+    .filter((row) => actionFilter === "All" || row.action === actionFilter)
+    .filter((row) => riskFilter === "All" || stockRiskLevel(row) === riskFilter)
+    .filter((row) => statusFilter === "All" || row.dataStatus === statusFilter)
+    .filter((row) => confidenceFilter === "All" || confidenceLevel(row.confidence) === confidenceFilter)
     .sort((a, b) => b.qualityScore - a.qualityScore);
+  const visibleRows = compact ? rows.slice(0, limit ?? rows.length) : rows;
   return (
     <section className="panel rounded-lg p-5">
       <SectionHeader eyebrow="Mid/Small Cap Quality Watchlist" title="미드스몰캡 퀄리티 필터" icon={<Sprout className="h-5 w-5" />} />
@@ -928,38 +1186,42 @@ function MidSmallQualityWatchlist({ compact = false }: { compact?: boolean }) {
           <NumberInput label="Min Institution Flow" value={minInstitutionFlow} onChange={setMinInstitutionFlow} />
           <NumberInput label="Max Governance Risk" value={maxGovernanceRisk} onChange={setMaxGovernanceRisk} />
           <NumberInput label="Max CB Overhang Risk" value={maxCbOverhangRisk} onChange={setMaxCbOverhangRisk} />
+          <Select label="Action" value={actionFilter} onChange={setActionFilter} options={["All", "Core Hold", "Accumulate", "Buy on Weakness", "Valuation Watch", "Deep Dive Needed", "Trim", "Avoid"]} />
+          <Select label="Risk Level" value={riskFilter} onChange={setRiskFilter} options={["All", "Low", "Medium", "High"]} />
+          <Select label="Data Status" value={statusFilter} onChange={setStatusFilter} options={["All", "Live", "Delayed", "Stale", "Modeled", "Fallback", "Error"]} />
+          <Select label="Confidence" value={confidenceFilter} onChange={setConfidenceFilter} options={["All", "High", "Medium", "Low"]} />
           <Toggle label="FCF positive only" checked={fcfOnly} onChange={setFcfOnly} />
           <Toggle label="Revision up only" checked={revisionOnly} onChange={setRevisionOnly} />
         </div>
       ) : null}
       <div className="thin-scrollbar overflow-x-auto">
-        <table className="w-full min-w-[1500px] text-left text-sm">
+        <table className="w-full min-w-[1180px] text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-            <tr>{["ticker", "name", "marketCap", "tradingValue", "revenueGrowth", "OPM", "ROE", "ROIC", "netDebt/EBITDA", "FCF", "revision", "52W drawdown", "foreignFlow", "institutionFlow", "liquidityRisk", "governanceRisk", "balanceSheetRisk", "visibilityRisk", "CBOverhangRisk", "action"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+            <tr>{["ticker", "name", "qualityScore", "market", "revenueGrowth", "OPM", "riskLevel", "action", "data", "investmentThesis"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {visibleRows.map((row) => (
               <tr key={row.ticker} className="border-t border-white/10">
                 <td className="px-4 py-3 font-mono text-white">{row.ticker}</td>
                 <td className="px-4 py-3 font-medium text-ink">{row.name}</td>
-                <td className="px-4 py-3 font-mono text-muted">{formatNumber(row.marketCap)}</td>
-                <td className="px-4 py-3 font-mono text-muted">{formatNumber(row.tradingValue)}</td>
+                <td className="px-4 py-3 font-mono text-positive">{qualityFormulaScore(row)}</td>
+                <td className="px-4 py-3 text-muted">{row.market}</td>
                 <td className="px-4 py-3 text-positive">{formatPercent(row.salesGrowth)}</td>
                 <td className="px-4 py-3 font-mono text-white">{row.operatingMargin}%</td>
-                <td className="px-4 py-3 font-mono text-white">{row.roe}%</td>
-                <td className="px-4 py-3 font-mono text-white">{row.roic}%</td>
-                <td className="px-4 py-3 font-mono text-white">{row.netDebtToEbitda.toFixed(1)}x</td>
-                <td className="px-4 py-3">{row.fcfPositive ? <Pill className={toneClass.positive}>Yes</Pill> : <Pill className={toneClass.caution}>No</Pill>}</td>
-                <td className="px-4 py-3">{row.consensusRevisionUp ? <Pill className={toneClass.positive}>Up</Pill> : <Pill className={toneClass.caution}>Flat/Down</Pill>}</td>
-                <td className="px-4 py-3 text-caution">{formatPercent(row.drawdownFrom52wHigh)}</td>
-                <td className={row.foreignInstitutionFlow >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatNumber(row.foreignInstitutionFlow)}</td>
-                <td className={row.foreignInstitutionFlow >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatNumber(row.foreignInstitutionFlow * 0.6)}</td>
-                <td className="px-4 py-3 text-caution">{row.liquidityRisk}</td>
-                <td className="px-4 py-3 text-caution">{row.governanceRisk}</td>
-                <td className="px-4 py-3 text-caution">{row.balanceSheetRisk}</td>
-                <td className="px-4 py-3 text-caution">{row.earningsVisibilityRisk}</td>
-                <td className="px-4 py-3 text-caution">{row.overhangRisk}</td>
-                <td className="px-4 py-3"><ActionPill action={row.action} /></td>
+                <td className="px-4 py-3 text-muted">{stockRiskLevel(row)}</td>
+                <td className="px-4 py-3">
+                  <ActionPill action={row.action} />
+                  <WhyDetails>
+                    <div>Market cap {formatNumber(row.marketCap)}, trading value {formatNumber(row.tradingValue)}</div>
+                    <div>ROE {row.roe}%, ROIC {row.roic}%, net debt/EBITDA {row.netDebtToEbitda.toFixed(1)}x</div>
+                    <div>FCF {row.fcfPositive ? "positive" : "not yet positive"}, revision {row.consensusRevisionUp ? "up" : "flat/down"}, 52W drawdown {formatPercent(row.drawdownFrom52wHigh)}</div>
+                    <div>Foreign flow {formatNumber(row.foreignInstitutionFlow)}, institution proxy {formatNumber(row.foreignInstitutionFlow * 0.6)}</div>
+                    <div>Liquidity {row.liquidityRisk}, Governance {row.governanceRisk}, Balance Sheet {row.balanceSheetRisk}, Visibility {row.earningsVisibilityRisk}, Overhang {row.overhangRisk}</div>
+                    <div>{row.investmentThesis}</div>
+                  </WhyDetails>
+                </td>
+                <td className="px-4 py-3"><DataStatusPill status={row.dataStatus} /></td>
+                <td className="px-4 py-3 text-muted">{row.investmentThesis}</td>
               </tr>
             ))}
           </tbody>
@@ -969,21 +1231,60 @@ function MidSmallQualityWatchlist({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function CommodityResourceMonitor({ compact = false }: { compact?: boolean }) {
-  const rows = compact ? commodityMonitors.slice(0, 9) : commodityMonitors;
+function CommodityResourceMonitor({ compact = false, limit }: { compact?: boolean; limit?: number }) {
+  const [actionFilter, setActionFilter] = React.useState("All");
+  const [categoryFilter, setCategoryFilter] = React.useState("All");
+  const [riskFilter, setRiskFilter] = React.useState("All");
+  const [statusFilter, setStatusFilter] = React.useState("All");
+  const [confidenceFilter, setConfidenceFilter] = React.useState("All");
+  const categoryOptions = ["All", ...commodityMonitors.map((item) => item.category)];
+  const commodityRiskLevel = (row: CommodityMonitor) => {
+    if (row.dollarSensitivity === "High" || row.chinaDemandSensitivity === "High") return "High";
+    if (row.dollarSensitivity === "Medium" || row.chinaDemandSensitivity === "Medium") return "Medium";
+    return "Low";
+  };
+  const filteredRows = commodityMonitors
+    .filter((row) => actionFilter === "All" || row.action === actionFilter)
+    .filter((row) => categoryFilter === "All" || row.category === categoryFilter)
+    .filter((row) => riskFilter === "All" || commodityRiskLevel(row) === riskFilter)
+    .filter((row) => statusFilter === "All" || row.dataStatus === statusFilter)
+    .filter((row) => confidenceFilter === "All" || confidenceLevel(row.confidence) === confidenceFilter);
+  const rows = compact ? filteredRows.slice(0, limit ?? 9) : filteredRows;
   return (
     <section className="panel rounded-lg p-5">
       <SectionHeader eyebrow="Commodity & Resource Equity Monitor" title="원자재와 리소스 기업 모니터" icon={<Factory className="h-5 w-5" />} />
+      {!compact ? (
+        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-5">
+          <Select label="Action" value={actionFilter} onChange={setActionFilter} options={["All", "Overweight", "Neutral+", "Neutral", "Neutral-", "Underweight", "Avoid"]} />
+          <Select label="Asset Class" value={categoryFilter} onChange={setCategoryFilter} options={categoryOptions} />
+          <Select label="Risk Level" value={riskFilter} onChange={setRiskFilter} options={["All", "Low", "Medium", "High"]} />
+          <Select label="Data Status" value={statusFilter} onChange={setStatusFilter} options={["All", "Live", "Delayed", "Stale", "Modeled", "Fallback", "Error"]} />
+          <Select label="Confidence" value={confidenceFilter} onChange={setConfidenceFilter} options={["All", "High", "Medium", "Low"]} />
+        </div>
+      ) : null}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {rows.map((row) => (
-          <details key={row.category} className="rounded-lg border border-white/10 bg-white/[0.03] p-4" open>
+          <details key={row.category} className="rounded-lg border border-white/10 bg-white/[0.03] p-4" open={!compact}>
             <summary className="cursor-pointer list-none">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="font-semibold text-white">{row.category}</div>
-                  <div className="text-xs text-muted">{row.commodityTrend}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
+                    <span>{row.commodityTrend}</span>
+                    <DataStatusPill status={row.dataStatus} />
+                    <Pill className="border-purple-400/45 bg-purple-400/10 text-purple-200">Proxy / Assumption</Pill>
+                  </div>
                 </div>
-                <ActionPill action={row.action} />
+                <div className="text-right">
+                  <ActionPill action={row.action} />
+                  <WhyDetails>
+                    <div>Commodity trend: {row.commodityTrend}</div>
+                    <div>Futures curve: {row.futuresCurve}</div>
+                    <div>Inventory: {row.inventoryTrend}</div>
+                    <div>Dollar/China sensitivity: {row.dollarSensitivity} / {row.chinaDemandSensitivity}</div>
+                    <div>Conclusion: {row.rationale}</div>
+                  </WhyDetails>
+                </div>
               </div>
             </summary>
             <div className="mt-3 grid grid-cols-1 gap-2 text-sm">
@@ -991,6 +1292,7 @@ function CommodityResourceMonitor({ compact = false }: { compact?: boolean }) {
               <InfoBlock label="Futures Curve" value={row.futuresCurve} />
               <InfoBlock label="Inventory Trend" value={row.inventoryTrend} />
               <InfoBlock label="Dollar / China Sensitivity" value={`${row.dollarSensitivity} / ${row.chinaDemandSensitivity}`} />
+              <InfoBlock label="Data Basis" value={`Proxy/Assumption; confidence ${row.confidence}/100`} />
               <InfoBlock label="Related ETFs" value={row.relatedEtfs.join(", ")} />
               <InfoBlock label="Related Stocks" value={row.relatedStocks.join(", ")} />
               <InfoBlock label="Rationale" value={row.rationale} />
@@ -1002,11 +1304,25 @@ function CommodityResourceMonitor({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function RiskValuationAlerts({ snapshot, compact = false }: { snapshot: MarketSnapshot; compact?: boolean }) {
-  const rows = compact ? riskAlerts.slice(0, 6) : riskAlerts;
+function RiskValuationAlerts({ snapshot, compact = false, limit }: { snapshot: MarketSnapshot; compact?: boolean; limit?: number }) {
+  const [severityFilter, setSeverityFilter] = React.useState("All");
+  const [typeFilter, setTypeFilter] = React.useState("All");
+  const [confidenceFilter, setConfidenceFilter] = React.useState("All");
+  const filteredRows = riskAlerts
+    .filter((alert) => severityFilter === "All" || alert.severity === severityFilter)
+    .filter((alert) => typeFilter === "All" || alert.type === typeFilter)
+    .filter((alert) => confidenceFilter === "All" || confidenceLevel(alertConfidence(snapshot, alert)) === confidenceFilter);
+  const rows = compact ? filteredRows.slice(0, limit ?? 6) : filteredRows;
   return (
     <section className="panel rounded-lg p-5">
       <SectionHeader eyebrow="Risk & Valuation Alerts" title="리스크와 밸류에이션 알림" icon={<ShieldAlert className="h-5 w-5" />} />
+      {!compact ? (
+        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <Select label="Risk Level" value={severityFilter} onChange={setSeverityFilter} options={["All", "Red", "Orange", "Yellow"]} />
+          <Select label="Alert Type" value={typeFilter} onChange={setTypeFilter} options={["All", "Tactical", "Fundamental"]} />
+          <Select label="Confidence" value={confidenceFilter} onChange={setConfidenceFilter} options={["All", "High", "Medium", "Low"]} />
+        </div>
+      ) : null}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {rows.map((alert) => {
           const confidence = alertConfidence(snapshot, alert);
@@ -1037,6 +1353,78 @@ function RiskValuationAlerts({ snapshot, compact = false }: { snapshot: MarketSn
           </details>
           );
         })}
+      </div>
+    </section>
+  );
+}
+
+function MyWatchlistView({ compact = false }: { compact?: boolean }) {
+  const [query, setQuery] = React.useState("");
+  const [actionFilter, setActionFilter] = React.useState("All");
+  const [typeFilter, setTypeFilter] = React.useState("All");
+  const [regionFilter, setRegionFilter] = React.useState("All");
+  const [riskFilter, setRiskFilter] = React.useState("All");
+  const [statusFilter, setStatusFilter] = React.useState("All");
+  const [confidenceFilter, setConfidenceFilter] = React.useState("All");
+  const riskLevel = (row: WatchlistItem) => {
+    if (row.currentAction === "Avoid" || row.currentAction === "Risk Review" || row.currentScore < 60) return "High";
+    if (row.currentScore < 75 || row.currentAction === "Neutral-" || row.currentAction === "Trim") return "Medium";
+    return "Low";
+  };
+  const rows = myWatchlist
+    .filter((row) => `${row.asset} ${row.type} ${row.region} ${row.keyRisk}`.toLowerCase().includes(query.toLowerCase()))
+    .filter((row) => actionFilter === "All" || row.currentAction === actionFilter)
+    .filter((row) => typeFilter === "All" || row.type === typeFilter)
+    .filter((row) => regionFilter === "All" || row.region === regionFilter)
+    .filter((row) => riskFilter === "All" || riskLevel(row) === riskFilter)
+    .filter((row) => statusFilter === "All" || row.dataStatus === statusFilter)
+    .filter((row) => confidenceFilter === "All" || confidenceLevel(row.currentScore) === confidenceFilter)
+    .sort((a, b) => b.currentScore - a.currentScore);
+  const visibleRows = compact ? rows.slice(0, 6) : rows;
+
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="My Watchlist" title="관심 ETF · 주식 · 원자재" icon={<Gem className="h-5 w-5" />} />
+      {!compact ? (
+        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4 xl:grid-cols-7">
+          <Input label="Search" value={query} onChange={setQuery} />
+          <Select label="Action" value={actionFilter} onChange={setActionFilter} options={["All", "Overweight", "Neutral+", "Neutral", "Neutral-", "Underweight", "Core Hold", "Accumulate", "Buy on Weakness", "Trim", "Risk Review", "Avoid"]} />
+          <Select label="Asset Class" value={typeFilter} onChange={setTypeFilter} options={["All", "ETF", "Stock", "Commodity", "Asset Class"]} />
+          <Select label="Region" value={regionFilter} onChange={setRegionFilter} options={["All", "US", "Korea", "Global", "Macro"]} />
+          <Select label="Risk Level" value={riskFilter} onChange={setRiskFilter} options={["All", "Low", "Medium", "High"]} />
+          <Select label="Data Status" value={statusFilter} onChange={setStatusFilter} options={["All", "Live", "Delayed", "Stale", "Modeled", "Fallback", "Error"]} />
+          <Select label="Confidence" value={confidenceFilter} onChange={setConfidenceFilter} options={["All", "High", "Medium", "Low"]} />
+        </div>
+      ) : null}
+      <div className="thin-scrollbar overflow-x-auto">
+        <table className="w-full min-w-[1040px] text-left text-sm">
+          <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
+            <tr>{["asset", "type", "region", "targetWeight", "currentAction", "currentScore", "dataStatus", "rebalanceNeeded", "keyRisk"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+          </thead>
+          <tbody>
+            {visibleRows.map((row) => (
+              <tr key={row.asset} className="border-t border-white/10">
+                <td className="px-4 py-3 font-mono text-white">{row.asset}</td>
+                <td className="px-4 py-3 text-muted">{row.type}</td>
+                <td className="px-4 py-3 text-muted">{row.region}</td>
+                <td className="px-4 py-3 font-mono text-white">{row.targetWeight}%</td>
+                <td className="px-4 py-3">
+                  <ActionPill action={row.currentAction} />
+                  <WhyDetails>
+                    <div>Score: {row.currentScore}/100</div>
+                    <div>Risk level: {riskLevel(row)}</div>
+                    <div>Target weight: {row.targetWeight}%</div>
+                    <div>Conclusion: {row.rebalanceNeeded}</div>
+                  </WhyDetails>
+                </td>
+                <td className="px-4 py-3 font-mono text-white">{row.currentScore}</td>
+                <td className="px-4 py-3"><DataStatusPill status={row.dataStatus} /></td>
+                <td className="px-4 py-3 text-muted">{row.rebalanceNeeded}</td>
+                <td className="px-4 py-3 text-muted">{row.keyRisk}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </section>
   );
@@ -1073,16 +1461,20 @@ function PortfolioConstructionView() {
 function DataReliability({ snapshot, compact = false }: { snapshot: MarketSnapshot; compact?: boolean }) {
   const counts = dataStatusCounts(snapshot);
   const groups = reliabilityGroups(snapshot);
+  const overall = reliabilityScore(snapshot);
   return (
     <section className="panel rounded-lg p-5">
       <SectionHeader eyebrow="Data Reliability" title="데이터 신뢰도" icon={<Database className="h-5 w-5" />} />
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <StatCard label="Reliability" value={`${reliabilityScore(snapshot)}/100`} tone="positive" />
-        <StatCard label="Fresh" value={counts.fresh} tone="positive" />
-        <StatCard label="Delayed" value={counts.delayed} tone="neutral" />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-7">
+        <StatCard label="Overall" value={`${overall}/100`} detail="Weighted reliability" tone={overall >= 85 ? "positive" : overall >= 65 ? "caution" : "negative"} />
+        <StatCard label="Live" value={counts.live} tone="positive" />
+        <StatCard label="Delayed" value={counts.delayed} tone="caution" />
         <StatCard label="Stale" value={counts.stale} tone="caution" />
+        <StatCard label="Modeled" value={counts.modeled} tone="neutral" />
+        <StatCard label="Fallback" value={counts.fallback} tone="neutral" />
         <StatCard label="Error" value={counts.error} tone="negative" />
       </div>
+      <p className="mt-3 text-xs text-muted">Overall = Market Price 25% + Flow 15% + Macro 25% + ETF 10% + Fundamental 15% + Commodity 10%. Stale, fallback, and error items are reflected automatically.</p>
       <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         {groups.map((group) => (
           <div key={group.label} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
@@ -1091,7 +1483,7 @@ function DataReliability({ snapshot, compact = false }: { snapshot: MarketSnapsh
                 <div className="text-sm font-semibold text-white">{group.label}</div>
                 <div className="mt-1 text-xs text-muted">{group.detail}</div>
               </div>
-              <Pill className={statusClass[group.status]}>{group.status}</Pill>
+              <DataStatusPill status={uiStatusFromDataStatus(group.status)} />
             </div>
             <div className="mt-3 flex items-end justify-between">
               <div className="font-mono text-2xl font-semibold text-white">{group.score}/100</div>
@@ -1107,12 +1499,15 @@ function DataReliability({ snapshot, compact = false }: { snapshot: MarketSnapsh
       <details className="mt-4 rounded-lg border border-white/10 bg-white/[0.03] p-4" open={!compact}>
         <summary className="cursor-pointer list-none font-semibold text-white">Source fetch logs</summary>
         <div className="mt-3 grid grid-cols-1 gap-2 text-sm lg:grid-cols-2">
-          {sourceLogs(snapshot).slice(0, compact ? 8 : 30).map((log) => (
-            <div key={log.id} className="flex items-center justify-between gap-3 rounded border border-white/10 px-3 py-2">
-              <span className="truncate text-muted">{log.source}</span>
-              <Pill className={statusClass[log.status]}>{log.status}</Pill>
-            </div>
-          ))}
+          {sourceLogs(snapshot).slice(0, compact ? 8 : 30).map((log) => {
+            const displayStatus = log.source.toLowerCase().includes("fallback") ? "Fallback" : log.status;
+            return (
+              <div key={log.id} className="flex items-center justify-between gap-3 rounded border border-white/10 px-3 py-2">
+                <span className="truncate text-muted">{log.source}</span>
+                <DataStatusPill status={displayStatus} />
+              </div>
+            );
+          })}
         </div>
       </details>
     </section>
@@ -1138,7 +1533,7 @@ function KeyIndicatorPanel({ snapshot }: { snapshot: MarketSnapshot }) {
               </summary>
               <div className="mt-2 flex items-center justify-between text-xs text-muted">
                 <span>{formatNumber(indicator.value, indicator.unit)}</span>
-                <Pill className={statusClass[indicatorStatus(indicator)]}>{indicatorStatus(indicator)}</Pill>
+                <DataStatusPill status={uiStatusForIndicator(indicator)} />
               </div>
             </details>
           );
@@ -1199,7 +1594,7 @@ function HeaderStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
       <span className="block text-white/70">{label}</span>
-      <span className="font-medium text-white">{value}</span>
+      <span className="block break-words font-medium text-white">{value}</span>
     </div>
   );
 }
@@ -1260,6 +1655,7 @@ export function MarketDashboard() {
     if (active === "Commodity Monitor") return <CommodityResourceMonitor />;
     if (active === "Portfolio Construction") return <PortfolioConstructionView />;
     if (active === "Risk & Valuation Alerts") return <RiskValuationAlerts snapshot={snapshot} />;
+    if (active === "My Watchlist") return <MyWatchlistView />;
     return <DataReliability snapshot={snapshot} />;
   };
 
@@ -1272,15 +1668,16 @@ export function MarketDashboard() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-white">Top-down Quality Investment Dashboard</h1>
-            <p className="mt-1 text-sm text-muted">Macro · Sector ETF · Commodity · Quality Stock Allocation · KST {formatDateTime(snapshot.generatedAt)}</p>
+            <p className="mt-1 text-sm text-muted">Macro · Sector ETF · Commodity · Quality Stock Allocation</p>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2 text-xs text-muted sm:grid-cols-5">
-          <HeaderStat label="Korea" value={marketSession("korea")} />
-          <HeaderStat label="US" value={marketSession("us")} />
-          <HeaderStat label="Reliability" value={`${reliabilityScore(snapshot)}/100`} />
-          <HeaderStat label="Data" value={dataStatus === "live" ? "Live API" : dataStatus === "loading" ? "Loading" : "Fallback"} />
-          <HeaderStat label="Refresh" value={`${refreshCadenceLabel(nextRefreshMs)}${lastRefreshAt ? ` · ${formatDateTime(lastRefreshAt)}` : ""}`} />
+        <div className="grid grid-cols-1 gap-2 text-xs text-muted sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+          <HeaderStat label="Last Updated" value={formatFullDateTime(lastRefreshAt ?? snapshot.generatedAt)} />
+          <HeaderStat label="Last Trading Day" value={lastTradingDay(snapshot)} />
+          <HeaderStat label="Market Status" value={marketStatusSummary()} />
+          <HeaderStat label="Data Basis" value={dataBasis(snapshot)} />
+          <HeaderStat label="Next Expected Refresh" value={`${nextRefreshLabel(nextRefreshMs)} / ${refreshCadenceLabel(nextRefreshMs)}`} />
+          <HeaderStat label="Reliability" value={`${reliabilityScore(snapshot)}/100 · ${dataStatus === "live" ? "Live API" : dataStatus === "loading" ? "Loading" : "Fallback"}`} />
         </div>
       </header>
 

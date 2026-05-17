@@ -437,3 +437,22 @@ create table if not exists portfolio_construction (
   status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
   primary key (tradeDate, bucket)
 );
+
+create table if not exists my_watchlist (
+  id integer primary key autoincrement,
+  asset text not null,
+  assetType text not null check (assetType in ('ETF', 'Stock', 'Commodity', 'Asset Class')),
+  region text not null check (region in ('US', 'Korea', 'Global', 'Macro')),
+  targetWeight real,
+  currentAction text not null check (currentAction in ('Overweight', 'Neutral+', 'Neutral', 'Neutral-', 'Underweight', 'Core Hold', 'Accumulate', 'Accumulate Watch', 'Buy on Weakness', 'Valuation Watch', 'Deep Dive Needed', 'Trim', 'Trim / Rebalance', 'Risk Review', 'Thesis Review', 'Position Sizing', 'Avoid')),
+  currentScore real,
+  dataStatus text not null check (dataStatus in ('Live', 'Delayed', 'Stale', 'Modeled', 'Fallback', 'Error')),
+  rebalanceNeeded text,
+  keyRisk text,
+  tradeDate text,
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
+  createdAt text not null default (datetime('now')),
+  unique (asset, tradeDate)
+);
