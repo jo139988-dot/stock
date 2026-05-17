@@ -338,6 +338,70 @@ const actionClass: Record<InvestmentAction, string> = {
   "Position Sizing": "border-accent/45 bg-accent/10 text-accent"
 };
 
+const ko = {
+  title: "\uB9E4\uD06C\uB85C \uAE30\uBC18 \uD0D1\uB2E4\uC6B4 \uD22C\uC790 \uB300\uC2DC\uBCF4\uB4DC",
+  subtitle: "\uB9E4\uD06C\uB85C \uC6D0\uC790\uB8CC \u00B7 \uC774\uC288 \uD750\uB984 \u00B7 \uC774\uBCA4\uD2B8 \u00B7 \uC139\uD130 ETF \u00B7 \uD004\uB9AC\uD2F0 \uC885\uBAA9 \uBC30\uBD84",
+  menu: "\uBA54\uB274",
+  actionLanguage: "\uD22C\uC790 \uC561\uC158 \uC6A9\uC5B4",
+  detail: "\uC0C1\uC138 \uBCF4\uAE30"
+};
+
+const navLabel: Record<NavItem, string> = {
+  Home: "\uD648",
+  "Macro Cockpit": "\uB9E4\uD06C\uB85C \uB300\uC2DC\uBCF4\uB4DC",
+  "Macro Regime": "\uB9E4\uD06C\uB85C \uAD6D\uBA74",
+  "Asset Allocation": "\uC790\uC0B0\uBC30\uBD84",
+  "Sector & ETF": "\uC139\uD130\u00B7ETF",
+  "Quality Stocks": "\uD004\uB9AC\uD2F0 \uC885\uBAA9",
+  Commodity: "\uC6D0\uC790\uC7AC",
+  Portfolio: "\uD3EC\uD2B8\uD3F4\uB9AC\uC624",
+  "Backtest Lab": "\uBC31\uD14C\uC2A4\uD2B8",
+  "Risk & Data": "\uB9AC\uC2A4\uD06C\u00B7\uB370\uC774\uD130"
+};
+
+const actionLabel: Record<InvestmentAction, string> = {
+  Overweight: "\uBE44\uC911\uD655\uB300",
+  "Neutral+": "\uC911\uB9BD+",
+  Neutral: "\uC911\uB9BD",
+  "Neutral-": "\uC911\uB9BD-",
+  Underweight: "\uBE44\uC911\uCD95\uC18C",
+  Avoid: "\uD68C\uD53C",
+  "Core Hold": "\uD575\uC2EC \uBCF4\uC720",
+  Accumulate: "\uBD84\uD560\uB9E4\uC218",
+  "Accumulate Watch": "\uBD84\uD560\uB9E4\uC218 \uAD00\uCC30",
+  "Buy on Weakness": "\uB20C\uB9BC\uBAA9 \uB9E4\uC218",
+  "Valuation Watch": "\uBC38\uB958\uC5D0\uC774\uC158 \uAD00\uCC30",
+  "Deep Dive Needed": "\uC2EC\uCE35 \uAC80\uD1A0",
+  Trim: "\uC77C\uBD80\uCD95\uC18C",
+  "Trim / Rebalance": "\uC77C\uBD80\uCD95\uC18C / \uB9AC\uBC38\uB7F0\uC2F1",
+  "Risk Review": "\uB9AC\uC2A4\uD06C \uC7AC\uC810\uAC80",
+  "Thesis Review": "\uD22C\uC790\uB17C\uB9AC \uC7AC\uC810\uAC80",
+  "Position Sizing": "\uBE44\uC911 \uC870\uC808"
+};
+
+const statusLabel: Record<DataStatus | UiDataStatus, string> = {
+  Fresh: "\uC815\uC0C1",
+  Live: "\uC815\uC0C1",
+  Delayed: "\uC9C0\uC5F0",
+  Stale: "\uC624\uB798\uB41C \uB370\uC774\uD130",
+  Modeled: "\uBAA8\uB378\uAC12",
+  Fallback: "\uB300\uCCB4 \uB370\uC774\uD130",
+  Error: "\uC624\uB958"
+};
+
+const issueTitleKo: Record<string, string> = {
+  "US real yield rebound": "\uBBF8\uAD6D \uC2E4\uC9C8\uAE08\uB9AC \uBC18\uB4F1",
+  "USD/KRW breakout risk": "\uB2EC\uB7EC/\uC6D0 \uC0C1\uC2B9 \uB3CC\uD30C \uB9AC\uC2A4\uD06C",
+  "Copper strength needs China confirmation": "\uAD6C\uB9AC \uAC15\uC138, \uC911\uAD6D \uC218\uC694 \uD655\uC778 \uD544\uC694",
+  "Liquidity drag from TGA rebuild": "TGA \uC7AC\uCD95\uC801\uC5D0 \uB530\uB978 \uC720\uB3D9\uC131 \uBD80\uB2F4"
+};
+
+const severityLabel: Record<MacroIssue["severity"], string> = {
+  High: "\uB192\uC74C",
+  Medium: "\uC911\uAC04",
+  Low: "\uB0AE\uC74C"
+};
+
 const macroRegimes: MacroRegime[] = [
   {
     name: "Goldilocks",
@@ -1256,6 +1320,22 @@ function confidenceLevel(score: number): ConfidenceLevel {
   return "Low";
 }
 
+function localizedOption(option: string) {
+  if (option === "All") return "\uC804\uCCB4";
+  if (option in actionLabel) return actionLabel[option as InvestmentAction] + " (" + option + ")";
+  if (option in statusLabel) return statusLabel[option as UiDataStatus] + " (" + option + ")";
+  return option;
+}
+
+function investorActionText(value: string) {
+  return value
+    .replaceAll("Add only on weakness", "\uCD94\uACA9\uB9E4\uC218\uBCF4\uB2E4 \uB20C\uB9BC\uBAA9 \uC911\uC2EC \uC811\uADFC")
+    .replaceAll("Keep valuation discipline", "\uBC38\uB958\uC5D0\uC774\uC158 \uBD80\uB2F4\uC744 \uAC10\uC548\uD574 \uBD84\uD560 \uC811\uADFC")
+    .replaceAll("Stagger accumulation", "\uD55C \uBC88\uC5D0 \uBE44\uC911\uD655\uB300\uD558\uC9C0 \uB9D0\uACE0 \uBD84\uD560 \uC811\uADFC")
+    .replaceAll("Move candidates to thesis review", "\uD22C\uC790\uB17C\uB9AC \uD6FC\uC190 \uC5EC\uBD80 \uC7AC\uC810\uAC80")
+    .replaceAll("Reduce position sizing", "\uC885\uBAA9\uBCC4 \uBE44\uC911 \uCD95\uC18C");
+}
+
 function Pill({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <span className={`inline-flex items-center rounded border px-2 py-1 text-xs font-semibold ${className}`}>{children}</span>;
 }
@@ -1283,14 +1363,25 @@ function StatCard({ label, value, detail, tone = "neutral" }: { label: string; v
 }
 
 function ActionPill({ action }: { action: InvestmentAction }) {
-  return <Pill className={actionClass[action]}>{action}</Pill>;
+  return (
+    <Pill className={actionClass[action]}>
+      <span>{actionLabel[action]}</span>
+      <span className="ml-1 text-[10px] font-normal opacity-65">{action}</span>
+    </Pill>
+  );
 }
 
 function DataStatusPill({ status }: { status: UiDataStatus | DataStatus }) {
-  return <Pill className={statusClass[status]}>{status === "Fresh" ? "Live" : status}</Pill>;
+  const english = status === "Fresh" ? "Live" : status;
+  return (
+    <Pill className={statusClass[status]}>
+      <span>{statusLabel[status]}</span>
+      <span className="ml-1 text-[10px] font-normal opacity-65">{english}</span>
+    </Pill>
+  );
 }
 
-function WhyDetails({ label = "Why", children }: { label?: string; children: React.ReactNode }) {
+function WhyDetails({ label = ko.detail, children }: { label?: string; children: React.ReactNode }) {
   return (
     <details className="mt-2 rounded border border-white/10 bg-black/20 px-2 py-1 text-xs">
       <summary className="cursor-pointer list-none font-semibold text-accent">{label}</summary>
@@ -1365,7 +1456,7 @@ function TopMacroDrivers({ snapshot }: { snapshot: MarketSnapshot }) {
   const drivers = macroMetrics(snapshot, macroSnapshotConfigs).filter((row) => ["real-yield-10y", "usd-krw", "hy-oas", "kr-export-20d", "copper"].includes(row.id));
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Top 5 Macro Drivers" title="Today's inputs that matter most" icon={<TrendingUp className="h-5 w-5" />} />
+      <SectionHeader eyebrow={"\uD575\uC2EC \uB9E4\uD06C\uB85C \uB3D9\uC778 TOP 5"} title={"\uC624\uB298 \uBC30\uBD84 \uD310\uB2E8\uC5D0 \uAC00\uC7A5 \uC911\uC694\uD55C \uC785\uB825\uAC12"} icon={<TrendingUp className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-5">
         {drivers.map((row) => (
           <div key={row.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
@@ -1530,31 +1621,31 @@ function MacroIssueTape({ compact = false, limit }: { compact?: boolean; limit?:
   };
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Today's Macro Issue Tape" title="Macro issue flow and allocation consequences" icon={<AlertTriangle className="h-5 w-5" />} />
+      <SectionHeader eyebrow={"\uB9E4\uD06C\uB85C \uC774\uC288 \uD750\uB984"} title={"\uC624\uB298\uC758 \uC774\uC288\uC640 \uC790\uC0B0\uBC30\uBD84 \uC601\uD5A5"} icon={<AlertTriangle className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {rows.map((issue) => (
           <article key={issue.title} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Pill className={severityClass[issue.severity]}>{issue.severity}</Pill>
+                  <Pill className={severityClass[issue.severity]}>{severityLabel[issue.severity]}</Pill>
                   <Pill className={toneClass.neutral}>{issue.category}</Pill>
                   <DataStatusPill status={issue.dataStatus} />
                 </div>
-                <h3 className="mt-3 text-lg font-semibold text-white">{issue.title}</h3>
+                <h3 className="mt-3 text-lg font-semibold text-white">{issueTitleKo[issue.title] ?? issue.title}</h3>
               </div>
               <div className="text-right text-xs text-muted">{issue.timestamp}</div>
             </div>
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-              <InfoBlock label="Related Indicators" value={issue.relatedIndicators.join(", ")} />
-              <InfoBlock label="Affected Assets" value={issue.affectedAssetClasses.join(", ")} />
-              <InfoBlock label="Affected ETFs" value={issue.affectedEtfs.join(", ")} />
-              <InfoBlock label="Affected Stocks" value={issue.affectedStocks.join(", ")} />
+              <InfoBlock label={"\uAD00\uB828 \uC9C0\uD45C"} value={issue.relatedIndicators.join(", ")} />
+              <InfoBlock label={"\uC601\uD5A5 \uC790\uC0B0"} value={issue.affectedAssetClasses.join(", ")} />
+              <InfoBlock label={"\uC601\uD5A5 ETF"} value={issue.affectedEtfs.join(", ")} />
+              <InfoBlock label={"\uC601\uD5A5 \uC885\uBAA9"} value={issue.affectedStocks.join(", ")} />
             </div>
             <div className="mt-3 grid grid-cols-1 gap-3">
-              <InfoBlock label="Interpretation" value={issue.interpretation} />
-              <InfoBlock label="Suggested Action" value={issue.suggestedAction} />
-              <InfoBlock label="Source" value={issue.source} />
+              <InfoBlock label={"\uD574\uC11D"} value={issue.interpretation} />
+              <InfoBlock label={"\uB300\uC751 \uC804\uB7B5"} value={investorActionText(issue.suggestedAction)} />
+              <InfoBlock label={"\uCD9C\uCC98"} value={issue.source} />
             </div>
           </article>
         ))}
@@ -1734,11 +1825,11 @@ function MacroEventCalendar({ compact = false, limit }: { compact?: boolean; lim
   const rows = compact ? macroEvents.slice(0, limit ?? 5) : macroEvents;
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Macro Event Calendar" title="Upcoming catalysts and pre-event positioning notes" icon={<Bell className="h-5 w-5" />} />
+      <SectionHeader eyebrow={"\uB9E4\uD06C\uB85C \uC774\uBCA4\uD2B8 \uCEA8\uB9B0\uB354"} title={"\uC608\uC815 \uC774\uBCA4\uD2B8 \uBC0F \uC0AC\uC804 \uD3EC\uC9C0\uC158 \uC810\uAC80"} icon={<Bell className="h-5 w-5" />} />
       <div className="thin-scrollbar overflow-x-auto">
         <table className="w-full min-w-[1220px] text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-            <tr>{["date", "time", "country", "event", "consensus", "previous", "actual", "importance", "likely market impact", "assets to watch", "pre-event positioning note"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+            <tr>{["\uB0A0\uC9DC", "\uC2DC\uAC04", "\uAD6D\uAC00", "\uC774\uBCA4\uD2B8", "\uC608\uC0C1\uCE58", "\uC774\uC804\uCE58", "\uC2E4\uC81C\uCE58", "\uC911\uC694\uB3C4", "\uC608\uC0C1 \uC2DC\uC7A5 \uC601\uD5A5", "\uC810\uAC80 \uC790\uC0B0", "\uC0AC\uC804 \uD3EC\uC9C0\uC158 \uC810\uAC80"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
           </thead>
           <tbody>
             {rows.map((event) => (
@@ -2788,7 +2879,7 @@ function Select({ label, value, onChange, options }: { label: string; value: str
     <label className="block">
       <span className="mb-1 block text-xs text-muted">{label}</span>
       <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none">
-        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+        {options.map((option) => <option key={option} value={option}>{localizedOption(option)}</option>)}
       </select>
     </label>
   );
@@ -2920,7 +3011,7 @@ export function MarketDashboard() {
             <Activity className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-white">Macro Cockpit + Top-down Allocation Dashboard</h1>
+            <h1 className="text-2xl font-semibold text-white">{ko.title}</h1>
             <p className="mt-1 text-sm text-muted">Macro raw inputs · issue tape · events · sector ETF · quality stock allocation</p>
           </div>
         </div>
@@ -2939,7 +3030,7 @@ export function MarketDashboard() {
       <div className="mx-auto mt-4 grid max-w-[1680px] grid-cols-1 gap-5 lg:grid-cols-[270px_1fr]">
         <aside className="panel h-fit rounded-lg p-3 lg:sticky lg:top-4">
           <div className="mb-3 flex items-center justify-between px-2 py-1 text-xs uppercase tracking-[0.16em] text-muted">
-            <span>Views</span>
+            <span>{ko.menu}</span>
             <Menu className="h-4 w-4" />
           </div>
           <nav className="space-y-1">
@@ -2952,18 +3043,18 @@ export function MarketDashboard() {
                   active === item ? "bg-accent/15 text-white ring-1 ring-accent/35" : "text-muted hover:bg-white/5 hover:text-white"
                 }`}
               >
-                <span>{item}</span>
+                <span>{navLabel[item]}</span>
                 <ChevronDown className={`h-4 w-4 transition ${active === item ? "-rotate-90 text-accent" : "text-white/30"}`} />
               </button>
             ))}
           </nav>
           <div className="mt-5 rounded-lg border border-white/10 bg-black/20 p-3">
-            <div className="text-xs uppercase tracking-[0.14em] text-muted">Investment Language</div>
+            <div className="text-xs uppercase tracking-[0.14em] text-muted">{ko.actionLanguage}</div>
             <div className="mt-3 space-y-2 text-xs">
-              <div className="flex justify-between"><span>Increase</span><span className="text-positive">Overweight / Accumulate</span></div>
-              <div className="flex justify-between"><span>Balanced</span><span className="text-muted">Neutral</span></div>
-              <div className="flex justify-between"><span>Control</span><span className="text-caution">Trim / Rebalance</span></div>
-              <div className="flex justify-between"><span>Avoid</span><span className="text-negative">Risk Review</span></div>
+              <div className="flex justify-between"><span>{"\uD655\uB300"}</span><span className="text-positive">{"\uBE44\uC911\uD655\uB300 / \uBD84\uD560\uB9E4\uC218"}</span></div>
+              <div className="flex justify-between"><span>{"\uADE0\uD615"}</span><span className="text-muted">{"\uC911\uB9BD"}</span></div>
+              <div className="flex justify-between"><span>{"\uC870\uC808"}</span><span className="text-caution">{"\uC77C\uBD80\uCD95\uC18C / \uB9AC\uBC38\uB7F0\uC2F1"}</span></div>
+              <div className="flex justify-between"><span>{"\uD68C\uD53C"}</span><span className="text-negative">{"\uB9AC\uC2A4\uD06C \uC7AC\uC810\uAC80"}</span></div>
             </div>
           </div>
         </aside>
