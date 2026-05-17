@@ -154,7 +154,23 @@ export type SourceFetchLog = {
 
 export type SignalType = "Breakout" | "Pullback" | "Pullback Buy" | "Trend Leader" | "Momentum Fade" | "Reversal" | "Overheated" | "Breakdown" | "Avoid";
 
-export type ActionTag = "Buy Watch" | "Hold" | "Take Profit" | "Reduce" | "Avoid";
+export type ActionTag =
+  | "Buy Watch"
+  | "Hold"
+  | "Take Profit"
+  | "Reduce"
+  | "Avoid"
+  | "Core Hold"
+  | "Accumulate"
+  | "Accumulate Watch"
+  | "Buy on Weakness"
+  | "Valuation Watch"
+  | "Deep Dive Needed"
+  | "Trim"
+  | "Trim / Rebalance"
+  | "Risk Review"
+  | "Thesis Review"
+  | "Position Sizing";
 
 export type StockSignal = {
   date: string;

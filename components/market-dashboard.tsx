@@ -4,26 +4,25 @@ import * as React from "react";
 import {
   Activity,
   AlertTriangle,
-  ArrowDownRight,
-  ArrowUpRight,
   BarChart3,
   Bell,
-  CalendarDays,
-  CheckCircle2,
+  BriefcaseBusiness,
   ChevronDown,
   Database,
-  FlaskConical,
+  Factory,
   Gauge,
+  Gem,
   Globe2,
+  Landmark,
+  Layers3,
   LineChart,
   Menu,
   RadioTower,
   Search,
   ShieldAlert,
   SlidersHorizontal,
-  TrendingDown,
-  TrendingUp,
-  Zap
+  Sprout,
+  TrendingUp
 } from "lucide-react";
 import {
   Bar,
@@ -39,80 +38,137 @@ import {
 } from "recharts";
 import { marketSnapshot } from "@/lib/market-data";
 import type {
-  ActionTag,
-  AlertSeverity,
-  BacktestMetric,
   DataStatus,
   Indicator,
   IndicatorTone,
-  MarketAlert,
-  MarketScore,
   MarketSnapshot,
-  Region,
-  ScoreBreakdown,
-  SignalType,
-  SourceFetchLog,
-  StockSignal,
-  ThemeMomentum,
-  ThemeScoreBreakdown
+  SourceFetchLog
 } from "@/lib/market-types";
-import { scoreLabel, scoreTone, scoreWeights } from "@/lib/score";
 
 const navItems = [
-  "Market Pulse",
-  "Korea Dashboard",
-  "US Dashboard",
-  "Macro & Liquidity",
-  "Theme Monitor",
-  "Trading Signals",
-  "Stock Screener",
-  "Alerts",
-  "Backtest Lab",
-  "Data Source & Quality"
+  "Home",
+  "Macro Regime",
+  "Asset Allocation",
+  "Sector & ETF",
+  "Quality Stocks",
+  "Mid/Small Quality",
+  "Commodity Monitor",
+  "Portfolio Construction",
+  "Risk & Valuation Alerts",
+  "Data Reliability"
 ] as const;
 
 type NavItem = (typeof navItems)[number];
+type AllocationAction = "Overweight" | "Neutral+" | "Neutral" | "Neutral-" | "Underweight" | "Avoid";
+type QualityAction = "Core Hold" | "Accumulate" | "Buy on Weakness" | "Valuation Watch" | "Deep Dive Needed" | "Trim" | "Avoid";
+type RegimeName = "Goldilocks" | "Reflation" | "Slowdown" | "Stagflation";
 
-type PortfolioAction = {
-  exposure: "확대" | "중립" | "축소";
-  koreaAction: string;
-  usAction: string;
-  themeAction: string;
-  fxRatesRiskAction: string;
-  buyWatchCondition: string;
-  sellRiskOffCondition: string;
+type MacroRegime = {
+  name: RegimeName;
+  quadrant: string;
+  probability: number;
+  changeMoM: number;
+  preferredAssets: string[];
+  preferredSectors: string[];
+  avoidSectors: string[];
+  recommendedEtfs: string[];
+  keyRisks: string[];
 };
 
-type EnrichedSignal = StockSignal & {
-  close: number;
-  return5d: number;
-  return20d: number;
-  return60d: number;
+type AssetAllocation = {
+  assetClass: string;
+  signal: AllocationAction;
+  suggestedWeight: number;
+  previousWeight: number;
+  rationale: string;
+  riskLevel: "Low" | "Medium" | "High";
+};
+
+type EtfAllocation = {
+  ticker: string;
+  name: string;
+  assetClass: string;
+  sector: string;
+  macroFitScore: number;
+  trendScore: number;
+  valuationScore: number;
+  cycleScore: number;
+  liquidityScore: number;
+  drawdownRisk: number;
+  correlationToPortfolio: number;
+  action: AllocationAction;
+  rationale: string;
+};
+
+type QualityStock = {
+  ticker: string;
+  name: string;
+  market: "KOSPI" | "KOSDAQ" | "NASDAQ" | "S&P500";
+  sector: string;
+  theme: string;
   marketCap: number;
   tradingValue: number;
-  volumeRatio20d: number;
-  rsi14: number;
-  relativeStrength20d: number;
-  ma20Position: number;
-  ma60Position: number;
-  high52wProximity: number;
-  foreignFlow5d: number;
-  institutionFlow5d: number;
-  signalScore: number;
-  riskComment: string;
+  qualityScore: number;
+  businessQualityScore: number;
+  financialQualityScore: number;
+  growthDurabilityScore: number;
+  valuationScore: number;
+  earningsRevisionScore: number;
+  momentumScore: number;
+  liquidityRisk: number;
+  balanceSheetRisk: number;
+  action: QualityAction;
+  investmentThesis: string;
+  keyRisk: string;
 };
 
-type ThemeRow = ThemeMomentum & {
-  themeScore: number;
-  return1d: number;
-  return5d: number;
-  return20d: number;
-  volumeRatio20d: number;
-  advancingRatio: number;
-  newHighCount20d: number;
-  leaderContribution: number;
-  linkageScore: number;
-  scoreBreakdown: ThemeScoreBreakdown;
+type MidSmallQuality = QualityStock & {
+  salesGrowth: number;
+  operatingMargin: number;
+  roe: number;
+  roic: number;
+  netDebtToEbitda: number;
+  fcfPositive: boolean;
+  consensusRevisionUp: boolean;
+  drawdownFrom52wHigh: number;
+  foreignInstitutionFlow: number;
+  governanceRisk: number;
+  earningsVisibilityRisk: number;
+  overhangRisk: number;
+};
+
+type CommodityMonitor = {
+  category: string;
+  commodityTrend: string;
+  futuresCurve: string;
+  inventoryTrend: string;
+  dollarSensitivity: "Low" | "Medium" | "High";
+  chinaDemandSensitivity: "Low" | "Medium" | "High";
+  relatedEtfs: string[];
+  relatedStocks: string[];
+  action: AllocationAction | QualityAction;
+};
+
+type RiskAlert = {
+  title: string;
+  severity: "Red" | "Orange" | "Yellow";
+  trigger: string;
+  affectedAssetClasses: string[];
+  affectedSectors: string[];
+  affectedEtfs: string[];
+  affectedStocks: string[];
+  suggestedInvestorAction: string;
+  type: "Tactical" | "Fundamental";
+};
+
+type PortfolioBucket = {
+  bucket: string;
+  suggestedWeight: number;
+  minWeight: number;
+  maxWeight: number;
+  regimeFit: number;
+  rebalanceTrigger: string;
+  riskComment: string;
 };
 
 const toneClass: Record<IndicatorTone, string> = {
@@ -129,212 +185,201 @@ const statusClass: Record<DataStatus, string> = {
   Error: "border-negative/40 bg-negative/10 text-negative"
 };
 
-const actionClass: Record<ActionTag, string> = {
-  "Buy Watch": "border-positive/40 bg-positive/10 text-positive",
-  Hold: "border-white/10 bg-white/5 text-white",
-  "Take Profit": "border-accent/40 bg-accent/10 text-accent",
-  Reduce: "border-caution/45 bg-caution/10 text-caution",
-  Avoid: "border-negative/40 bg-negative/10 text-negative"
+const actionClass: Record<AllocationAction | QualityAction, string> = {
+  Overweight: "border-positive/40 bg-positive/10 text-positive",
+  "Neutral+": "border-positive/30 bg-positive/5 text-positive",
+  Neutral: "border-white/10 bg-white/5 text-white",
+  "Neutral-": "border-caution/35 bg-caution/10 text-caution",
+  Underweight: "border-caution/45 bg-caution/10 text-caution",
+  Avoid: "border-negative/40 bg-negative/10 text-negative",
+  "Core Hold": "border-accent/35 bg-accent/10 text-accent",
+  Accumulate: "border-positive/40 bg-positive/10 text-positive",
+  "Buy on Weakness": "border-positive/35 bg-positive/5 text-positive",
+  "Valuation Watch": "border-caution/40 bg-caution/10 text-caution",
+  "Deep Dive Needed": "border-white/10 bg-white/5 text-white",
+  Trim: "border-caution/45 bg-caution/10 text-caution"
 };
 
-const signalClass: Record<SignalType, string> = {
-  Breakout: "bg-positive/10 text-positive",
-  "Pullback Buy": "bg-positive/10 text-positive",
-  Pullback: "bg-positive/10 text-positive",
-  "Trend Leader": "bg-accent/10 text-accent",
-  "Momentum Fade": "bg-caution/10 text-caution",
-  Overheated: "bg-caution/10 text-caution",
-  Reversal: "bg-white/10 text-white",
-  Breakdown: "bg-negative/10 text-negative",
-  Avoid: "bg-negative/10 text-negative"
-};
-
-const indicatorNames: Record<string, string> = {
-  kospi: "KOSPI",
-  kosdaq: "KOSDAQ",
-  kospi200: "KOSPI 200",
-  kosdaq150: "KOSDAQ 150",
-  krx300: "KRX 300",
-  "foreign-kospi-flow": "Foreign KOSPI Flow",
-  "institution-flow": "Institution Flow",
-  "kr-advancers": "KR Advancers",
-  "kr-decliners": "KR Decliners",
-  "kr-above-ma20": "KR Above MA20",
-  "kr-above-ma60": "KR Above MA60",
-  "kr-52w-high": "KR 52W Highs",
-  "kr-52w-low": "KR 52W Lows",
-  spx: "S&P 500",
-  "nasdaq-composite": "Nasdaq Composite",
-  ndx: "Nasdaq 100",
-  dow: "Dow",
-  russell2000: "Russell 2000",
-  sox: "SOX",
-  vix: "VIX",
-  vxn: "VXN",
-  move: "MOVE",
-  "put-call": "Put/Call Ratio",
-  "us-2y": "US 2Y",
-  "us-10y": "US 10Y",
-  "us-30y": "US 30Y",
-  "real-yield-10y": "US 10Y Real Yield",
-  "hy-oas": "US HY OAS",
-  "ig-oas": "US IG OAS",
-  "fed-assets": "Fed Assets",
-  tga: "TGA",
-  rrp: "RRP",
-  "bank-reserves": "Bank Reserves",
-  "net-liquidity": "Net Liquidity",
-  "usd-krw": "USD/KRW",
-  dxy: "DXY",
-  "usd-jpy": "USD/JPY",
-  cpi: "CPI",
-  "core-cpi": "Core CPI",
-  pce: "PCE",
-  "core-pce": "Core PCE",
-  "ism-mfg": "ISM Manufacturing",
-  "ism-services": "ISM Services",
-  unemployment: "Unemployment",
-  "retail-sales": "Retail Sales"
-};
-
-const breakdownLabels: Record<keyof ScoreBreakdown, string> = {
-  trend: "가격 추세",
-  breadth: "시장 내부강도",
-  liquidity: "유동성",
-  ratesCredit: "금리·신용",
-  flow: "수급",
-  sentimentVolatility: "심리·변동성"
-};
-
-const mockSignals: EnrichedSignal[] = [
-  signal("000660.KS", "SK Hynix", "KOSPI", "AI Memory", 214500, 2.6, 8.3, 18.9, 27.4, 2.1, 92, 6.2, 11.4, 71.5, 2.8, 1.9, 97, 131000, 8200, "Breakout", 91, "Buy Watch", "Long Candidate", "AI memory leadership, 60D high, strong foreign flow.", "이격은 크지만 수급과 상대강도가 모두 상위권입니다."),
-  signal("005930.KS", "Samsung Electronics", "KOSPI", "Semiconductor", 83400, 1.8, 5.6, 12.4, 14.8, 1.7, 78, 3.1, 6.8, 63.2, 1.6, 1.2, 89, 498000, 7100, "Trend Leader", 84, "Buy Watch", "Long Candidate", "Above 20/60/120D averages with improving volume.", "지수보다 강하지만 환율 급등 시 외국인 수급을 확인하세요."),
-  signal("NVDA", "NVIDIA", "NASDAQ", "AI", 138.4, 3.1, 11.4, 24.6, 39.2, 1.9, 96, 7.4, 14.9, 76.8, 4.8, 2.5, 99, 3420000, 15200, "Overheated", 80, "Take Profit", "Watch Candidate", "Leadership intact but RSI and extension are elevated.", "신규 추격보다 눌림 대기 또는 일부 이익실현 우선입니다."),
-  signal("AVGO", "Broadcom", "NASDAQ", "Semiconductor", 1524.2, 2.2, 7.9, 19.1, 31.6, 1.6, 88, 5.9, 10.8, 69.4, 2.2, 1.4, 94, 690000, 6100, "Trend Leader", 82, "Hold", "Long Candidate", "Semiconductor breadth remains constructive.", "NVDA 대비 후발 강세이므로 리더 교체 여부를 관찰하세요."),
-  signal("267260.KS", "HD Hyundai Electric", "KOSPI", "AI Infrastructure", 312000, 1.4, 6.2, 15.8, 28.1, 1.5, 83, 3.7, 8.5, 66.3, 0.9, 1.8, 92, 9800, 2100, "Pullback Buy", 77, "Buy Watch", "Long Candidate", "Pullback within rising 20/60D trend.", "대장주 쏠림이 강하면 분할 진입만 유효합니다."),
-  signal("012450.KS", "Hanwha Aerospace", "KOSPI", "Defense", 284000, 0.9, 4.5, 10.2, 18.7, 1.3, 74, 2.6, 5.1, 61.8, 0.4, 0.8, 86, 14800, 1800, "Trend Leader", 73, "Hold", "Watch Candidate", "Defense theme shows steady accumulation.", "단기 모멘텀은 중립, 보유 중심입니다."),
-  signal("207940.KS", "Samsung Biologics", "KOSPI", "Bio", 912000, 0.4, 1.9, 5.3, 8.2, 0.9, 61, -0.6, 2.4, 54.1, 0.3, 0.5, 76, 64000, 1100, "Pullback Buy", 66, "Buy Watch", "Watch Candidate", "Pullback near 20D while 60D trend remains positive.", "거래대금이 약해 확인 매수만 적합합니다."),
-  signal("TSLA", "Tesla", "NASDAQ", "ESS", 182.6, -0.8, 1.4, 8.8, 3.1, 1.4, 59, 0.8, -1.6, 58.7, -0.7, 0.2, 72, 585000, 8200, "Momentum Fade", 52, "Reduce", "Risk-Off Candidate", "20D momentum is fading inside a volatile theme.", "급등락 폭이 커 포지션 사이즈 축소가 우선입니다."),
-  signal("IWM", "Russell 2000 ETF", "S&P500", "Small Cap", 203.1, -1.4, -3.7, -6.1, -8.5, 1.4, 32, -3.8, -5.6, 38.6, -1.2, -0.8, 41, 62000, 3900, "Breakdown", 28, "Avoid", "Risk-Off Candidate", "Below 20/60D with weak breadth.", "금리 상승 구간에서는 신규 매수 회피입니다."),
-  signal("XBI", "SPDR Biotech ETF", "NASDAQ", "Biotech", 86.2, -0.8, -2.6, -7.4, -9.6, 1.2, 29, -4.4, -7.2, 34.8, -0.4, -0.3, 36, 7200, 950, "Avoid", 31, "Avoid", "Risk-Off Candidate", "Oversold but still below key moving averages.", "반등은 기술적일 가능성이 높아 추격 금지입니다."),
-  signal("247540.KQ", "EcoPro BM", "KOSDAQ", "Battery", 148200, -2.1, -6.4, -13.6, -19.2, 1.8, 22, -6.9, -11.2, 32.1, -1.5, -1.1, 28, 6300, 1300, "Breakdown", 24, "Avoid", "Risk-Off Candidate", "Weak relative strength and heavy supply overhang.", "낙폭과대보다 구조적 약세를 우선 반영하세요."),
-  signal("454910.KQ", "Doosan Robotics", "KOSDAQ", "Robot", 72800, 0.6, 3.2, 9.4, 4.7, 1.6, 68, 1.2, 3.5, 62.6, 0.2, 0.5, 81, 4100, 680, "Breakout", 69, "Buy Watch", "Watch Candidate", "Volume expansion is improving in a mid-score theme.", "테마 점수 확인 전 과한 비중 확대는 제한합니다.")
+const macroRegimes: MacroRegime[] = [
+  {
+    name: "Goldilocks",
+    quadrant: "Growth Up / Inflation Down",
+    probability: 37,
+    changeMoM: 5,
+    preferredAssets: ["Quality Growth", "Semiconductor/AI", "Mid-cap compounders"],
+    preferredSectors: ["Technology", "Industrials", "Healthcare"],
+    avoidSectors: ["Deep cyclicals with weak balance sheets"],
+    recommendedEtfs: ["QQQ", "QUAL", "MOAT", "SMH", "PAVE"],
+    keyRisks: ["Dollar rebound", "Crowded AI leadership", "Real yield shock"]
+  },
+  {
+    name: "Reflation",
+    quadrant: "Growth Up / Inflation Up",
+    probability: 28,
+    changeMoM: 3,
+    preferredAssets: ["Commodity Equity", "Value cyclicals", "Infrastructure"],
+    preferredSectors: ["Energy", "Materials", "Industrials", "Financials"],
+    avoidSectors: ["Long-duration expensive growth"],
+    recommendedEtfs: ["XLE", "XLI", "XLB", "COPX", "URA"],
+    keyRisks: ["Oil shock", "Rate shock", "Dollar strength"]
+  },
+  {
+    name: "Slowdown",
+    quadrant: "Growth Down / Inflation Down",
+    probability: 22,
+    changeMoM: -4,
+    preferredAssets: ["Quality defensive", "Bonds", "Cash optionality"],
+    preferredSectors: ["Healthcare", "Utilities", "Dividend quality"],
+    avoidSectors: ["Small-cap leverage", "Early-cycle cyclicals"],
+    recommendedEtfs: ["XLV", "XLU", "VIG", "IEF", "TLT"],
+    keyRisks: ["Earnings revision down", "Liquidity deterioration"]
+  },
+  {
+    name: "Stagflation",
+    quadrant: "Growth Down / Inflation Up",
+    probability: 13,
+    changeMoM: -4,
+    preferredAssets: ["Gold", "Oil & gas cash flow", "Short-duration cash"],
+    preferredSectors: ["Energy", "Gold miners", "Defensives"],
+    avoidSectors: ["Unprofitable growth", "Levered small caps"],
+    recommendedEtfs: ["GLD", "GDX", "XLE", "BIL", "UUP"],
+    keyRisks: ["Margin compression", "Credit spread widening"]
+  }
 ];
 
-const mockBacktests: BacktestMetric[] = [
-  backtest("signal-breakout-5d", "signalType", "Breakout", "5D", 2.4, 1.8, 63, -4.8, 1.42, 128, 12.6, -8.1),
-  backtest("signal-breakout-20d", "signalType", "Breakout", "20D", 6.7, 5.2, 61, -9.6, 1.58, 118, 27.4, -14.2),
-  backtest("signal-trend-20d", "signalType", "Trend Leader", "20D", 5.9, 4.6, 64, -7.8, 1.66, 96, 21.9, -10.5),
-  backtest("signal-overheated-10d", "signalType", "Overheated", "10D", -1.1, -0.6, 43, -8.4, 0.82, 72, 8.3, -13.8),
-  backtest("theme-ai-20d", "theme", "AI", "20D", 7.8, 6.3, 67, -10.4, 1.74, 84, 31.2, -16.6),
-  backtest("theme-battery-20d", "theme", "Battery", "20D", -4.9, -3.8, 37, -14.9, 0.64, 76, 11.1, -28.4),
-  backtest("regime-risk-on-60d", "regime", "위험선호", "60D", 11.2, 9.7, 69, -12.8, 1.91, 142, 38.5, -18.7),
-  backtest("regime-risk-off-20d", "regime", "위험회피", "20D", -6.4, -5.1, 31, -18.2, 0.48, 109, 9.2, -32.5)
+const assetAllocations: AssetAllocation[] = [
+  rowAsset("US Equity", "Neutral+", 24, 22, "Quality growth leadership remains intact, but valuation discipline is needed.", "Medium"),
+  rowAsset("Korea Equity", "Neutral", 13, 14, "Export cycle is constructive, while foreign flow and KRW volatility limit aggression.", "Medium"),
+  rowAsset("Quality Large Cap", "Overweight", 20, 18, "Balance-sheet strength and earnings visibility fit the current regime.", "Low"),
+  rowAsset("Mid/Small Cap Quality", "Neutral", 8, 7, "Selective allocation only where liquidity and governance risks are controlled.", "High"),
+  rowAsset("Semiconductor/AI", "Overweight", 14, 12, "AI infrastructure capex cycle supports durable growth, but crowding is rising.", "Medium"),
+  rowAsset("Commodity Equity", "Neutral+", 7, 6, "Copper, power equipment, and energy cash-flow names hedge reflation risk.", "High"),
+  rowAsset("Sector ETFs", "Neutral", 6, 6, "Use ETFs for regime exposure instead of lower-quality single names.", "Medium"),
+  rowAsset("Bonds", "Neutral-", 4, 6, "Real yield is still restrictive; duration exposure should be measured.", "Medium"),
+  rowAsset("Gold", "Neutral+", 3, 3, "Portfolio hedge against dollar, rate, and geopolitical risk.", "Medium"),
+  rowAsset("Cash", "Neutral", 1, 6, "Keep dry powder for valuation resets in quality names.", "Low")
 ];
 
-function signal(
-  ticker: string,
-  name: string,
-  market: EnrichedSignal["market"],
-  theme: string,
-  close: number,
-  change1D: number,
-  return5D: number,
-  return20D: number,
-  return60D: number,
-  volumeRatio20D: number,
-  relativeStrength20D: number,
-  ma20Position: number,
-  ma60Position: number,
-  rsi14: number,
-  foreignFlow5D: number,
-  institutionFlow5D: number,
-  high52wProximity: number,
-  marketCap: number,
-  tradingValue: number,
-  signalType: SignalType,
-  signalScore: number,
-  actionTag: ActionTag,
-  candidateGroup: EnrichedSignal["candidateGroup"],
-  reason: string,
-  riskComment: string
-): EnrichedSignal {
-  return {
-    date: "2026-05-15",
-    ticker,
-    name,
-    market,
-    theme,
-    price: close,
-    close,
-    change1d: change1D,
-    change5d: return5D,
-    return5d: return5D,
-    return20d: return20D,
-    return60d: return60D,
-    change1m: return20D,
-    marketCap,
-    tradingValue,
-    volumeRatio: volumeRatio20D,
-    volumeRatio20d: volumeRatio20D,
-    rsi: rsi14,
-    rsi14,
-    relativeStrength: relativeStrength20D,
-    relativeStrength20d: relativeStrength20D,
-    ma20Position,
-    ma60Position,
-    high52wProximity,
-    foreignFlow5d: foreignFlow5D,
-    institutionFlow5d: institutionFlow5D,
-    fundFlow: `${foreignFlow5D >= 0 ? "F" : "F"} ${foreignFlow5D.toFixed(1)} / I ${institutionFlow5D.toFixed(1)}`,
-    signalType,
-    score: signalScore,
-    signalScore,
-    reason,
-    riskComment,
-    actionTag,
-    candidateGroup,
-    maStatus: { ma20: ma20Position >= 0, ma60: ma60Position >= 0, ma120: return60D >= 0 }
-  };
+const etfAllocations: EtfAllocation[] = [
+  etf("SPY", "SPDR S&P 500 ETF", "Equity", "Broad US", 72, 74, 48, 66, 92, 38, 0.91, "Neutral+", "Core exposure is acceptable, but concentration in mega-cap growth needs monitoring."),
+  etf("QQQ", "Invesco QQQ", "Equity", "Nasdaq Growth", 78, 82, 36, 72, 90, 48, 0.88, "Neutral+", "AI earnings durability supports exposure; valuation is the constraint."),
+  etf("IWM", "Russell 2000 ETF", "Equity", "Small Cap", 42, 38, 63, 45, 75, 66, 0.72, "Underweight", "Small-cap balance-sheet and refinancing risk remain high."),
+  etf("QUAL", "iShares MSCI USA Quality", "Quality Factor", "Quality", 84, 76, 58, 78, 86, 31, 0.76, "Overweight", "Best fit for quality allocation under mixed macro conditions."),
+  etf("MOAT", "VanEck Morningstar Wide Moat", "Quality Factor", "Wide Moat", 79, 68, 62, 74, 71, 36, 0.68, "Overweight", "Moat discipline helps reduce single-theme crowding risk."),
+  etf("VIG", "Vanguard Dividend Appreciation", "Quality Income", "Dividend Quality", 70, 63, 66, 61, 88, 29, 0.62, "Neutral+", "Useful stabilizer if growth momentum cools."),
+  etf("SCHG", "Schwab US Large-Cap Growth", "Growth", "Large Growth", 76, 81, 34, 75, 84, 51, 0.86, "Neutral", "Strong trend but valuation discipline argues against aggressive overweight."),
+  etf("XLK", "Technology Select Sector", "Sector", "Technology", 80, 83, 35, 78, 88, 53, 0.87, "Neutral+", "Quality tech leadership is intact, but drawdown risk is rising."),
+  etf("XLE", "Energy Select Sector", "Sector", "Energy", 67, 56, 69, 72, 82, 45, 0.41, "Neutral+", "Cash-flow support and oil optionality diversify growth exposure."),
+  etf("XLI", "Industrial Select Sector", "Sector", "Industrials", 74, 67, 57, 71, 83, 37, 0.58, "Overweight", "Infrastructure and power equipment cycles remain constructive."),
+  etf("XLF", "Financial Select Sector", "Sector", "Financials", 58, 54, 64, 52, 86, 42, 0.55, "Neutral", "Benefits from reflation but sensitive to credit deterioration."),
+  etf("XLV", "Health Care Select Sector", "Sector", "Healthcare", 64, 47, 72, 58, 85, 30, 0.46, "Neutral+", "Defensive quality exposure if slowdown probability rises."),
+  etf("XLU", "Utilities Select Sector", "Sector", "Utilities", 55, 44, 66, 49, 78, 33, 0.37, "Neutral", "Rate sensitivity offsets defensive value."),
+  etf("XLB", "Materials Select Sector", "Sector", "Materials", 61, 52, 68, 67, 74, 49, 0.52, "Neutral", "Copper and China demand signals need confirmation."),
+  etf("SOXX", "iShares Semiconductor", "Theme ETF", "Semiconductor", 86, 88, 28, 82, 82, 58, 0.83, "Neutral+", "High macro fit, but crowded trade and valuation risk are elevated."),
+  etf("SMH", "VanEck Semiconductor", "Theme ETF", "Semiconductor", 88, 90, 26, 84, 83, 61, 0.84, "Neutral+", "Leader quality is excellent; add only on weakness."),
+  etf("GLD", "SPDR Gold Shares", "Commodity", "Gold", 68, 71, 59, 64, 91, 28, 0.19, "Neutral+", "Portfolio hedge against dollar/rate/geopolitical shocks."),
+  etf("IAU", "iShares Gold Trust", "Commodity", "Gold", 67, 70, 60, 64, 88, 27, 0.18, "Neutral+", "Lower-cost gold hedge for strategic allocation."),
+  etf("GDX", "VanEck Gold Miners", "Commodity Equity", "Gold Miners", 62, 65, 61, 58, 70, 62, 0.34, "Neutral", "Operational leverage helps in gold uptrends, but drawdown risk is high."),
+  etf("COPX", "Global X Copper Miners", "Commodity Equity", "Copper", 69, 63, 55, 72, 61, 67, 0.45, "Neutral+", "Copper supply tightness is positive; China demand is the swing factor."),
+  etf("CPER", "US Copper Index Fund", "Commodity", "Copper", 65, 61, 52, 70, 58, 54, 0.31, "Neutral", "Useful macro hedge but less suitable as core quality exposure."),
+  etf("URA", "Global X Uranium", "Commodity Equity", "Uranium", 73, 66, 49, 78, 63, 72, 0.38, "Neutral+", "Nuclear power cycle is constructive; volatility requires sizing discipline."),
+  etf("URNM", "Sprott Uranium Miners", "Commodity Equity", "Uranium", 75, 67, 46, 81, 58, 76, 0.37, "Neutral+", "Higher beta uranium exposure, use as satellite only."),
+  etf("XOP", "SPDR Oil & Gas E&P", "Commodity Equity", "Oil & Gas", 61, 51, 72, 66, 70, 68, 0.42, "Neutral", "Valuation support exists, but commodity beta is high."),
+  etf("OIH", "VanEck Oil Services", "Commodity Equity", "Oil Services", 59, 47, 70, 63, 56, 74, 0.39, "Neutral-", "Cycle leverage is high; prefer stronger balance sheets."),
+  etf("PAVE", "Global X US Infrastructure", "Sector ETF", "Infrastructure", 78, 69, 55, 76, 72, 43, 0.53, "Overweight", "Infrastructure spending and grid capex fit top-down themes."),
+  etf("GRID", "First Trust Nasdaq Clean Edge Grid", "Sector ETF", "Power Grid", 74, 64, 51, 78, 55, 59, 0.49, "Neutral+", "Power demand and AI infrastructure are long-duration supports."),
+  etf("TLT", "iShares 20+ Year Treasury", "Bonds", "Long Duration", 42, 37, 68, 40, 90, 57, -0.28, "Underweight", "Duration risk remains high while real yields are elevated."),
+  etf("IEF", "iShares 7-10 Year Treasury", "Bonds", "Intermediate Duration", 51, 45, 66, 45, 92, 34, -0.19, "Neutral-", "Better than TLT, but not yet a strong overweight."),
+  etf("SHY", "iShares 1-3 Year Treasury", "Bonds", "Short Duration", 63, 58, 70, 45, 94, 12, -0.06, "Neutral", "Cash-like ballast for portfolio construction."),
+  etf("BIL", "SPDR 1-3 Month T-Bill", "Cash", "T-Bills", 70, 68, 73, 42, 96, 5, -0.02, "Neutral+", "Useful dry powder without equity drawdown risk."),
+  etf("UUP", "Invesco DB US Dollar Bullish", "Currency", "Dollar", 56, 53, 50, 48, 72, 28, -0.21, "Neutral", "Dollar hedge if inflation and rate risks reaccelerate.")
+];
+
+const qualityStocks: QualityStock[] = [
+  stock("NVDA", "NVIDIA", "NASDAQ", "Technology", "AI Accelerator", 3420000, 15200, 92, 95, 91, 94, 42, 86, 82, 22, 15, "Core Hold", "AI accelerator ecosystem and software moat support durable earnings power.", "Valuation and customer concentration require sizing discipline."),
+  stock("MSFT", "Microsoft", "NASDAQ", "Technology", "Cloud/AI", 3180000, 9800, 90, 94, 93, 88, 61, 78, 64, 12, 8, "Core Hold", "Cloud, enterprise distribution, and AI monetization make it a core quality compounder.", "Multiple compression if AI capex ROI is questioned."),
+  stock("AVGO", "Broadcom", "NASDAQ", "Technology", "Semiconductor", 690000, 6100, 87, 89, 86, 84, 55, 81, 77, 26, 18, "Accumulate", "Networking, ASIC, and software cash flows support quality growth.", "Semiconductor cyclicality and acquisition integration risk."),
+  stock("005930.KS", "Samsung Electronics", "KOSPI", "Technology", "Memory/Foundry", 498000, 7100, 78, 76, 82, 72, 68, 70, 69, 33, 18, "Buy on Weakness", "Memory recovery and balance sheet strength support mid-cycle allocation.", "Foundry execution and KRW volatility remain key risks."),
+  stock("000660.KS", "SK Hynix", "KOSPI", "Technology", "AI Memory", 131000, 8200, 84, 86, 80, 88, 49, 84, 86, 31, 28, "Accumulate", "HBM leadership upgrades earnings durability versus prior memory cycles.", "Crowding and capex cycle timing require valuation discipline."),
+  stock("207940.KS", "Samsung Biologics", "KOSPI", "Healthcare", "Biologics CDMO", 64000, 1100, 82, 88, 79, 80, 52, 67, 48, 26, 16, "Buy on Weakness", "CDMO scale and long-term contracts provide visible compounding.", "Capacity expansion timing and valuation are the main constraints."),
+  stock("JPM", "JPMorgan Chase", "S&P500", "Financials", "Quality Financial", 610000, 5400, 81, 86, 84, 70, 65, 62, 55, 18, 20, "Core Hold", "Best-in-class banking franchise and capital discipline fit quality value exposure.", "Credit cycle deterioration would pressure earnings."),
+  stock("LLY", "Eli Lilly", "S&P500", "Healthcare", "Obesity/Diabetes", 815000, 4200, 88, 90, 87, 91, 38, 82, 70, 24, 12, "Valuation Watch", "GLP-1 leadership offers durable growth, but expectations are demanding.", "Any pipeline or reimbursement disappointment could compress multiples."),
+  stock("267260.KS", "HD Hyundai Electric", "KOSPI", "Industrials", "Power Equipment", 9800, 2100, 77, 78, 74, 82, 58, 76, 74, 44, 30, "Accumulate", "Grid investment and transformer shortage support earnings visibility.", "Cyclical order slowdown and margin normalization risk."),
+  stock("012450.KS", "Hanwha Aerospace", "KOSPI", "Industrials", "Defense", 14800, 1800, 75, 77, 73, 78, 57, 72, 65, 39, 34, "Buy on Weakness", "Defense backlog and export optionality improve medium-term quality.", "Program delay and geopolitical premium reversal.")
+];
+
+const midSmallQuality: MidSmallQuality[] = [
+  mid("454910.KQ", "Doosan Robotics", "KOSDAQ", "Industrials", "Robot", 4100, 680, 61, 68, 45, 72, 38, 65, 62, 62, 48, "Deep Dive Needed", "Robotics TAM is attractive, but quality proof requires margin visibility.", "Liquidity and valuation are elevated.", 28, -8, 4, 2, -1.8, false, true, -34, 0.7, 42, 64, 58),
+  mid("039030.KQ", "ISC", "KOSDAQ", "Technology", "Semiconductor Parts", 3100, 520, 73, 76, 70, 75, 55, 69, 67, 50, 35, "Accumulate", "Test socket moat and AI chip demand support high-quality small-cap exposure.", "Customer concentration and cycle risk.", 18, 24, 19, 15, 0.4, true, true, -18, 1.4, 28, 36, 26),
+  mid("042700.KQ", "Hanmi Semiconductor", "KOSDAQ", "Technology", "HBM Equipment", 6200, 1440, 78, 81, 76, 82, 43, 80, 78, 48, 30, "Valuation Watch", "HBM equipment leadership is high quality, but price embeds strong expectations.", "Crowded trade and valuation risk.", 32, 31, 28, 24, -0.2, true, true, -12, 2.8, 34, 29, 38),
+  mid("141080.KQ", "LigaChem Bio", "KOSDAQ", "Healthcare", "ADC/Biotech", 2900, 410, 58, 66, 42, 71, 34, 54, 49, 67, 44, "Deep Dive Needed", "Pipeline optionality exists, but investment case is event-driven.", "Cash burn and clinical uncertainty.", 12, -22, -8, -5, -2.4, false, false, -41, -0.3, 38, 72, 46),
+  mid("298040.KS", "Hyosung Heavy Industries", "KOSPI", "Industrials", "Power Grid", 3600, 730, 70, 72, 67, 76, 59, 68, 60, 46, 39, "Buy on Weakness", "Transformer cycle and grid investment support mid-cap quality exposure.", "Working capital and order margin volatility.", 16, 12, 13, 9, 1.2, true, true, -21, 0.9, 32, 41, 31)
+];
+
+const commodityMonitors: CommodityMonitor[] = [
+  commodity("Oil & Gas", "Up but volatile", "Backwardation", "Drawdown", "Medium", "Medium", ["XLE", "XOP", "OIH"], ["XOM", "CVX", "COP"], "Neutral+"),
+  commodity("Copper", "Improving", "Mild contango", "Tightening", "High", "High", ["COPX", "CPER"], ["FCX", "SCCO", "풍산"], "Neutral+"),
+  commodity("Gold Miners", "Uptrend", "Spot-led", "Stable", "Medium", "Low", ["GLD", "IAU", "GDX"], ["NEM", "AEM", "GOLD"], "Neutral+"),
+  commodity("Uranium", "Structural upcycle", "Tight physical", "Low inventory", "Low", "Medium", ["URA", "URNM"], ["CCJ", "CEG", "UEC"], "Neutral+"),
+  commodity("Steel", "Mixed", "Contango", "Elevated", "High", "High", ["SLX"], ["POSCO홀딩스", "NUE"], "Neutral-"),
+  commodity("Battery Materials", "Weak stabilization", "Contango", "High", "High", "High", ["LIT"], ["ALB", "SQM", "에코프로비엠"], "Underweight"),
+  commodity("Power Equipment", "Strong", "Order-book driven", "Tight supply", "Medium", "Medium", ["GRID", "PAVE"], ["ETN", "PWR", "HD Hyundai Electric"], "Overweight"),
+  commodity("Infrastructure", "Stable uptrend", "Demand-led", "Neutral", "Low", "Medium", ["PAVE", "XLI"], ["CAT", "URI", "GEV"], "Overweight"),
+  commodity("Shipping", "Cycle rebound", "Freight-led", "Tightening", "High", "High", ["BOAT"], ["HMM", "ZIM", "MATX"], "Neutral")
+];
+
+const riskAlerts: RiskAlert[] = [
+  risk("Valuation Stretch Alert", "Orange", "Quality growth valuation percentile above 85%", ["US Equity", "Semiconductor/AI"], ["Technology", "AI"], ["QQQ", "SMH", "SOXX"], ["NVDA", "LLY"], "Use valuation discipline; add only on weakness and avoid portfolio crowding.", "Tactical"),
+  risk("Earnings Revision Down Alert", "Yellow", "Forward EPS revision breadth turns negative", ["Korea Equity", "Mid/Small Cap"], ["Industrials", "KOSDAQ Growth"], ["IWM", "KOSDAQ basket"], ["454910.KQ", "141080.KQ"], "Move candidates to thesis review until revisions stabilize.", "Fundamental"),
+  risk("Margin Deterioration Alert", "Yellow", "Gross or operating margin trend falls for two quarters", ["Quality Stocks"], ["Healthcare", "Manufacturing"], ["QUAL", "MOAT"], ["207940.KS"], "Check whether margin pressure is cyclical or thesis-breaking.", "Fundamental"),
+  risk("Balance Sheet Risk Alert", "Orange", "Net debt/EBITDA rises above sector threshold", ["Mid/Small Cap Quality"], ["Small Cap", "Battery Materials"], ["IWM"], ["247540.KQ"], "Reduce position sizing and require cash-flow confirmation.", "Fundamental"),
+  risk("Commodity Price Shock Alert", "Orange", "Oil/Copper 20D move exceeds risk band", ["Commodity Equity"], ["Energy", "Materials"], ["XLE", "COPX"], ["COP", "FCX"], "Rebalance commodity beta and avoid extrapolating spot moves.", "Tactical"),
+  risk("Dollar Strength Alert", "Orange", "DXY and USD/KRW break 20D highs", ["Korea Equity", "EM risk"], ["KOSDAQ Growth", "Materials"], ["UUP", "EWY"], ["005930.KS", "000660.KS"], "Review FX-sensitive exposure and stagger accumulation.", "Tactical"),
+  risk("Rate Shock Alert", "Red", "US 10Y and real yield rise together", ["Growth Equity", "Bonds"], ["Technology", "Utilities"], ["QQQ", "TLT"], ["NVDA", "MSFT"], "Do not expand duration-sensitive exposure; rebalance to quality cash-flow names.", "Tactical"),
+  risk("Liquidity Deterioration Alert", "Orange", "Net liquidity proxy falls while credit spreads widen", ["Equity", "Credit"], ["Small Cap", "Cyclicals"], ["IWM", "HYG"], ["Small-cap watchlist"], "Raise quality threshold and keep cash buffer.", "Tactical"),
+  risk("Crowded Trade Alert", "Yellow", "Leader contribution above 50% in a theme", ["Theme ETFs", "Quality Growth"], ["Semiconductor", "AI"], ["SMH", "SOXX"], ["NVDA", "000660.KS"], "Prefer diversified ETF or secondary quality leaders over single-name concentration.", "Tactical"),
+  risk("Mid/Small Cap Liquidity Alert", "Orange", "Trading value falls below position-size threshold", ["Mid/Small Cap"], ["KOSDAQ", "Small Cap"], ["IWM"], ["454910.KQ", "141080.KQ"], "Limit position sizing and require liquidity confirmation before accumulation.", "Fundamental")
+];
+
+const portfolioBuckets: PortfolioBucket[] = [
+  bucket("Core Quality", 38, 30, 45, 86, "Quality score below 75 or valuation percentile above 90%", "Core should be earnings-visible, liquid, and balance-sheet resilient."),
+  bucket("Satellite Growth", 16, 8, 22, 72, "Growth revision breadth weakens or real yields spike", "Use position sizing; avoid turning satellite into hidden core."),
+  bucket("Satellite Mid/Small Cap", 9, 4, 14, 58, "Liquidity score drops or governance risk rises", "Only quality small caps with cash-flow visibility deserve capital."),
+  bucket("Commodity/Resource", 9, 3, 15, 68, "Commodity trend reverses or dollar shock accelerates", "Use as macro hedge, not permanent core exposure."),
+  bucket("Sector ETF", 12, 5, 18, 74, "Sector score falls below 55 or correlation spikes", "ETF sleeves express top-down views with lower single-name risk."),
+  bucket("Cash/Bonds", 16, 8, 28, 62, "Risk assets reset or duration fit improves", "Cash is dry powder for quality names; bonds remain duration-sensitive.")
+];
+
+function rowAsset(assetClass: string, signal: AllocationAction, suggestedWeight: number, previousWeight: number, rationale: string, riskLevel: AssetAllocation["riskLevel"]): AssetAllocation {
+  return { assetClass, signal, suggestedWeight, previousWeight, rationale, riskLevel };
 }
 
-function backtest(
-  id: string,
-  targetType: BacktestMetric["targetType"],
-  label: string,
-  holdingPeriod: BacktestMetric["holdingPeriod"],
-  averageReturn: number,
-  medianReturn: number,
-  hitRatio: number,
-  maxDrawdown: number,
-  profitLossRatio: number,
-  sampleSize: number,
-  bestCase: number,
-  worstCase: number
-): BacktestMetric {
-  return {
-    id,
-    targetType,
-    label,
-    signalType: targetType === "signalType" ? (label as SignalType) : undefined,
-    theme: targetType === "theme" ? label : undefined,
-    regime: targetType === "regime" ? label : undefined,
-    holdingPeriod,
-    averageReturn,
-    medianReturn,
-    hitRatio,
-    maxDrawdown,
-    profitLossRatio,
-    sampleSize,
-    bestCase,
-    worstCase,
-    status: "ready"
-  };
+function etf(ticker: string, name: string, assetClass: string, sector: string, macroFitScore: number, trendScore: number, valuationScore: number, cycleScore: number, liquidityScore: number, drawdownRisk: number, correlationToPortfolio: number, action: AllocationAction, rationale: string): EtfAllocation {
+  return { ticker, name, assetClass, sector, macroFitScore, trendScore, valuationScore, cycleScore, liquidityScore, drawdownRisk, correlationToPortfolio, action, rationale };
+}
+
+function stock(ticker: string, name: string, market: QualityStock["market"], sector: string, theme: string, marketCap: number, tradingValue: number, qualityScore: number, businessQualityScore: number, financialQualityScore: number, growthDurabilityScore: number, valuationScore: number, earningsRevisionScore: number, momentumScore: number, liquidityRisk: number, balanceSheetRisk: number, action: QualityAction, investmentThesis: string, keyRisk: string): QualityStock {
+  return { ticker, name, market, sector, theme, marketCap, tradingValue, qualityScore, businessQualityScore, financialQualityScore, growthDurabilityScore, valuationScore, earningsRevisionScore, momentumScore, liquidityRisk, balanceSheetRisk, action, investmentThesis, keyRisk };
+}
+
+function mid(ticker: string, name: string, market: MidSmallQuality["market"], sector: string, theme: string, marketCap: number, tradingValue: number, qualityScore: number, businessQualityScore: number, financialQualityScore: number, growthDurabilityScore: number, valuationScore: number, earningsRevisionScore: number, momentumScore: number, liquidityRisk: number, balanceSheetRisk: number, action: QualityAction, investmentThesis: string, keyRisk: string, salesGrowth: number, operatingMargin: number, roe: number, roic: number, netDebtToEbitda: number, fcfPositive: boolean, consensusRevisionUp: boolean, drawdownFrom52wHigh: number, foreignInstitutionFlow: number, governanceRisk: number, earningsVisibilityRisk: number, overhangRisk: number): MidSmallQuality {
+  return { ...stock(ticker, name, market, sector, theme, marketCap, tradingValue, qualityScore, businessQualityScore, financialQualityScore, growthDurabilityScore, valuationScore, earningsRevisionScore, momentumScore, liquidityRisk, balanceSheetRisk, action, investmentThesis, keyRisk), salesGrowth, operatingMargin, roe, roic, netDebtToEbitda, fcfPositive, consensusRevisionUp, drawdownFrom52wHigh, foreignInstitutionFlow, governanceRisk, earningsVisibilityRisk, overhangRisk };
+}
+
+function commodity(category: string, commodityTrend: string, futuresCurve: string, inventoryTrend: string, dollarSensitivity: CommodityMonitor["dollarSensitivity"], chinaDemandSensitivity: CommodityMonitor["chinaDemandSensitivity"], relatedEtfs: string[], relatedStocks: string[], action: CommodityMonitor["action"]): CommodityMonitor {
+  return { category, commodityTrend, futuresCurve, inventoryTrend, dollarSensitivity, chinaDemandSensitivity, relatedEtfs, relatedStocks, action };
+}
+
+function risk(title: string, severity: RiskAlert["severity"], trigger: string, affectedAssetClasses: string[], affectedSectors: string[], affectedEtfs: string[], affectedStocks: string[], suggestedInvestorAction: string, type: RiskAlert["type"]): RiskAlert {
+  return { title, severity, trigger, affectedAssetClasses, affectedSectors, affectedEtfs, affectedStocks, suggestedInvestorAction, type };
+}
+
+function bucket(bucketName: string, suggestedWeight: number, minWeight: number, maxWeight: number, regimeFit: number, rebalanceTrigger: string, riskComment: string): PortfolioBucket {
+  return { bucket: bucketName, suggestedWeight, minWeight, maxWeight, regimeFit, rebalanceTrigger, riskComment };
 }
 
 function formatNumber(value: number, unit = "") {
-  const fraction = Math.abs(value) < 10 ? 2 : Math.abs(value) < 100 ? 1 : 0;
-  return `${new Intl.NumberFormat("ko-KR", { maximumFractionDigits: fraction }).format(value)}${unit ? ` ${unit}` : ""}`;
+  return `${new Intl.NumberFormat("ko-KR", { maximumFractionDigits: Math.abs(value) < 10 ? 2 : 1 }).format(value)}${unit ? ` ${unit}` : ""}`;
 }
 
 function formatPercent(value: number) {
@@ -344,17 +389,11 @@ function formatPercent(value: number) {
 function formatDateTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("ko-KR", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Seoul"
-  }).format(date);
+  return new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }).format(date);
 }
 
-function displayName(indicator: Indicator) {
-  return indicatorNames[indicator.id] ?? indicator.name;
+function getIndicator(snapshot: MarketSnapshot, id: string) {
+  return snapshot.indicators.find((indicator) => indicator.id === id);
 }
 
 function indicatorStatus(indicator: Indicator): DataStatus {
@@ -370,26 +409,55 @@ function reliabilityScore(snapshot: MarketSnapshot) {
   return Math.round(snapshot.indicators.reduce((sum, item) => sum + weights[indicatorStatus(item)], 0) / snapshot.indicators.length);
 }
 
-function getIndicator(snapshot: MarketSnapshot, id: string) {
-  return snapshot.indicators.find((indicator) => indicator.id === id);
+function sourceLogs(snapshot: MarketSnapshot): SourceFetchLog[] {
+  if (snapshot.sourceLogs?.length) return snapshot.sourceLogs;
+  return [{ id: "fallback", source: "Local fallback snapshot", status: "Stale", lastAttemptAt: snapshot.generatedAt, message: "Live API not available.", affectedIndicatorIds: snapshot.indicators.map((item) => item.id) }];
 }
 
-function getScore(snapshot: MarketSnapshot, id: string) {
-  return snapshot.scores.find((score) => score.id === id) ?? snapshot.scores[0];
+function currentRegime() {
+  return macroRegimes.reduce((best, item) => (item.probability > best.probability ? item : best), macroRegimes[0]);
+}
+
+function regimeInputs(snapshot: MarketSnapshot) {
+  const inputIds = [
+    ["ISM Manufacturing", "ism-mfg"],
+    ["ISM Services", "ism-services"],
+    ["US CPI", "cpi"],
+    ["Core CPI", "core-cpi"],
+    ["PCE", "pce"],
+    ["US 10Y Yield", "us-10y"],
+    ["Real Yield", "real-yield-10y"],
+    ["DXY", "dxy"],
+    ["USD/KRW", "usd-krw"],
+    ["HY OAS", "hy-oas"],
+    ["Net Liquidity", "net-liquidity"],
+    ["Korea Export Growth", "kr-export-20d"]
+  ];
+  const extras = [
+    ["China PMI", "49.5"],
+    ["Copper", "+4.2% 20D"],
+    ["Oil", "+2.8% 20D"],
+    ["Gold", "+6.1% 20D"]
+  ];
+  return [
+    ...inputIds.map(([label, id]) => {
+      const indicator = getIndicator(snapshot, id);
+      return [label, indicator ? `${formatNumber(indicator.value, indicator.unit)} (${formatPercent(indicator.changePercent)})` : "-"];
+    }),
+    ...extras
+  ];
+}
+
+function etfScore(row: EtfAllocation) {
+  return Math.round(row.macroFitScore * 0.3 + row.trendScore * 0.2 + row.valuationScore * 0.15 + row.cycleScore * 0.15 + row.liquidityScore * 0.1 + (100 - row.drawdownRisk) * 0.1);
+}
+
+function qualityFormulaScore(row: QualityStock) {
+  return Math.round(row.businessQualityScore * 0.25 + row.financialQualityScore * 0.2 + row.growthDurabilityScore * 0.2 + row.valuationScore * 0.15 + row.earningsRevisionScore * 0.1 + (100 - (row.liquidityRisk + row.balanceSheetRisk) / 2) * 0.1);
 }
 
 function timeParts(timeZone: string) {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      weekday: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23"
-    })
-      .formatToParts(new Date())
-      .map((part) => [part.type, part.value])
-  );
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date()).map((part) => [part.type, part.value]));
   return { weekday: parts.weekday ?? "Mon", minutes: Number(parts.hour ?? 0) * 60 + Number(parts.minute ?? 0) };
 }
 
@@ -410,215 +478,15 @@ function marketSession(market: "korea" | "us") {
 }
 
 function refreshIntervalMs() {
-  const active = [marketSession("korea"), marketSession("us")].some((status) => status !== "Closed");
-  return active ? 60_000 : 300_000;
+  return [marketSession("korea"), marketSession("us")].some((status) => status !== "Closed") ? 60_000 : 300_000;
 }
 
 function refreshCadenceLabel(ms: number) {
   return ms < 60_000 ? `${Math.round(ms / 1000)}s` : `${Math.round(ms / 60_000)}m`;
 }
 
-function scoreHistory(score: MarketScore) {
-  if (score.history?.length) return score.history;
-  return Array.from({ length: 60 }, (_, index) => ({
-    date: `D-${59 - index}`,
-    value: Math.max(0, Math.min(100, Number((score.value + Math.sin(index / 5) * 4 + (index - 45) * 0.05).toFixed(1))))
-  }));
-}
-
-function scoreChange(score: MarketScore, days = 1) {
-  const history = scoreHistory(score);
-  const previous = history[Math.max(0, history.length - 1 - days)]?.value ?? score.value;
-  return Number((score.value - previous).toFixed(1));
-}
-
-function signalUniverse(snapshot: MarketSnapshot): EnrichedSignal[] {
-  const fromSnapshot = (snapshot.stockSignals ?? []).map((item) => {
-    const matched = mockSignals.find((mock) => mock.ticker === item.ticker);
-    return { ...matched, ...item, close: item.close ?? item.price, return5d: item.return5d ?? item.change5d, return20d: item.return20d ?? item.change1m, return60d: item.return60d ?? (matched?.return60d ?? item.change1m), marketCap: item.marketCap ?? matched?.marketCap ?? 0, tradingValue: item.tradingValue ?? matched?.tradingValue ?? 0, volumeRatio20d: item.volumeRatio20d ?? item.volumeRatio, rsi14: item.rsi14 ?? item.rsi, relativeStrength20d: item.relativeStrength20d ?? item.relativeStrength, ma20Position: item.ma20Position ?? (item.maStatus.ma20 ? 1 : -1), ma60Position: item.ma60Position ?? (item.maStatus.ma60 ? 1 : -1), high52wProximity: item.high52wProximity ?? matched?.high52wProximity ?? 70, foreignFlow5d: item.foreignFlow5d ?? matched?.foreignFlow5d ?? 0, institutionFlow5d: item.institutionFlow5d ?? matched?.institutionFlow5d ?? 0, signalScore: item.signalScore ?? item.score, riskComment: item.riskComment ?? matched?.riskComment ?? item.reason } as EnrichedSignal;
-  });
-  const merged = new Map<string, EnrichedSignal>();
-  [...mockSignals, ...fromSnapshot].forEach((item) => merged.set(item.ticker, item));
-  return [...merged.values()].sort((a, b) => b.signalScore - a.signalScore);
-}
-
-function themeRows(snapshot: MarketSnapshot): ThemeRow[] {
-  const fallbackNames = new Map(mockSignals.map((signalItem) => [signalItem.theme, signalItem]));
-  return snapshot.themes.map((theme, index) => {
-    const linked = theme.linkedThemes ?? (theme.region === "korea" ? ["US AI", "US Semiconductor"] : ["Korea Semiconductor", "Korea AI Infra"]);
-    const return20d = theme.return20d ?? Number((theme.fiveDay * 3.1 + theme.oneDay * 1.8).toFixed(1));
-    const volumeRatio20d = theme.volumeRatio20d ?? theme.volumeRatio;
-    const advancingRatio = theme.advancingRatio ?? Math.max(20, Math.min(92, Math.round(theme.score * 0.78 + theme.oneDay * 3)));
-    const newHighCount20d = theme.newHighCount20d ?? Math.max(0, Math.round(theme.score / 14 + theme.fiveDay / 2));
-    const leaderContribution = theme.leaderContribution ?? (theme.concentrationRisk ? 58 : Math.max(22, Math.min(62, Math.round(34 + theme.score / 5 + index % 7))));
-    const linkageScore = theme.linkageScore ?? Math.max(25, Math.min(95, Math.round(theme.score * 0.72 + (linked.length ? 12 : 0))));
-    const breakdown = theme.scoreBreakdown ?? {
-      momentumScore: Math.max(0, Math.min(100, Math.round(theme.score + theme.fiveDay))),
-      volumeScore: Math.max(0, Math.min(100, Math.round(volumeRatio20d * 35))),
-      breadthScore: advancingRatio,
-      leaderScore: Math.max(0, Math.min(100, Math.round(leaderContribution * 1.35))),
-      qualityScore: theme.quality.stale ? 42 : 76,
-      newsScore: theme.score >= 70 ? 78 : 52
-    };
-    return {
-      ...theme,
-      leaders: theme.leaders.length ? theme.leaders : [fallbackNames.get(theme.name)?.name ?? "Leader"],
-      followers: theme.followers ?? mockSignals.filter((stock) => stock.theme === theme.name && stock.signalScore < 80).map((stock) => stock.name).slice(0, 3),
-      laggards: theme.laggards ?? mockSignals.filter((stock) => stock.theme === theme.name && stock.actionTag === "Avoid").map((stock) => stock.name).slice(0, 3),
-      linkedThemes: linked,
-      return20d,
-      volumeRatio20d,
-      advancingRatio,
-      newHighCount20d,
-      leaderContribution,
-      linkageScore,
-      concentrationRisk: theme.concentrationRisk ?? leaderContribution >= 50,
-      scoreBreakdown: breakdown,
-      themeScore: Math.round(
-        breakdown.momentumScore * 0.25 +
-          breakdown.volumeScore * 0.2 +
-          breakdown.breadthScore * 0.2 +
-          newHighCount20d * 3 * 0.15 +
-          breakdown.leaderScore * 0.1 +
-          breakdown.qualityScore * 0.1
-      ),
-      return1d: theme.oneDay,
-      return5d: theme.fiveDay
-    };
-  }).sort((a, b) => b.themeScore - a.themeScore);
-}
-
-function portfolioAction(snapshot: MarketSnapshot): PortfolioAction {
-  const global = getScore(snapshot, "global-risk");
-  const korea = getScore(snapshot, "korea-market");
-  const us = getScore(snapshot, "us-market");
-  const breadth = getScore(snapshot, "breadth");
-  const vix = getIndicator(snapshot, "vix");
-  const usdKrw = getIndicator(snapshot, "usd-krw");
-  const foreignFlow = getIndicator(snapshot, "foreign-kospi-flow");
-  const topTheme = themeRows(snapshot)[0];
-  const riskOff = global.value < 40 || (vix?.changePercent ?? 0) > 15 || (usdKrw?.changePercent ?? 0) > 1.2 || breadth.value < 42;
-  const riskOn = global.value >= 60 && breadth.value >= 50 && (vix?.changePercent ?? 0) < 8;
-  return {
-    exposure: riskOff ? "축소" : riskOn ? "확대" : "중립",
-    koreaAction: korea.value >= 60 && (foreignFlow?.value ?? 0) >= 0 ? "KOSPI 대형주와 주도 테마 보유 확대" : "Korea는 상대강도 상위만 선별, 수급 약한 성장주는 축소",
-    usAction: us.value >= 60 ? "US는 AI/반도체 리더 보유, 과열주는 분할 이익실현" : "US는 지수 추격보다 방어적 보유와 현금 여력 유지",
-    themeAction: topTheme ? `${topTheme.name} 중심. 다만 leaderContribution ${topTheme.leaderContribution}% 이상이면 대장주 쏠림 관리` : "테마는 신호 점수 70 이상만 관찰",
-    fxRatesRiskAction: (usdKrw?.changePercent ?? 0) > 0.7 || (getIndicator(snapshot, "us-10y")?.changePercent ?? 0) > 0.5 ? "환율·금리 민감 성장주 신규 추격 금지" : "FX/Rates 리스크는 중립, 손절선만 유지",
-    buyWatchCondition: "Regime 60 이상, VIX 둔화, MA20/60 상회, 거래량 1.3x 이상, 외국인/기관 5D 순매수",
-    sellRiskOffCondition: "VIX +15% 이상, USD/KRW 20D 신고가, Breadth 40 이하, MA60 이탈, 외국인 3D 순매도"
-  };
-}
-
-function decision(snapshot: MarketSnapshot) {
-  const global = getScore(snapshot, "global-risk");
-  const breadth = getScore(snapshot, "breadth");
-  const liquidity = getScore(snapshot, "liquidity");
-  const vix = getIndicator(snapshot, "vix");
-  const label = scoreLabel(global.value);
-  const tone = scoreTone(global.value) as IndicatorTone;
-  const reasons = [
-    `Global Risk Score ${global.value}점, ${label} 구간`,
-    `Breadth ${breadth.value}점 / Liquidity ${liquidity.value}점으로 내부강도 확인 필요`,
-    vix ? `VIX 전일 대비 ${formatPercent(vix.changePercent)}로 변동성 압력 점검` : "변동성 데이터 확인 필요"
-  ];
-  const actions =
-    global.value >= 60
-      ? ["주도 테마 리더 보유", "Buy Watch 조건 충족 종목만 신규 관찰", "과열 종목은 분할 이익실현"]
-      : global.value >= 40
-        ? ["지수 추격 금지", "상대강도 상위만 선별", "손절선과 현금 비중 유지"]
-        : ["레버리지 신규 매수 금지", "Risk-off 후보 축소", "환율·금리 민감 업종 회피"];
-  return { label, tone, reasons, actions };
-}
-
-function sourceLogs(snapshot: MarketSnapshot): SourceFetchLog[] {
-  if (snapshot.sourceLogs?.length) return snapshot.sourceLogs;
-  return [
-    { id: "fallback", source: "Local fallback snapshot", status: "Stale", lastAttemptAt: snapshot.generatedAt, message: "Live API not available.", affectedIndicatorIds: snapshot.indicators.map((item) => item.id) }
-  ];
-}
-
-function severity(alert: MarketAlert): "Red" | "Orange" | "Yellow" {
-  if (alert.severity === "red" || alert.severity === "critical") return "Red";
-  if (alert.severity === "orange" || alert.severity === "warning") return "Orange";
-  return "Yellow";
-}
-
-function alertSuggestion(alert: MarketAlert) {
-  if (alert.suggestedAction) return alert.suggestedAction;
-  const text = `${alert.title} ${alert.detail}`.toLowerCase();
-  if (text.includes("vix")) return "신규 레버리지 매수 금지, 성장주 비중 축소, 손절선 재확인";
-  if (text.includes("usd") || text.includes("krw")) return "코스닥 성장주 추격매수 자제, 환율 민감 업종 점검";
-  if (text.includes("foreign")) return "대형주 수급 약화 여부 확인, 외국인 순매수 전환까지 비중 확대 보류";
-  if (text.includes("breadth")) return "지수 상승 추격보다 상대강도 상위 종목만 선별";
-  return "포지션 크기와 손절선을 재점검하고 신규 매수는 조건 충족 종목으로 제한";
-}
-
-function alertThemes(alert: MarketAlert) {
-  return alert.affectedThemes ?? (alert.region === "us" ? ["AI", "Semiconductor", "Growth"] : ["Semiconductor", "KOSDAQ Growth"]);
-}
-
-function alertSignalTypes(alert: MarketAlert): SignalType[] {
-  return alert.affectedSignalTypes ?? (severity(alert) === "Red" ? ["Breakdown", "Avoid"] : ["Overheated", "Momentum Fade"]);
-}
-
-function scoreEvidence(snapshot: MarketSnapshot, key: keyof ScoreBreakdown) {
-  const i = (id: string) => getIndicator(snapshot, id);
-  if (key === "trend") {
-    const spx = i("spx");
-    const kospi = i("kospi");
-    return [
-      ["Index price vs MA20", `${spx ? formatPercent(spx.changePercent) : "-"} / ${kospi ? formatPercent(kospi.changePercent) : "-"}`],
-      ["Index price vs MA60", "US +4.8% / Korea +1.7%"],
-      ["Index price vs MA120", "US +9.6% / Korea +5.2%"],
-      ["20D return", spx ? formatPercent(spx.changePercent * 7) : "-"],
-      ["60D return", "US +8.4% / Korea +3.9%"],
-      ["52-week high distance", "SOX -1.2%, KOSPI -4.8%"]
-    ];
-  }
-  if (key === "breadth") {
-    const adv = i("kr-advancers");
-    const dec = i("kr-decliners");
-    const ratio = adv && dec ? (adv.value / Math.max(1, adv.value + dec.value)) * 100 : 0;
-    return [
-      ["Advancing issues ratio", ratio ? `${ratio.toFixed(1)}%` : "-"],
-      ["New highs / lows", `${i("kr-52w-high")?.value ?? "-"} / ${i("kr-52w-low")?.value ?? "-"}`],
-      ["% above MA20", `${i("kr-above-ma20")?.value ?? "-"}%`],
-      ["% above MA60", `${i("kr-above-ma60")?.value ?? "-"}%`],
-      ["Equal-weight vs cap-weight", "S&P EW relative trend neutral"]
-    ];
-  }
-  if (key === "ratesCredit") {
-    return [
-      ["US 10Y yield change", i("us-10y") ? formatPercent(i("us-10y")!.changePercent) : "-"],
-      ["US 2Y yield change", i("us-2y") ? formatPercent(i("us-2y")!.changePercent) : "-"],
-      ["HY OAS", `${i("hy-oas")?.value ?? "-"} bp`],
-      ["IG spread", `${i("ig-oas")?.value ?? "-"} bp`],
-      ["MOVE index", `${i("move")?.value ?? "-"}`]
-    ];
-  }
-  if (key === "flow") {
-    return [
-      ["Foreign net buying", `${i("foreign-kospi-flow")?.value ?? "-"} 억원`],
-      ["Institution net buying", `${i("institution-flow")?.value ?? "-"} 억원`],
-      ["ETF flow", `SPY ${i("spy-flow")?.value ?? "-"} / QQQ ${i("qqq-flow")?.value ?? "-"}`],
-      ["Futures net position", `CFTC NQ ${i("cftc-nq")?.value ?? "-"}`]
-    ];
-  }
-  if (key === "liquidity") {
-    return [
-      ["Fed assets", `${i("fed-assets")?.value ?? "-"}T`],
-      ["TGA", `${i("tga")?.value ?? "-"}T`],
-      ["RRP", `${i("rrp")?.value ?? "-"}T`],
-      ["Net liquidity", `${i("net-liquidity")?.value ?? "-"}T`]
-    ];
-  }
-  return [
-    ["VIX", `${i("vix")?.value ?? "-"}`],
-    ["Put/Call", `${i("put-call")?.value ?? "-"}`],
-    ["AAII Bull-Bear", `${i("aaii")?.value ?? "-"}%p`],
-    ["VVIX", `${i("vvix")?.value ?? "-"}`]
-  ];
+function Pill({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <span className={`inline-flex items-center rounded border px-2 py-1 text-xs font-semibold ${className}`}>{children}</span>;
 }
 
 function SectionHeader({ eyebrow, title, icon }: { eyebrow: string; title: string; icon: React.ReactNode }) {
@@ -633,10 +501,6 @@ function SectionHeader({ eyebrow, title, icon }: { eyebrow: string; title: strin
   );
 }
 
-function Pill({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <span className={`inline-flex items-center rounded border px-2 py-1 text-xs font-semibold ${className}`}>{children}</span>;
-}
-
 function StatCard({ label, value, detail, tone = "neutral" }: { label: string; value: string | number; detail?: string; tone?: IndicatorTone }) {
   return (
     <div className={`panel rounded-lg p-4 ${toneClass[tone]}`}>
@@ -647,147 +511,286 @@ function StatCard({ label, value, detail, tone = "neutral" }: { label: string; v
   );
 }
 
+function ActionPill({ action }: { action: AllocationAction | QualityAction }) {
+  return <Pill className={actionClass[action]}>{action}</Pill>;
+}
+
 function HomeView({ snapshot }: { snapshot: MarketSnapshot }) {
-  const view = decision(snapshot);
-  const action = portfolioAction(snapshot);
-  const signals = signalUniverse(snapshot);
-  const buys = signals.filter((item) => item.actionTag === "Buy Watch" || item.actionTag === "Hold").slice(0, 10);
-  const sells = signals.filter((item) => item.actionTag === "Avoid" || item.actionTag === "Reduce" || item.actionTag === "Take Profit").sort((a, b) => a.signalScore - b.signalScore).slice(0, 10);
-  const topThemes = themeRows(snapshot).slice(0, 5);
-  const keyIds = ["kospi", "kosdaq", "spx", "ndx", "sox", "vix", "usd-krw", "us-10y", "net-liquidity", "hy-oas"];
   return (
     <div className="space-y-6">
-      <section className={`panel rounded-lg border p-5 ${toneClass[view.tone]}`}>
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-white/60">오늘의 시장 판단</p>
-            <h2 className="mt-2 text-2xl font-semibold text-white">{view.label}: 지수보다 테마와 종목 선별이 우선입니다.</h2>
-            <div className="mt-4 grid grid-cols-1 gap-2 text-sm text-white/80 md:grid-cols-3">
-              {view.reasons.map((reason) => <div key={reason} className="rounded border border-white/10 bg-black/20 p-3">{reason}</div>)}
-            </div>
-          </div>
-          <div className="grid min-w-[260px] grid-cols-1 gap-2">
-            {view.actions.map((item) => <Pill key={item} className={toneClass[view.tone]}>{item}</Pill>)}
-          </div>
-        </div>
-      </section>
-
-      <PortfolioActionPanel action={action} />
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <SignalMiniTable title="매수 후보 TOP 10" icon={<ArrowUpRight className="h-5 w-5" />} rows={buys} positive />
-        <SignalMiniTable title="매도/위험 후보 TOP 10" icon={<ArrowDownRight className="h-5 w-5" />} rows={sells} />
-      </div>
-
-      <section className="panel rounded-lg p-5">
-        <SectionHeader eyebrow="Theme Leadership" title="주도 테마 TOP 5" icon={<BarChart3 className="h-5 w-5" />} />
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
-          {topThemes.map((theme) => (
-            <details key={`${theme.region}-${theme.name}`} className="rounded-lg border border-white/10 bg-white/[0.03] p-4" open>
-              <summary className="cursor-pointer list-none">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-semibold text-white">{theme.name}</div>
-                    <div className="text-xs text-muted">{theme.region.toUpperCase()} linkage {theme.linkageScore}</div>
-                  </div>
-                  <div className="font-mono text-2xl text-positive">{theme.themeScore}</div>
-                </div>
-              </summary>
-              <div className="mt-3 space-y-2 text-xs text-white/70">
-                <div>1D {formatPercent(theme.return1d)} / 5D {formatPercent(theme.return5d)} / 20D {formatPercent(theme.return20d)}</div>
-                <div>Volume {theme.volumeRatio20d.toFixed(1)}x · Adv {theme.advancingRatio}%</div>
-                {theme.leaderContribution >= 50 ? <Pill className={toneClass.caution}>대장주 쏠림 경고</Pill> : null}
-              </div>
-            </details>
-          ))}
-        </div>
-      </section>
-
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_0.95fr]">
-        <div className="panel rounded-lg p-5">
-          <SectionHeader eyebrow="Alerts" title="주요 경고 알림" icon={<Bell className="h-5 w-5" />} />
-          <div className="space-y-3">
-            {snapshot.alerts.slice(0, 5).map((alert) => <AlertCard key={alert.id} alert={alert} compact />)}
-          </div>
-        </div>
-        <div className="panel rounded-lg p-5">
-          <SectionHeader eyebrow="Key Metrics" title="핵심 지표" icon={<Gauge className="h-5 w-5" />} />
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {keyIds.map((id) => {
-              const indicator = getIndicator(snapshot, id);
-              return indicator ? <MiniIndicator key={id} indicator={indicator} /> : null;
-            })}
-          </div>
-        </div>
-      </section>
-
-      <DataReliabilityCompact snapshot={snapshot} />
+      <MacroRegimeSummary snapshot={snapshot} compact />
+      <AssetAllocationView compact />
+      <SectorEtfBoard compact />
+      <QualityStockCandidates compact />
+      <MidSmallQualityWatchlist compact />
+      <CommodityResourceMonitor compact />
+      <RiskValuationAlerts compact />
+      <DataReliability snapshot={snapshot} compact />
     </div>
   );
 }
 
-function PortfolioActionPanel({ action }: { action: PortfolioAction }) {
-  const tone: IndicatorTone = action.exposure === "확대" ? "positive" : action.exposure === "축소" ? "negative" : "neutral";
-  const rows = [
-    ["Korea Action", action.koreaAction],
-    ["US Action", action.usAction],
-    ["Theme Action", action.themeAction],
-    ["FX/Rates Risk Action", action.fxRatesRiskAction],
-    ["Buy Watch 조건", action.buyWatchCondition],
-    ["Sell/Risk-off 조건", action.sellRiskOffCondition]
-  ];
+function MacroRegimeSummary({ snapshot, compact = false }: { snapshot: MarketSnapshot; compact?: boolean }) {
+  const regime = currentRegime();
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Portfolio Action" title="오늘의 포트폴리오 액션" icon={<SlidersHorizontal className="h-5 w-5" />} />
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_1fr]">
-        <div className={`rounded-lg border p-4 ${toneClass[tone]}`}>
-          <div className="text-xs uppercase tracking-[0.14em] text-white/60">Equity Exposure</div>
-          <div className="mt-3 text-4xl font-semibold text-white">{action.exposure}</div>
-          <div className="mt-3 text-sm text-white/70">레짐·변동성·환율·내부강도·수급·테마 점수를 종합한 자동 판단</div>
+      <SectionHeader eyebrow="Macro Regime Summary" title={`${regime.name}: ${regime.quadrant}`} icon={<Globe2 className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1.1fr]">
+        <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-[0.14em] text-muted">현재 국면</div>
+              <div className="mt-2 text-3xl font-semibold text-white">{regime.name}</div>
+              <div className="mt-1 text-sm text-muted">{regime.quadrant}</div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <StatCard label="Probability" value={`${regime.probability}%`} tone="positive" />
+              <StatCard label="MoM Change" value={formatPercent(regime.changeMoM)} tone={regime.changeMoM >= 0 ? "positive" : "caution"} />
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <InfoBlock label="선호 자산군" value={regime.preferredAssets.join(", ")} />
+            <InfoBlock label="선호 섹터" value={regime.preferredSectors.join(", ")} />
+            <InfoBlock label="회피 섹터" value={regime.avoidSectors.join(", ")} />
+            <InfoBlock label="추천 ETF" value={regime.recommendedEtfs.join(", ")} />
+            <InfoBlock label="주요 리스크" value={regime.keyRisks.join(", ")} />
+          </div>
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {rows.map(([label, value]) => (
-            <details key={label} className="rounded-lg border border-white/10 bg-white/[0.03] p-4" open>
-              <summary className="cursor-pointer list-none font-semibold text-white">{label}</summary>
-              <p className="mt-2 text-sm text-white/70">{value}</p>
-            </details>
-          ))}
+        <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+          <div className="mb-3 font-semibold text-white">Macro Regime Matrix</div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {macroRegimes.map((item) => (
+              <div key={item.name} className={`rounded-lg border p-3 ${item.name === regime.name ? "border-positive/45 bg-positive/10" : "border-white/10 bg-black/20"}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-semibold text-white">{item.name}</div>
+                    <div className="text-xs text-muted">{item.quadrant}</div>
+                  </div>
+                  <div className="font-mono text-xl text-white">{item.probability}%</div>
+                </div>
+                <div className="mt-2 h-1.5 rounded bg-white/10">
+                  <div className="h-1.5 rounded bg-positive" style={{ width: `${item.probability}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          {!compact ? <MacroInputs snapshot={snapshot} /> : null}
+        </div>
+      </div>
+      {compact ? <MacroInputs snapshot={snapshot} /> : null}
+    </section>
+  );
+}
+
+function MacroInputs({ snapshot }: { snapshot: MarketSnapshot }) {
+  return (
+    <details className="mt-4 rounded-lg border border-white/10 bg-black/20 p-4" open>
+      <summary className="cursor-pointer list-none font-semibold text-white">사용 지표</summary>
+      <div className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-3 xl:grid-cols-4">
+        {regimeInputs(snapshot).map(([label, value]) => (
+          <div key={label} className="flex justify-between gap-3 rounded bg-white/[0.03] px-3 py-2">
+            <span className="text-muted">{label}</span>
+            <span className="font-mono text-white">{value}</span>
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function AssetAllocationView({ compact = false }: { compact?: boolean }) {
+  const rows = compact ? assetAllocations.slice(0, 10) : assetAllocations;
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Asset Allocation View" title="자산군별 권고 비중" icon={<BriefcaseBusiness className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+        <div className="h-72 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={rows}>
+              <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
+              <XAxis dataKey="assetClass" hide />
+              <YAxis />
+              <Tooltip contentStyle={{ background: "#101419", border: "1px solid #26313d", color: "#e7edf4" }} />
+              <Bar dataKey="suggestedWeight" radius={[5, 5, 0, 0]}>
+                {rows.map((row) => <Cell key={row.assetClass} fill={row.signal.includes("Over") ? "#21c17a" : row.signal.includes("Under") || row.signal === "Avoid" ? "#f5b84b" : "#8f9baa"} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="thin-scrollbar overflow-x-auto">
+          <table className="w-full min-w-[980px] text-left text-sm">
+            <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
+              <tr>{["Asset Class", "Current Signal", "Suggested", "Previous", "Change", "Risk", "Rationale"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.assetClass} className="border-t border-white/10">
+                  <td className="px-4 py-3 font-medium text-white">{row.assetClass}</td>
+                  <td className="px-4 py-3"><ActionPill action={row.signal} /></td>
+                  <td className="px-4 py-3 font-mono text-white">{row.suggestedWeight}%</td>
+                  <td className="px-4 py-3 font-mono text-muted">{row.previousWeight}%</td>
+                  <td className={(row.suggestedWeight - row.previousWeight) >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-caution"}>{row.suggestedWeight - row.previousWeight >= 0 ? "+" : ""}{row.suggestedWeight - row.previousWeight}%p</td>
+                  <td className="px-4 py-3 text-muted">{row.riskLevel}</td>
+                  <td className="px-4 py-3 text-muted">{row.rationale}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
   );
 }
 
-function SignalMiniTable({ title, icon, rows, positive = false }: { title: string; icon: React.ReactNode; rows: EnrichedSignal[]; positive?: boolean }) {
+function SectorEtfBoard({ compact = false }: { compact?: boolean }) {
+  const [query, setQuery] = React.useState("");
+  const [assetClass, setAssetClass] = React.useState("All");
+  const options = ["All", ...Array.from(new Set(etfAllocations.map((item) => item.assetClass)))];
+  const rows = etfAllocations
+    .filter((row) => assetClass === "All" || row.assetClass === assetClass)
+    .filter((row) => `${row.ticker} ${row.name} ${row.sector}`.toLowerCase().includes(query.toLowerCase()))
+    .sort((a, b) => etfScore(b) - etfScore(a));
   return (
-    <section className="panel overflow-hidden rounded-lg">
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-        <h3 className="font-semibold text-ink">{title}</h3>
-        <div className={positive ? "text-positive" : "text-negative"}>{icon}</div>
-      </div>
-      <div className="thin-scrollbar overflow-x-auto">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-            <tr>
-              <th className="px-4 py-3">Ticker</th>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Theme</th>
-              <th className="px-4 py-3">20D</th>
-              <th className="px-4 py-3">RS</th>
-              <th className="px-4 py-3">Signal</th>
-              <th className="px-4 py-3">Action</th>
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Sector & ETF Allocation Board" title="섹터 ETF와 원자재 ETF 평가" icon={<Layers3 className="h-5 w-5" />} />
+      <p className="mb-4 text-sm text-muted">ETF Allocation Score = Macro Fit 30% + Trend 20% + Valuation/Mean Reversion 15% + Earnings or Commodity Cycle 15% + Liquidity 10% + Risk/Drawdown 10%</p>
+      {!compact ? (
+        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <Input label="Search" value={query} onChange={setQuery} />
+          <Select label="Asset Class" value={assetClass} onChange={setAssetClass} options={options} />
+        </div>
+      ) : null}
+      <EtfTable rows={compact ? rows.slice(0, 12) : rows} />
+    </section>
+  );
+}
+
+function EtfTable({ rows }: { rows: EtfAllocation[] }) {
+  return (
+    <div className="thin-scrollbar overflow-x-auto">
+      <table className="w-full min-w-[1500px] text-left text-sm">
+        <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
+          <tr>{["ticker", "name", "assetClass", "sector", "allocationScore", "macroFit", "trend", "valuation", "liquidity", "drawdownRisk", "correlation", "action", "rationale"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.ticker} className="border-t border-white/10">
+              <td className="px-4 py-3 font-mono text-white">{row.ticker}</td>
+              <td className="px-4 py-3 font-medium text-ink">{row.name}</td>
+              <td className="px-4 py-3 text-muted">{row.assetClass}</td>
+              <td className="px-4 py-3 text-muted">{row.sector}</td>
+              <td className="px-4 py-3 font-mono text-white">{etfScore(row)}</td>
+              <td className="px-4 py-3 font-mono text-white">{row.macroFitScore}</td>
+              <td className="px-4 py-3 font-mono text-white">{row.trendScore}</td>
+              <td className="px-4 py-3 font-mono text-white">{row.valuationScore}</td>
+              <td className="px-4 py-3 font-mono text-white">{row.liquidityScore}</td>
+              <td className="px-4 py-3 font-mono text-caution">{row.drawdownRisk}</td>
+              <td className="px-4 py-3 font-mono text-muted">{row.correlationToPortfolio.toFixed(2)}</td>
+              <td className="px-4 py-3"><ActionPill action={row.action} /></td>
+              <td className="px-4 py-3 text-muted">{row.rationale}</td>
             </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function QualityStockCandidates({ compact = false }: { compact?: boolean }) {
+  const rows = [...qualityStocks].sort((a, b) => b.qualityScore - a.qualityScore);
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Quality Stock Candidates" title="퀄리티 종목 후보" icon={<Gem className="h-5 w-5" />} />
+      <p className="mb-4 text-sm text-muted">Quality Stock Score = Business Quality 25% + Financial Quality 20% + Growth Durability 20% + Valuation Discipline 15% + Earnings Revision 10% + Liquidity/Risk 10%</p>
+      <QualityStockTable rows={compact ? rows.slice(0, 8) : rows} />
+    </section>
+  );
+}
+
+function QualityStockTable({ rows }: { rows: QualityStock[] }) {
+  return (
+    <div className="thin-scrollbar overflow-x-auto">
+      <table className="w-full min-w-[1700px] text-left text-sm">
+        <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
+          <tr>{["ticker", "name", "market", "sector", "theme", "marketCap", "tradingValue", "qualityScore", "businessQuality", "financialQuality", "growthDurability", "valuation", "earningsRevision", "momentum", "liquidityRisk", "balanceSheetRisk", "action", "investmentThesis", "keyRisk"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.ticker} className="border-t border-white/10">
+              <td className="px-4 py-3 font-mono text-white">{row.ticker}</td>
+              <td className="px-4 py-3 font-medium text-ink">{row.name}</td>
+              <td className="px-4 py-3 text-muted">{row.market}</td>
+              <td className="px-4 py-3 text-muted">{row.sector}</td>
+              <td className="px-4 py-3 text-muted">{row.theme}</td>
+              <td className="px-4 py-3 font-mono text-muted">{formatNumber(row.marketCap)}</td>
+              <td className="px-4 py-3 font-mono text-muted">{formatNumber(row.tradingValue)}</td>
+              <td className="px-4 py-3 font-mono text-positive">{qualityFormulaScore(row)}</td>
+              <td className="px-4 py-3 font-mono text-white">{row.businessQualityScore}</td>
+              <td className="px-4 py-3 font-mono text-white">{row.financialQualityScore}</td>
+              <td className="px-4 py-3 font-mono text-white">{row.growthDurabilityScore}</td>
+              <td className="px-4 py-3 font-mono text-white">{row.valuationScore}</td>
+              <td className="px-4 py-3 font-mono text-white">{row.earningsRevisionScore}</td>
+              <td className="px-4 py-3 font-mono text-white">{row.momentumScore}</td>
+              <td className="px-4 py-3 font-mono text-caution">{row.liquidityRisk}</td>
+              <td className="px-4 py-3 font-mono text-caution">{row.balanceSheetRisk}</td>
+              <td className="px-4 py-3"><ActionPill action={row.action} /></td>
+              <td className="px-4 py-3 text-muted">{row.investmentThesis}</td>
+              <td className="px-4 py-3 text-muted">{row.keyRisk}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function MidSmallQualityWatchlist({ compact = false }: { compact?: boolean }) {
+  const [minMarketCap, setMinMarketCap] = React.useState(0);
+  const [minTradingValue, setMinTradingValue] = React.useState(0);
+  const [fcfOnly, setFcfOnly] = React.useState(false);
+  const rows = midSmallQuality
+    .filter((row) => row.marketCap >= minMarketCap)
+    .filter((row) => row.tradingValue >= minTradingValue)
+    .filter((row) => !fcfOnly || row.fcfPositive)
+    .sort((a, b) => b.qualityScore - a.qualityScore);
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Mid/Small Cap Quality Watchlist" title="미드스몰캡 퀄리티 필터" icon={<Sprout className="h-5 w-5" />} />
+      {!compact ? (
+        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+          <NumberInput label="Min Market Cap" value={minMarketCap} onChange={setMinMarketCap} />
+          <NumberInput label="Min Trading Value" value={minTradingValue} onChange={setMinTradingValue} />
+          <Toggle label="FCF 흑자만" checked={fcfOnly} onChange={setFcfOnly} />
+          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs text-muted">필터: 성장률, OPM, ROE, ROIC, 순차입금/EBITDA, 컨센서스, 낙폭, 수급, 오너리스크/CB/오버행 리스크</div>
+        </div>
+      ) : null}
+      <div className="thin-scrollbar overflow-x-auto">
+        <table className="w-full min-w-[1500px] text-left text-sm">
+          <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
+            <tr>{["ticker", "name", "marketCap", "tradingValue", "salesGrowth", "OPM", "ROE", "ROIC", "netDebt/EBITDA", "FCF", "revision", "52W drawdown", "flow", "liquidityRisk", "governanceRisk", "balanceSheetRisk", "visibilityRisk", "overhangRisk", "action"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.ticker} className="border-t border-white/10">
                 <td className="px-4 py-3 font-mono text-white">{row.ticker}</td>
                 <td className="px-4 py-3 font-medium text-ink">{row.name}</td>
-                <td className="px-4 py-3 text-muted">{row.theme}</td>
-                <td className={`px-4 py-3 font-mono ${row.return20d >= 0 ? "text-positive" : "text-negative"}`}>{formatPercent(row.return20d)}</td>
-                <td className="px-4 py-3 font-mono text-white">{row.relativeStrength20d}</td>
-                <td className="px-4 py-3"><Pill className={signalClass[row.signalType]}>{row.signalType}</Pill></td>
-                <td className="px-4 py-3"><Pill className={actionClass[row.actionTag]}>{row.actionTag}</Pill></td>
+                <td className="px-4 py-3 font-mono text-muted">{formatNumber(row.marketCap)}</td>
+                <td className="px-4 py-3 font-mono text-muted">{formatNumber(row.tradingValue)}</td>
+                <td className="px-4 py-3 text-positive">{formatPercent(row.salesGrowth)}</td>
+                <td className="px-4 py-3 font-mono text-white">{row.operatingMargin}%</td>
+                <td className="px-4 py-3 font-mono text-white">{row.roe}%</td>
+                <td className="px-4 py-3 font-mono text-white">{row.roic}%</td>
+                <td className="px-4 py-3 font-mono text-white">{row.netDebtToEbitda.toFixed(1)}x</td>
+                <td className="px-4 py-3">{row.fcfPositive ? <Pill className={toneClass.positive}>Yes</Pill> : <Pill className={toneClass.caution}>No</Pill>}</td>
+                <td className="px-4 py-3">{row.consensusRevisionUp ? <Pill className={toneClass.positive}>Up</Pill> : <Pill className={toneClass.caution}>Flat/Down</Pill>}</td>
+                <td className="px-4 py-3 text-caution">{formatPercent(row.drawdownFrom52wHigh)}</td>
+                <td className={row.foreignInstitutionFlow >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatNumber(row.foreignInstitutionFlow)}</td>
+                <td className="px-4 py-3 text-caution">{row.liquidityRisk}</td>
+                <td className="px-4 py-3 text-caution">{row.governanceRisk}</td>
+                <td className="px-4 py-3 text-caution">{row.balanceSheetRisk}</td>
+                <td className="px-4 py-3 text-caution">{row.earningsVisibilityRisk}</td>
+                <td className="px-4 py-3 text-caution">{row.overhangRisk}</td>
+                <td className="px-4 py-3"><ActionPill action={row.action} /></td>
               </tr>
             ))}
           </tbody>
@@ -797,29 +800,98 @@ function SignalMiniTable({ title, icon, rows, positive = false }: { title: strin
   );
 }
 
-function MiniIndicator({ indicator }: { indicator: Indicator }) {
-  const status = indicatorStatus(indicator);
+function CommodityResourceMonitor({ compact = false }: { compact?: boolean }) {
+  const rows = compact ? commodityMonitors.slice(0, 9) : commodityMonitors;
   return (
-    <details className="rounded-lg border border-white/10 bg-white/[0.03] p-3" open>
-      <summary className="cursor-pointer list-none">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="font-semibold text-white">{displayName(indicator)}</div>
-            <div className="text-xs text-muted">{indicator.quality.tradeDate ?? indicator.quality.baseDate}</div>
-          </div>
-          <div className={indicator.changePercent >= 0 ? "text-positive" : "text-negative"}>{formatPercent(indicator.changePercent)}</div>
-        </div>
-      </summary>
-      <div className="mt-3 flex items-center justify-between text-xs text-muted">
-        <span>{formatNumber(indicator.value, indicator.unit)}</span>
-        <Pill className={statusClass[status]}>{status}</Pill>
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Commodity & Resource Equity Monitor" title="원자재와 리소스 기업 모니터" icon={<Factory className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        {rows.map((row) => (
+          <details key={row.category} className="rounded-lg border border-white/10 bg-white/[0.03] p-4" open>
+            <summary className="cursor-pointer list-none">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-semibold text-white">{row.category}</div>
+                  <div className="text-xs text-muted">{row.commodityTrend}</div>
+                </div>
+                <ActionPill action={row.action} />
+              </div>
+            </summary>
+            <div className="mt-3 grid grid-cols-1 gap-2 text-sm">
+              <InfoBlock label="Futures Curve" value={row.futuresCurve} />
+              <InfoBlock label="Inventory Trend" value={row.inventoryTrend} />
+              <InfoBlock label="Dollar / China Sensitivity" value={`${row.dollarSensitivity} / ${row.chinaDemandSensitivity}`} />
+              <InfoBlock label="Related ETFs" value={row.relatedEtfs.join(", ")} />
+              <InfoBlock label="Related Stocks" value={row.relatedStocks.join(", ")} />
+            </div>
+          </details>
+        ))}
       </div>
-    </details>
+    </section>
   );
 }
 
-function DataReliabilityCompact({ snapshot }: { snapshot: MarketSnapshot }) {
-  const logs = sourceLogs(snapshot);
+function RiskValuationAlerts({ compact = false }: { compact?: boolean }) {
+  const rows = compact ? riskAlerts.slice(0, 6) : riskAlerts;
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Risk & Valuation Alerts" title="리스크와 밸류에이션 알림" icon={<ShieldAlert className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {rows.map((alert) => (
+          <details key={alert.title} className={`rounded-lg border p-4 ${alert.severity === "Red" ? toneClass.negative : alert.severity === "Orange" ? toneClass.caution : "border-accent/35 bg-accent/10 text-accent"}`} open={!compact}>
+            <summary className="cursor-pointer list-none">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <Pill className={alert.severity === "Red" ? toneClass.negative : alert.severity === "Orange" ? toneClass.caution : "border-accent/35 bg-accent/10 text-accent"}>{alert.severity} · {alert.type}</Pill>
+                  <h3 className="mt-2 font-semibold text-white">{alert.title}</h3>
+                  <p className="mt-1 text-sm text-white/75">{alert.trigger}</p>
+                </div>
+                <Bell className="h-5 w-5" />
+              </div>
+            </summary>
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <InfoBlock label="Affected Asset Classes" value={alert.affectedAssetClasses.join(", ")} />
+              <InfoBlock label="Affected Sectors" value={alert.affectedSectors.join(", ")} />
+              <InfoBlock label="Affected ETFs" value={alert.affectedEtfs.join(", ")} />
+              <InfoBlock label="Affected Stocks" value={alert.affectedStocks.join(", ")} />
+              <InfoBlock label="Suggested Investor Action" value={alert.suggestedInvestorAction} />
+            </div>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PortfolioConstructionView() {
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Portfolio Construction View" title="Core / Satellite / Tactical 구조" icon={<Landmark className="h-5 w-5" />} />
+      <div className="thin-scrollbar overflow-x-auto">
+        <table className="w-full min-w-[1000px] text-left text-sm">
+          <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
+            <tr>{["bucket", "suggested", "min", "max", "regimeFit", "rebalanceTrigger", "riskComment"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+          </thead>
+          <tbody>
+            {portfolioBuckets.map((row) => (
+              <tr key={row.bucket} className="border-t border-white/10">
+                <td className="px-4 py-3 font-medium text-white">{row.bucket}</td>
+                <td className="px-4 py-3 font-mono text-positive">{row.suggestedWeight}%</td>
+                <td className="px-4 py-3 font-mono text-muted">{row.minWeight}%</td>
+                <td className="px-4 py-3 font-mono text-muted">{row.maxWeight}%</td>
+                <td className="px-4 py-3 font-mono text-white">{row.regimeFit}</td>
+                <td className="px-4 py-3 text-muted">{row.rebalanceTrigger}</td>
+                <td className="px-4 py-3 text-muted">{row.riskComment}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function DataReliability({ snapshot, compact = false }: { snapshot: MarketSnapshot; compact?: boolean }) {
   const counts = {
     fresh: snapshot.indicators.filter((item) => indicatorStatus(item) === "Fresh").length,
     delayed: snapshot.indicators.filter((item) => indicatorStatus(item) === "Delayed").length,
@@ -836,10 +908,10 @@ function DataReliabilityCompact({ snapshot }: { snapshot: MarketSnapshot }) {
         <StatCard label="Stale" value={counts.stale} tone="caution" />
         <StatCard label="Error" value={counts.error} tone="negative" />
       </div>
-      <details className="mt-4 rounded-lg border border-white/10 bg-white/[0.03] p-4">
+      <details className="mt-4 rounded-lg border border-white/10 bg-white/[0.03] p-4" open={!compact}>
         <summary className="cursor-pointer list-none font-semibold text-white">Source fetch logs</summary>
         <div className="mt-3 grid grid-cols-1 gap-2 text-sm lg:grid-cols-2">
-          {logs.slice(0, 8).map((log) => (
+          {sourceLogs(snapshot).slice(0, compact ? 8 : 30).map((log) => (
             <div key={log.id} className="flex items-center justify-between gap-3 rounded border border-white/10 px-3 py-2">
               <span className="truncate text-muted">{log.source}</span>
               <Pill className={statusClass[log.status]}>{log.status}</Pill>
@@ -851,305 +923,32 @@ function DataReliabilityCompact({ snapshot }: { snapshot: MarketSnapshot }) {
   );
 }
 
-function TradingSignals({ snapshot }: { snapshot: MarketSnapshot }) {
-  const signals = signalUniverse(snapshot);
-  const groups: Array<[string, EnrichedSignal[]]> = [
-    ["Long Candidates", signals.filter((item) => item.candidateGroup === "Long Candidate").slice(0, 6)],
-    ["Watchlist Candidates", signals.filter((item) => item.candidateGroup === "Watch Candidate").slice(0, 6)],
-    ["Risk-off Candidates", signals.filter((item) => item.candidateGroup === "Risk-Off Candidate").slice(0, 6)]
-  ];
+function KeyIndicatorPanel({ snapshot }: { snapshot: MarketSnapshot }) {
+  const ids = ["spx", "kospi", "vix", "us-10y", "real-yield-10y", "dxy", "usd-krw", "hy-oas", "net-liquidity", "kr-export-20d"];
   return (
-    <div className="space-y-6">
-      <SectionHeader eyebrow="Trading Signals" title="오늘의 액션 후보" icon={<Zap className="h-5 w-5" />} />
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        {groups.map(([title, rows]) => (
-          <section key={title} className="panel rounded-lg p-4">
-            <h3 className="font-semibold text-white">{title}</h3>
-            <div className="mt-3 space-y-3">
-              {rows.map((row) => (
-                <details key={row.ticker} className="rounded-lg border border-white/10 bg-white/[0.03] p-3" open>
-                  <summary className="cursor-pointer list-none">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-semibold text-white">{row.name}</div>
-                        <div className="text-xs text-muted">{row.ticker} · {row.theme}</div>
-                      </div>
-                      <Pill className={actionClass[row.actionTag]}>{row.actionTag}</Pill>
-                    </div>
-                  </summary>
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-white/70">
-                    <span>Score {row.signalScore}</span>
-                    <span>RS {row.relativeStrength20d}</span>
-                    <span>Vol {row.volumeRatio20d.toFixed(1)}x</span>
-                  </div>
-                  <p className="mt-2 text-xs text-muted">{row.riskComment}</p>
-                </details>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
-      <SignalTable rows={signals} />
-    </div>
-  );
-}
-
-function SignalTable({ rows }: { rows: EnrichedSignal[] }) {
-  return (
-    <section className="panel overflow-hidden rounded-lg">
-      <div className="border-b border-white/10 px-4 py-3">
-        <h3 className="font-semibold text-ink">Signal Detail Table</h3>
-      </div>
-      <div className="thin-scrollbar overflow-x-auto">
-        <table className="w-full min-w-[1800px] text-left text-sm">
-          <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-            <tr>
-              {["ticker", "name", "market", "theme", "close", "change1D", "return5D", "return20D", "volumeRatio20D", "relativeStrength20D", "ma20Position", "ma60Position", "rsi14", "foreignFlow5D", "institutionFlow5D", "signalType", "signalScore", "actionTag", "riskComment"].map((head) => (
-                <th key={head} className="px-4 py-3 font-medium">{head}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={`${row.ticker}-${row.signalType}`} className="border-t border-white/10">
-                <td className="px-4 py-3 font-mono text-white">{row.ticker}</td>
-                <td className="px-4 py-3 font-medium text-ink">{row.name}</td>
-                <td className="px-4 py-3 text-muted">{row.market}</td>
-                <td className="px-4 py-3 text-muted">{row.theme}</td>
-                <td className="px-4 py-3 font-mono text-white">{formatNumber(row.close)}</td>
-                <td className={`px-4 py-3 font-mono ${row.change1d >= 0 ? "text-positive" : "text-negative"}`}>{formatPercent(row.change1d)}</td>
-                <td className={`px-4 py-3 font-mono ${row.return5d >= 0 ? "text-positive" : "text-negative"}`}>{formatPercent(row.return5d)}</td>
-                <td className={`px-4 py-3 font-mono ${row.return20d >= 0 ? "text-positive" : "text-negative"}`}>{formatPercent(row.return20d)}</td>
-                <td className="px-4 py-3 font-mono text-white">{row.volumeRatio20d.toFixed(1)}x</td>
-                <td className="px-4 py-3 font-mono text-white">{row.relativeStrength20d}</td>
-                <td className={row.ma20Position >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatPercent(row.ma20Position)}</td>
-                <td className={row.ma60Position >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatPercent(row.ma60Position)}</td>
-                <td className="px-4 py-3 font-mono text-white">{row.rsi14.toFixed(1)}</td>
-                <td className={row.foreignFlow5d >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatNumber(row.foreignFlow5d)}</td>
-                <td className={row.institutionFlow5d >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatNumber(row.institutionFlow5d)}</td>
-                <td className="px-4 py-3"><Pill className={signalClass[row.signalType]}>{row.signalType}</Pill></td>
-                <td className="px-4 py-3 font-mono text-white">{row.signalScore}</td>
-                <td className="px-4 py-3"><Pill className={actionClass[row.actionTag]}>{row.actionTag}</Pill></td>
-                <td className="px-4 py-3 text-muted">{row.riskComment}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function StockScreener({ snapshot }: { snapshot: MarketSnapshot }) {
-  const [market, setMarket] = React.useState("All");
-  const [theme, setTheme] = React.useState("All");
-  const [search, setSearch] = React.useState("");
-  const [minScore, setMinScore] = React.useState(0);
-  const [minReturn20d, setMinReturn20d] = React.useState(-30);
-  const [minVolume, setMinVolume] = React.useState(0);
-  const [minRs, setMinRs] = React.useState(0);
-  const [ma20Only, setMa20Only] = React.useState(false);
-  const [ma60Only, setMa60Only] = React.useState(false);
-  const [sortKey, setSortKey] = React.useState<keyof EnrichedSignal>("signalScore");
-  const rows = signalUniverse(snapshot);
-  const themes = ["All", ...Array.from(new Set(rows.map((row) => row.theme)))];
-  const filtered = rows
-    .filter((row) => market === "All" || row.market === market)
-    .filter((row) => theme === "All" || row.theme === theme)
-    .filter((row) => `${row.ticker} ${row.name}`.toLowerCase().includes(search.toLowerCase()))
-    .filter((row) => row.signalScore >= minScore)
-    .filter((row) => row.return20d >= minReturn20d)
-    .filter((row) => row.volumeRatio20d >= minVolume)
-    .filter((row) => row.relativeStrength20d >= minRs)
-    .filter((row) => !ma20Only || row.ma20Position >= 0)
-    .filter((row) => !ma60Only || row.ma60Position >= 0)
-    .sort((a, b) => Number(b[sortKey]) - Number(a[sortKey]));
-  return (
-    <div className="space-y-6">
-      <SectionHeader eyebrow="Stock Screener" title="검색·정렬·필터링" icon={<Search className="h-5 w-5" />} />
-      <section className="panel rounded-lg p-4">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          <Select label="Market" value={market} onChange={setMarket} options={["All", "KOSPI", "KOSDAQ", "S&P500", "NASDAQ"]} />
-          <Select label="Theme" value={theme} onChange={setTheme} options={themes} />
-          <Input label="Search" value={search} onChange={setSearch} />
-          <NumberInput label="Min Score" value={minScore} onChange={setMinScore} />
-          <NumberInput label="Min 20D Return" value={minReturn20d} onChange={setMinReturn20d} />
-          <NumberInput label="Min Volume x" value={minVolume} onChange={setMinVolume} step={0.1} />
-          <NumberInput label="Min RSI 14" value={0} onChange={() => undefined} disabled />
-          <NumberInput label="Min RS vs Benchmark" value={minRs} onChange={setMinRs} />
-          <Select label="Sort" value={String(sortKey)} onChange={(value) => setSortKey(value as keyof EnrichedSignal)} options={["signalScore", "return20d", "return60d", "volumeRatio20d", "relativeStrength20d", "tradingValue", "foreignFlow5d", "institutionFlow5d"]} />
-          <Toggle label="Above MA20" checked={ma20Only} onChange={setMa20Only} />
-          <Toggle label="Above MA60" checked={ma60Only} onChange={setMa60Only} />
-          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs text-muted">52W high proximity, market cap, trading value filters are wired in row data and ready for DB ranges.</div>
-        </div>
-      </section>
-      <ScreenerTable rows={filtered} />
-    </div>
-  );
-}
-
-function ScreenerTable({ rows }: { rows: EnrichedSignal[] }) {
-  return (
-    <section className="panel overflow-hidden rounded-lg">
-      <div className="thin-scrollbar overflow-x-auto">
-        <table className="w-full min-w-[1700px] text-left text-sm">
-          <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-            <tr>
-              {["name", "ticker", "market", "theme", "marketCap", "tradingValue", "1D", "5D", "20D", "60D", "volumeRatio", "RSI", "MA20", "MA60", "52W proximity", "RS", "foreign 5D", "institution 5D", "signal", "action"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.ticker} className="border-t border-white/10">
-                <td className="px-4 py-3 font-medium text-ink">{row.name}</td>
-                <td className="px-4 py-3 font-mono text-white">{row.ticker}</td>
-                <td className="px-4 py-3 text-muted">{row.market}</td>
-                <td className="px-4 py-3 text-muted">{row.theme}</td>
-                <td className="px-4 py-3 font-mono text-muted">{formatNumber(row.marketCap)}</td>
-                <td className="px-4 py-3 font-mono text-muted">{formatNumber(row.tradingValue)}</td>
-                <td className={row.change1d >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatPercent(row.change1d)}</td>
-                <td className={row.return5d >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatPercent(row.return5d)}</td>
-                <td className={row.return20d >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatPercent(row.return20d)}</td>
-                <td className={row.return60d >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatPercent(row.return60d)}</td>
-                <td className="px-4 py-3 font-mono text-white">{row.volumeRatio20d.toFixed(1)}x</td>
-                <td className="px-4 py-3 font-mono text-white">{row.rsi14.toFixed(1)}</td>
-                <td className={row.ma20Position >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatPercent(row.ma20Position)}</td>
-                <td className={row.ma60Position >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatPercent(row.ma60Position)}</td>
-                <td className="px-4 py-3 font-mono text-white">{row.high52wProximity}%</td>
-                <td className="px-4 py-3 font-mono text-white">{row.relativeStrength20d}</td>
-                <td className={row.foreignFlow5d >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatNumber(row.foreignFlow5d)}</td>
-                <td className={row.institutionFlow5d >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatNumber(row.institutionFlow5d)}</td>
-                <td className="px-4 py-3"><Pill className={signalClass[row.signalType]}>{row.signalType}</Pill></td>
-                <td className="px-4 py-3"><Pill className={actionClass[row.actionTag]}>{row.actionTag}</Pill></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function ThemeMonitor({ snapshot }: { snapshot: MarketSnapshot }) {
-  const rows = themeRows(snapshot);
-  return (
-    <div className="space-y-6">
-      <SectionHeader eyebrow="Theme Monitor" title="테마 점수와 리더십" icon={<BarChart3 className="h-5 w-5" />} />
-      <section className="panel rounded-lg p-5">
-        <h3 className="font-semibold text-white">Theme Score Formula</h3>
-        <p className="mt-2 text-sm text-muted">priceMomentum 25% + volumeExpansion 20% + advancingRatio 20% + newHighParticipation 15% + leaderStrength 10% + qualityScore 10%</p>
-      </section>
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        {rows.map((theme) => (
-          <details key={`${theme.region}-${theme.name}`} className="panel rounded-lg p-5" open>
-            <summary className="cursor-pointer list-none">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-xs uppercase tracking-[0.14em] text-muted">{theme.region.toUpperCase()} · Korea-US linkage {theme.linkageScore}</div>
-                  <h3 className="mt-1 text-xl font-semibold text-white">{theme.name}</h3>
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Market Indicators" title="핵심 지표" icon={<Gauge className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+        {ids.map((id) => {
+          const indicator = getIndicator(snapshot, id);
+          if (!indicator) return null;
+          return (
+            <details key={id} className="rounded-lg border border-white/10 bg-white/[0.03] p-3" open>
+              <summary className="cursor-pointer list-none">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-semibold text-white">{indicator.name}</div>
+                  <div className={indicator.changePercent >= 0 ? "text-positive" : "text-negative"}>{formatPercent(indicator.changePercent)}</div>
                 </div>
-                <div className="text-right">
-                  <div className="font-mono text-3xl text-positive">{theme.themeScore}</div>
-                  {theme.leaderContribution >= 50 ? <Pill className={toneClass.caution}>대장주 쏠림 경고</Pill> : null}
-                </div>
+              </summary>
+              <div className="mt-2 flex items-center justify-between text-xs text-muted">
+                <span>{formatNumber(indicator.value, indicator.unit)}</span>
+                <Pill className={statusClass[indicatorStatus(indicator)]}>{indicatorStatus(indicator)}</Pill>
               </div>
-            </summary>
-            <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-              <ThemeMetric label="1D" value={formatPercent(theme.return1d)} />
-              <ThemeMetric label="5D" value={formatPercent(theme.return5d)} />
-              <ThemeMetric label="20D" value={formatPercent(theme.return20d)} />
-              <ThemeMetric label="Volume" value={`${theme.volumeRatio20d.toFixed(1)}x`} />
-              <ThemeMetric label="Advancing" value={`${theme.advancingRatio}%`} />
-              <ThemeMetric label="20D Highs" value={theme.newHighCount20d} />
-              <ThemeMetric label="Leader contrib." value={`${theme.leaderContribution}%`} />
-              <ThemeMetric label="Quality" value={theme.scoreBreakdown.qualityScore} />
-            </div>
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <StockList title="Leader" items={theme.leaders} />
-              <StockList title="Follower" items={theme.followers ?? []} />
-              <StockList title="Laggard" items={theme.laggards ?? []} />
-            </div>
-          </details>
-        ))}
+            </details>
+          );
+        })}
       </div>
-    </div>
-  );
-}
-
-function ThemeMetric({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded border border-white/10 bg-white/[0.03] p-3">
-      <div className="text-xs text-muted">{label}</div>
-      <div className="mt-1 font-mono text-lg text-white">{value}</div>
-    </div>
-  );
-}
-
-function StockList({ title, items }: { title: string; items: string[] }) {
-  return (
-    <div className="rounded border border-white/10 bg-white/[0.03] p-3">
-      <div className="text-xs uppercase tracking-[0.12em] text-muted">{title}</div>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {(items.length ? items : ["-"]).map((item) => <Pill key={item} className="border-white/10 bg-white/5 text-white">{item}</Pill>)}
-      </div>
-    </div>
-  );
-}
-
-function AlertsView({ snapshot }: { snapshot: MarketSnapshot }) {
-  return (
-    <div className="space-y-6">
-      <SectionHeader eyebrow="Alerts" title="경고와 권장 액션" icon={<AlertTriangle className="h-5 w-5" />} />
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        {snapshot.alerts.map((alert) => <AlertCard key={alert.id} alert={alert} />)}
-      </div>
-      <section className="panel rounded-lg p-5">
-        <h3 className="font-semibold text-white">User Alert Rule Structure</h3>
-        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-          {[
-            ["Trigger", "indicator + operator + threshold + duration"],
-            ["Release", "normalization condition + confirmation count"],
-            ["Affected", "assets + themes + signalTypes"],
-            ["Suggested Action", "portfolio action text generated from category and severity"]
-          ].map(([label, value]) => (
-            <div key={label} className="rounded border border-white/10 bg-white/[0.03] p-3">
-              <div className="text-xs uppercase tracking-[0.12em] text-muted">{label}</div>
-              <div className="mt-1 text-sm text-white">{value}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function AlertCard({ alert, compact = false }: { alert: MarketAlert; compact?: boolean }) {
-  const sev = severity(alert);
-  const sevClass = sev === "Red" ? toneClass.negative : sev === "Orange" ? toneClass.caution : "border-accent/35 bg-accent/10 text-accent";
-  return (
-    <details className={`rounded-lg border p-4 ${sevClass}`} open={!compact}>
-      <summary className="cursor-pointer list-none">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Pill className={sevClass}>{sev}</Pill>
-              <span className="text-xs text-white/60">{formatDateTime(alert.triggeredAt)}</span>
-            </div>
-            <h3 className="mt-2 font-semibold text-white">{alert.title}</h3>
-            <p className="mt-1 text-sm text-white/75">{alert.detail}</p>
-          </div>
-          <ShieldAlert className="h-5 w-5" />
-        </div>
-      </summary>
-      <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-        <InfoBlock label="Suggested Action" value={alertSuggestion(alert)} />
-        <InfoBlock label="Trigger" value={alert.triggerCondition ?? alert.rule} />
-        <InfoBlock label="Release" value={alert.releaseCondition ?? "조건 해제 후 2회 연속 정상화"} />
-        <InfoBlock label="Affected Assets" value={(alert.affectedAssets ?? ["KOSPI", "KOSDAQ", "Growth"]).join(", ")} />
-        <InfoBlock label="Affected Themes" value={alertThemes(alert).join(", ")} />
-        <InfoBlock label="Affected Signal Types" value={alertSignalTypes(alert).join(", ")} />
-      </div>
-    </details>
+    </section>
   );
 }
 
@@ -1157,188 +956,7 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-white/10 bg-black/20 p-3">
       <div className="text-xs uppercase tracking-[0.12em] text-white/50">{label}</div>
-      <div className="mt-1 text-white/80">{value}</div>
-    </div>
-  );
-}
-
-function RegimeDrilldown({ snapshot }: { snapshot: MarketSnapshot }) {
-  return (
-    <div className="space-y-6">
-      <SectionHeader eyebrow="Regime Drill-down" title="점수 산출 근거" icon={<Gauge className="h-5 w-5" />} />
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        {snapshot.scores.map((score) => <ScoreCard key={score.id} score={score} snapshot={snapshot} />)}
-      </div>
-    </div>
-  );
-}
-
-function ScoreCard({ score, snapshot }: { score: MarketScore; snapshot: MarketSnapshot }) {
-  const tone = scoreTone(score.value) as IndicatorTone;
-  const history = scoreHistory(score);
-  return (
-    <details className={`panel rounded-lg p-5 ${toneClass[tone]}`} open>
-      <summary className="cursor-pointer list-none">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="text-xs uppercase tracking-[0.14em] text-white/60">{score.label}</div>
-            <div className="mt-2 text-2xl font-semibold text-white">{scoreLabel(score.value)}</div>
-          </div>
-          <div className="text-right">
-            <div className="font-mono text-4xl text-white">{score.value}</div>
-            <div className="text-xs text-white/70">1D {scoreChange(score, 1)} · 5D {scoreChange(score, 5)} · 20D {scoreChange(score, 20)}</div>
-          </div>
-        </div>
-      </summary>
-      <div className="mt-4 h-36">
-        <ResponsiveContainer width="100%" height="100%">
-          <ReLineChart data={history}>
-            <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
-            <XAxis dataKey="date" hide />
-            <YAxis domain={[0, 100]} hide />
-            <Tooltip contentStyle={{ background: "#101419", border: "1px solid #26313d", color: "#e7edf4" }} />
-            <Line type="monotone" dataKey="value" dot={false} stroke="#4aa3ff" strokeWidth={2} />
-          </ReLineChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="mt-4 space-y-3">
-        {(Object.entries(score.breakdown) as Array<[keyof ScoreBreakdown, number]>).map(([key, value]) => (
-          <details key={key} className="rounded border border-white/10 bg-black/20 p-3">
-            <summary className="cursor-pointer list-none">
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-semibold text-white">{breakdownLabels[key]}</span>
-                <span className="font-mono text-white">{value} · 기여 {Math.round(value * scoreWeights[key] * 10) / 10}</span>
-              </div>
-            </summary>
-            <div className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
-              {scoreEvidence(snapshot, key).map(([label, metric]) => (
-                <div key={label} className="flex justify-between gap-3 rounded bg-white/[0.03] px-3 py-2">
-                  <span className="text-muted">{label}</span>
-                  <span className="font-mono text-white">{metric}</span>
-                </div>
-              ))}
-            </div>
-          </details>
-        ))}
-      </div>
-    </details>
-  );
-}
-
-function BacktestLab({ snapshot }: { snapshot: MarketSnapshot }) {
-  const rows = [...mockBacktests, ...(snapshot.backtestMetrics ?? []).filter((row) => row.status === "ready")];
-  return (
-    <div className="space-y-6">
-      <SectionHeader eyebrow="Backtest Lab" title="신호·테마·레짐별 성과" icon={<FlaskConical className="h-5 w-5" />} />
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <StatCard label="Targets" value="Signal / Theme / Regime" detail="stock_signals_history 연결 예정" tone="neutral" />
-        <StatCard label="Holding Period" value="5D / 10D / 20D / 60D" tone="neutral" />
-        <StatCard label="Best Hit Ratio" value={`${Math.max(...rows.map((row) => row.hitRatio ?? 0))}%`} tone="positive" />
-        <StatCard label="Worst MDD" value={`${Math.min(...rows.map((row) => row.maxDrawdown ?? 0)).toFixed(1)}%`} tone="negative" />
-      </section>
-      <section className="panel overflow-hidden rounded-lg">
-        <div className="thin-scrollbar overflow-x-auto">
-          <table className="w-full min-w-[1300px] text-left text-sm">
-            <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-              <tr>
-                {["target", "holding", "averageReturn", "medianReturn", "hitRatio", "maxDrawdown", "profitLossRatio", "sampleSize", "bestCase", "worstCase", "status"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id ?? `${row.signalType}-${row.holdingPeriod}`} className="border-t border-white/10">
-                  <td className="px-4 py-3 font-medium text-white">{row.label ?? row.signalType ?? row.theme ?? row.regime}</td>
-                  <td className="px-4 py-3 text-muted">{row.holdingPeriod ?? "20D"}</td>
-                  <td className={(row.averageReturn ?? 0) >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatPercent(row.averageReturn ?? row.return20d ?? 0)}</td>
-                  <td className={(row.medianReturn ?? 0) >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatPercent(row.medianReturn ?? 0)}</td>
-                  <td className="px-4 py-3 font-mono text-white">{row.hitRatio ?? "-"}%</td>
-                  <td className="px-4 py-3 text-negative">{formatPercent(row.maxDrawdown ?? 0)}</td>
-                  <td className="px-4 py-3 font-mono text-white">{row.profitLossRatio ?? "-"}</td>
-                  <td className="px-4 py-3 font-mono text-white">{row.sampleSize}</td>
-                  <td className="px-4 py-3 text-positive">{formatPercent(row.bestCase ?? 0)}</td>
-                  <td className="px-4 py-3 text-negative">{formatPercent(row.worstCase ?? 0)}</td>
-                  <td className="px-4 py-3"><Pill className="border-accent/35 bg-accent/10 text-accent">{row.status}</Pill></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function IndicatorDashboard({ snapshot, region, title, icon }: { snapshot: MarketSnapshot; region: Region; title: string; icon: React.ReactNode }) {
-  const rows = snapshot.indicators.filter((item) => item.region === region || (region === "macro" && item.region === "macro"));
-  return (
-    <div className="space-y-6">
-      <SectionHeader eyebrow={title} title="핵심 지표와 상태" icon={icon} />
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {rows.slice(0, 16).map((indicator) => <MiniIndicator key={indicator.id} indicator={indicator} />)}
-      </div>
-      <RegimeDrilldown snapshot={snapshot} />
-    </div>
-  );
-}
-
-function DataQualityView({ snapshot }: { snapshot: MarketSnapshot }) {
-  const logs = sourceLogs(snapshot);
-  return (
-    <div className="space-y-6">
-      <SectionHeader eyebrow="Data Source & Quality" title="데이터 소스와 품질" icon={<Database className="h-5 w-5" />} />
-      <DataReliabilityCompact snapshot={snapshot} />
-      <section className="panel overflow-hidden rounded-lg">
-        <div className="thin-scrollbar overflow-x-auto">
-          <table className="w-full min-w-[1100px] text-left text-sm">
-            <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-              <tr>
-                {["indicator", "market", "category", "tradeDate", "lastUpdated", "source", "status", "change"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {snapshot.indicators.map((indicator) => (
-                <tr key={indicator.id} className="border-t border-white/10">
-                  <td className="px-4 py-3 font-medium text-white">{displayName(indicator)}</td>
-                  <td className="px-4 py-3 text-muted">{indicator.region}</td>
-                  <td className="px-4 py-3 text-muted">{indicator.group}</td>
-                  <td className="px-4 py-3 text-muted">{indicator.quality.tradeDate ?? indicator.quality.baseDate}</td>
-                  <td className="px-4 py-3 text-muted">{formatDateTime(indicator.quality.lastUpdated)}</td>
-                  <td className="px-4 py-3 text-muted">{indicator.quality.source}</td>
-                  <td className="px-4 py-3"><Pill className={statusClass[indicatorStatus(indicator)]}>{indicatorStatus(indicator)}</Pill></td>
-                  <td className={indicator.changePercent >= 0 ? "px-4 py-3 text-positive" : "px-4 py-3 text-negative"}>{formatPercent(indicator.changePercent)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-      <section className="panel overflow-hidden rounded-lg">
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-          <h3 className="font-semibold text-white">Source Fetch Logs</h3>
-          <RadioTower className="h-5 w-5 text-accent" />
-        </div>
-        <div className="thin-scrollbar overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left text-sm">
-            <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-              <tr>
-                {["source", "status", "lastAttempt", "latency", "message", "indicators"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map((log) => (
-                <tr key={log.id} className="border-t border-white/10">
-                  <td className="px-4 py-3 font-medium text-white">{log.source}</td>
-                  <td className="px-4 py-3"><Pill className={statusClass[log.status]}>{log.status}</Pill></td>
-                  <td className="px-4 py-3 text-muted">{formatDateTime(log.lastAttemptAt)}</td>
-                  <td className="px-4 py-3 text-muted">{log.latencyMs ? `${log.latencyMs}ms` : "-"}</td>
-                  <td className="px-4 py-3 text-muted">{log.message}</td>
-                  <td className="px-4 py-3 font-mono text-white">{log.affectedIndicatorIds.length}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <div className="mt-1 text-sm text-white/80">{value}</div>
     </div>
   );
 }
@@ -1363,11 +981,11 @@ function Input({ label, value, onChange }: { label: string; value: string; onCha
   );
 }
 
-function NumberInput({ label, value, onChange, step = 1, disabled = false }: { label: string; value: number; onChange: (value: number) => void; step?: number; disabled?: boolean }) {
+function NumberInput({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs text-muted">{label}</span>
-      <input disabled={disabled} type="number" step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none disabled:opacity-45" />
+      <input type="number" value={value} onChange={(event) => onChange(Number(event.target.value))} className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none" />
     </label>
   );
 }
@@ -1381,8 +999,17 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
   );
 }
 
+function HeaderStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+      <span className="block text-white/70">{label}</span>
+      <span className="font-medium text-white">{value}</span>
+    </div>
+  );
+}
+
 export function MarketDashboard() {
-  const [active, setActive] = React.useState<NavItem>("Market Pulse");
+  const [active, setActive] = React.useState<NavItem>("Home");
   const [snapshot, setSnapshot] = React.useState<MarketSnapshot>(marketSnapshot);
   const [dataStatus, setDataStatus] = React.useState<"loading" | "live" | "fallback">("loading");
   const [lastRefreshAt, setLastRefreshAt] = React.useState<string | null>(null);
@@ -1428,16 +1055,16 @@ export function MarketDashboard() {
   }, []);
 
   const renderContent = () => {
-    if (active === "Market Pulse") return <HomeView snapshot={snapshot} />;
-    if (active === "Korea Dashboard") return <IndicatorDashboard snapshot={snapshot} region="korea" title="Korea Dashboard" icon={<TrendingUp className="h-5 w-5" />} />;
-    if (active === "US Dashboard") return <IndicatorDashboard snapshot={snapshot} region="us" title="US Dashboard" icon={<Globe2 className="h-5 w-5" />} />;
-    if (active === "Macro & Liquidity") return <IndicatorDashboard snapshot={snapshot} region="macro" title="Macro & Liquidity" icon={<LineChart className="h-5 w-5" />} />;
-    if (active === "Theme Monitor") return <ThemeMonitor snapshot={snapshot} />;
-    if (active === "Trading Signals") return <TradingSignals snapshot={snapshot} />;
-    if (active === "Stock Screener") return <StockScreener snapshot={snapshot} />;
-    if (active === "Alerts") return <AlertsView snapshot={snapshot} />;
-    if (active === "Backtest Lab") return <BacktestLab snapshot={snapshot} />;
-    return <DataQualityView snapshot={snapshot} />;
+    if (active === "Home") return <HomeView snapshot={snapshot} />;
+    if (active === "Macro Regime") return <><MacroRegimeSummary snapshot={snapshot} /><KeyIndicatorPanel snapshot={snapshot} /></>;
+    if (active === "Asset Allocation") return <><AssetAllocationView /><PortfolioConstructionView /></>;
+    if (active === "Sector & ETF") return <SectorEtfBoard />;
+    if (active === "Quality Stocks") return <QualityStockCandidates />;
+    if (active === "Mid/Small Quality") return <MidSmallQualityWatchlist />;
+    if (active === "Commodity Monitor") return <CommodityResourceMonitor />;
+    if (active === "Portfolio Construction") return <PortfolioConstructionView />;
+    if (active === "Risk & Valuation Alerts") return <RiskValuationAlerts />;
+    return <DataReliability snapshot={snapshot} />;
   };
 
   return (
@@ -1448,8 +1075,8 @@ export function MarketDashboard() {
             <Activity className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-white">Market Regime Monitor</h1>
-            <p className="mt-1 text-sm text-muted">Action-first Korea · US trading dashboard · KST {formatDateTime(snapshot.generatedAt)}</p>
+            <h1 className="text-2xl font-semibold text-white">Top-down Quality Investment Dashboard</h1>
+            <p className="mt-1 text-sm text-muted">Macro · Sector · ETF · Quality Stock Allocation · KST {formatDateTime(snapshot.generatedAt)}</p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs text-muted sm:grid-cols-5">
@@ -1461,10 +1088,10 @@ export function MarketDashboard() {
         </div>
       </header>
 
-      <div className="mx-auto mt-4 grid max-w-[1680px] grid-cols-1 gap-5 lg:grid-cols-[260px_1fr]">
+      <div className="mx-auto mt-4 grid max-w-[1680px] grid-cols-1 gap-5 lg:grid-cols-[270px_1fr]">
         <aside className="panel h-fit rounded-lg p-3 lg:sticky lg:top-4">
           <div className="mb-3 flex items-center justify-between px-2 py-1 text-xs uppercase tracking-[0.16em] text-muted">
-            <span>Pages</span>
+            <span>Views</span>
             <Menu className="h-4 w-4" />
           </div>
           <nav className="space-y-1">
@@ -1483,26 +1110,17 @@ export function MarketDashboard() {
             ))}
           </nav>
           <div className="mt-5 rounded-lg border border-white/10 bg-black/20 p-3">
-            <div className="text-xs uppercase tracking-[0.14em] text-muted">Action Color</div>
+            <div className="text-xs uppercase tracking-[0.14em] text-muted">Investment Language</div>
             <div className="mt-3 space-y-2 text-xs">
-              <div className="flex justify-between"><span>위험선호</span><span className="text-positive">green</span></div>
-              <div className="flex justify-between"><span>중립</span><span className="text-muted">gray</span></div>
-              <div className="flex justify-between"><span>위험관리</span><span className="text-caution">orange</span></div>
-              <div className="flex justify-between"><span>위험회피</span><span className="text-negative">red</span></div>
+              <div className="flex justify-between"><span>Increase</span><span className="text-positive">Overweight / Accumulate</span></div>
+              <div className="flex justify-between"><span>Balanced</span><span className="text-muted">Neutral</span></div>
+              <div className="flex justify-between"><span>Control</span><span className="text-caution">Trim / Rebalance</span></div>
+              <div className="flex justify-between"><span>Avoid</span><span className="text-negative">Risk Review</span></div>
             </div>
           </div>
         </aside>
-        <section className="min-w-0">{renderContent()}</section>
+        <section className="min-w-0 space-y-6">{renderContent()}</section>
       </div>
     </main>
-  );
-}
-
-function HeaderStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-      <span className="block text-white/70">{label}</span>
-      <span className="font-medium text-white">{value}</span>
-    </div>
   );
 }

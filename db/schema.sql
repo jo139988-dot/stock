@@ -273,3 +273,166 @@ create table if not exists source_fetch_logs (
   affectedIndicatorIds text,
   createdAt text not null default (datetime('now'))
 );
+
+create table if not exists macro_regime_matrix (
+  tradeDate text not null,
+  regime text not null check (regime in ('Goldilocks', 'Reflation', 'Slowdown', 'Stagflation')),
+  quadrant text not null,
+  probability real not null,
+  changeMoM real,
+  preferredAssets text,
+  preferredSectors text,
+  avoidSectors text,
+  recommendedEtfs text,
+  keyRisks text,
+  growthScore real,
+  inflationScore real,
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
+  primary key (tradeDate, regime)
+);
+
+create table if not exists asset_allocation (
+  tradeDate text not null,
+  assetClass text not null,
+  currentSignal text not null check (currentSignal in ('Overweight', 'Neutral+', 'Neutral', 'Neutral-', 'Underweight', 'Avoid')),
+  suggestedWeight real not null,
+  previousWeight real,
+  weightChange real,
+  rationale text,
+  riskLevel text check (riskLevel in ('Low', 'Medium', 'High')),
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
+  primary key (tradeDate, assetClass)
+);
+
+create table if not exists etf_allocation_scores (
+  tradeDate text not null,
+  ticker text not null,
+  name text not null,
+  assetClass text not null,
+  sector text,
+  macroFitScore real not null,
+  trendScore real not null,
+  valuationScore real not null,
+  cycleScore real not null,
+  liquidityScore real not null,
+  drawdownRisk real not null,
+  correlationToPortfolio real,
+  allocationScore real not null,
+  action text not null check (action in ('Overweight', 'Neutral+', 'Neutral', 'Neutral-', 'Underweight', 'Avoid')),
+  rationale text,
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
+  primary key (tradeDate, ticker)
+);
+
+create table if not exists quality_stock_candidates (
+  tradeDate text not null,
+  ticker text not null,
+  name text not null,
+  market text not null check (market in ('KOSPI', 'KOSDAQ', 'NASDAQ', 'S&P500')),
+  sector text,
+  theme text,
+  marketCap real,
+  tradingValue real,
+  qualityScore real not null,
+  businessQualityScore real not null,
+  financialQualityScore real not null,
+  growthDurabilityScore real not null,
+  valuationScore real not null,
+  earningsRevisionScore real not null,
+  momentumScore real,
+  liquidityRisk real,
+  balanceSheetRisk real,
+  action text not null check (action in ('Core Hold', 'Accumulate', 'Buy on Weakness', 'Valuation Watch', 'Deep Dive Needed', 'Trim', 'Avoid')),
+  investmentThesis text,
+  keyRisk text,
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
+  primary key (tradeDate, ticker)
+);
+
+create table if not exists mid_small_quality_watchlist (
+  tradeDate text not null,
+  ticker text not null,
+  name text not null,
+  market text not null check (market in ('KOSPI', 'KOSDAQ', 'NASDAQ', 'S&P500')),
+  sector text,
+  theme text,
+  marketCap real,
+  tradingValue real,
+  salesGrowth real,
+  operatingMargin real,
+  roe real,
+  roic real,
+  netDebtToEbitda real,
+  fcfPositive integer,
+  consensusRevisionUp integer,
+  drawdownFrom52wHigh real,
+  foreignInstitutionFlow real,
+  liquidityRisk real,
+  governanceRisk real,
+  balanceSheetRisk real,
+  earningsVisibilityRisk real,
+  overhangRisk real,
+  action text not null check (action in ('Core Hold', 'Accumulate', 'Buy on Weakness', 'Valuation Watch', 'Deep Dive Needed', 'Trim', 'Avoid')),
+  investmentThesis text,
+  keyRisk text,
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
+  primary key (tradeDate, ticker)
+);
+
+create table if not exists commodity_resource_monitor (
+  tradeDate text not null,
+  category text not null,
+  underlyingCommodityTrend text,
+  futuresCurve text,
+  inventoryTrend text,
+  dollarSensitivity text check (dollarSensitivity in ('Low', 'Medium', 'High')),
+  chinaDemandSensitivity text check (chinaDemandSensitivity in ('Low', 'Medium', 'High')),
+  relatedEtfs text,
+  relatedStocks text,
+  action text not null,
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
+  primary key (tradeDate, category)
+);
+
+create table if not exists risk_valuation_alerts (
+  id text primary key,
+  tradeDate text not null,
+  severity text not null check (severity in ('Red', 'Orange', 'Yellow')),
+  trigger text not null,
+  affectedAssetClasses text,
+  affectedSectors text,
+  affectedEtfs text,
+  affectedStocks text,
+  suggestedInvestorAction text,
+  alertType text not null check (alertType in ('Tactical', 'Fundamental')),
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error'))
+);
+
+create table if not exists portfolio_construction (
+  tradeDate text not null,
+  bucket text not null check (bucket in ('Core Quality', 'Satellite Growth', 'Satellite Mid/Small Cap', 'Commodity/Resource', 'Sector ETF', 'Cash/Bonds')),
+  suggestedWeight real not null,
+  minWeight real not null,
+  maxWeight real not null,
+  currentRegimeFit real,
+  rebalanceTrigger text,
+  riskComment text,
+  lastUpdated text not null,
+  source text not null,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error')),
+  primary key (tradeDate, bucket)
+);
