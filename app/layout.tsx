@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Top-down Quality Investment Dashboard",
-  description: "Macro, sector ETF, commodity, and quality stock allocation dashboard"
+  title: "Macro Active Tilt Dashboard",
+  description: "BM Core plus macro-driven active sleeve dashboard"
 };
 
 export default function RootLayout({

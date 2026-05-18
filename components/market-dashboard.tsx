@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import {
@@ -45,7 +45,7 @@ import {
   DEFAULT_BACKTEST_SETTINGS,
   buildReconstructedBacktestPreview
 } from "@/lib/backtest-engine";
-import type { BacktestSettings } from "@/lib/backtest-engine";
+import type { BacktestCurrency, BacktestSettings, RebalancePolicy, ReturnBasis } from "@/lib/backtest-engine";
 import type {
   DataStatus,
   Indicator,
@@ -323,7 +323,7 @@ type DomesticEtf = {
   topHoldings: string[];
   top10Concentration: number;
   pensionEligible: string;
-  recommendation: "\uBE44\uC911\uD655\uB300" | "\uC911\uB9BD+" | "\uC911\uB9BD" | "\uAD00\uCC30" | "\uD68C\uD53C";
+  recommendation: string;
 };
 
 type EtfRelativeScore = {
@@ -398,54 +398,54 @@ const actionClass: Record<InvestmentAction, string> = {
 };
 
 const ko = {
-  title: "\uB9E4\uD06C\uB85C \uAE30\uBC18 \uD0D1\uB2E4\uC6B4 \uD22C\uC790 \uB300\uC2DC\uBCF4\uB4DC",
-  subtitle: "\uB9E4\uD06C\uB85C \uC6D0\uC790\uB8CC \u00B7 \uC774\uC288 \uD750\uB984 \u00B7 \uC774\uBCA4\uD2B8 \u00B7 \uC139\uD130 ETF \u00B7 \uD004\uB9AC\uD2F0 \uC885\uBAA9 \uBC30\uBD84",
-  menu: "\uBA54\uB274",
-  actionLanguage: "\uD22C\uC790 \uC561\uC158 \uC6A9\uC5B4",
-  detail: "\uC0C1\uC138 \uBCF4\uAE30"
+  title: "Macro Active Tilt Dashboard",
+  subtitle: "BM Core + Macro-driven 5~6 Asset Active Sleeve",
+  menu: "Menu",
+  actionLanguage: "Action Glossary",
+  detail: "Details"
 };
 
 const navLabel: Record<NavItem, string> = {
-  Home: "\uD648",
-  "Macro Cockpit": "\uB9E4\uD06C\uB85C \uB300\uC2DC\uBCF4\uB4DC",
-  "Macro Regime": "\uB9E4\uD06C\uB85C \uAD6D\uBA74",
-  "Asset Allocation": "\uC790\uC0B0\uBC30\uBD84",
-  "Sector & ETF": "\uC139\uD130\u00B7ETF",
-  "Quality Stocks": "\uD004\uB9AC\uD2F0 \uC885\uBAA9",
-  Commodity: "\uC6D0\uC790\uC7AC",
-  Portfolio: "\uD3EC\uD2B8\uD3F4\uB9AC\uC624",
-  "Backtest Lab": "\uBC31\uD14C\uC2A4\uD2B8",
-  "Risk & Data": "\uB9AC\uC2A4\uD06C\u00B7\uB370\uC774\uD130"
+  Home: "Home",
+  "Macro Cockpit": "Macro Cockpit",
+  "Macro Regime": "Macro Regime",
+  "Asset Allocation": "Active Tilt",
+  "Sector & ETF": "ETF Universe",
+  "Quality Stocks": "Quality Stocks",
+  Commodity: "Conditional Hedges",
+  Portfolio: "Portfolio",
+  "Backtest Lab": "Backtest",
+  "Risk & Data": "Risk & Data"
 };
 
 const actionLabel: Record<InvestmentAction, string> = {
-  Overweight: "\uBE44\uC911\uD655\uB300",
-  "Neutral+": "\uC911\uB9BD+",
-  Neutral: "\uC911\uB9BD",
-  "Neutral-": "\uC911\uB9BD-",
-  Underweight: "\uBE44\uC911\uCD95\uC18C",
-  Avoid: "\uD68C\uD53C",
-  "Core Hold": "\uD575\uC2EC \uBCF4\uC720",
-  Accumulate: "\uBD84\uD560\uB9E4\uC218",
-  "Accumulate Watch": "\uBD84\uD560\uB9E4\uC218 \uAD00\uCC30",
-  "Buy on Weakness": "\uB20C\uB9BC\uBAA9 \uB9E4\uC218",
-  "Valuation Watch": "\uBC38\uB958\uC5D0\uC774\uC158 \uAD00\uCC30",
-  "Deep Dive Needed": "\uC2EC\uCE35 \uAC80\uD1A0",
-  Trim: "\uC77C\uBD80\uCD95\uC18C",
-  "Trim / Rebalance": "\uC77C\uBD80\uCD95\uC18C / \uB9AC\uBC38\uB7F0\uC2F1",
-  "Risk Review": "\uB9AC\uC2A4\uD06C \uC7AC\uC810\uAC80",
-  "Thesis Review": "\uD22C\uC790\uB17C\uB9AC \uC7AC\uC810\uAC80",
-  "Position Sizing": "\uBE44\uC911 \uC870\uC808"
+  Overweight: "Overweight",
+  "Neutral+": "Neutral+",
+  Neutral: "Neutral",
+  "Neutral-": "Neutral-",
+  Underweight: "Underweight",
+  Avoid: "Avoid",
+  "Core Hold": "Core Hold",
+  Accumulate: "Accumulate",
+  "Accumulate Watch": "Accumulate Watch",
+  "Buy on Weakness": "Buy on Weakness",
+  "Valuation Watch": "Valuation Watch",
+  "Deep Dive Needed": "Deep Dive Needed",
+  Trim: "Trim",
+  "Trim / Rebalance": "Trim / Rebalance",
+  "Risk Review": "Risk Review",
+  "Thesis Review": "Thesis Review",
+  "Position Sizing": "Position Sizing"
 };
 
 const statusLabel: Record<DataStatus | UiDataStatus, string> = {
-  Fresh: "\uC815\uC0C1",
-  Live: "\uC815\uC0C1",
-  Delayed: "\uC9C0\uC5F0",
-  Stale: "\uC624\uB798\uB41C \uB370\uC774\uD130",
-  Modeled: "\uBAA8\uB378\uAC12",
-  Fallback: "\uB300\uCCB4 \uB370\uC774\uD130",
-  Error: "\uC624\uB958"
+  Fresh: "Live",
+  Live: "Live",
+  Delayed: "Delayed",
+  Stale: "Stale",
+  Modeled: "Modeled",
+  Fallback: "Fallback",
+  Error: "Error"
 };
 
 const issueTitleKo: Record<string, string> = {
@@ -456,9 +456,29 @@ const issueTitleKo: Record<string, string> = {
 };
 
 const severityLabel: Record<MacroIssue["severity"], string> = {
-  High: "\uB192\uC74C",
-  Medium: "\uC911\uAC04",
-  Low: "\uB0AE\uC74C"
+  High: "High",
+  Medium: "Medium",
+  Low: "Low"
+};
+
+const actionTooltip: Record<InvestmentAction, string> = {
+  Overweight: "\uBE44\uC911\uD655\uB300. BM \uB300\uBE44 \uD574\uB2F9 \uC790\uC0B0\uC758 \uBE44\uC911\uC744 \uB192\uC774\uB294 \uD310\uB2E8.",
+  "Neutral+": "\uC911\uB9BD\uBCF4\uB2E4 \uC18C\uD3ED \uAE0D\uC815. \uC801\uADF9 \uD655\uB300\uB294 \uC544\uB2C8\uC9C0\uB9CC \uBCF4\uC720 \uB610\uB294 \uC18C\uD3ED \uD655\uB300 \uAC00\uB2A5.",
+  Neutral: "\uC911\uB9BD. BM \uC218\uC900\uC758 \uB178\uCD9C\uC744 \uC720\uC9C0.",
+  "Neutral-": "\uC911\uB9BD\uBCF4\uB2E4 \uC18C\uD3ED \uBCF4\uC218\uC801. \uC2E0\uADDC \uD655\uB300\uB294 \uC81C\uD55C.",
+  Underweight: "\uBE44\uC911\uCD95\uC18C. BM \uB300\uBE44 \uB178\uCD9C\uC744 \uB0AE\uCD94\uB294 \uD310\uB2E8.",
+  Avoid: "\uD68C\uD53C. \uB370\uC774\uD130 \uC624\uB958\uB098 \uB9AC\uC2A4\uD06C\uAC00 \uD574\uC18C\uB420 \uB54C\uAE4C\uC9C0 \uC2E0\uADDC \uD3B8\uC785 \uC81C\uD55C.",
+  "Core Hold": "\uD575\uC2EC \uBCF4\uC720. \uD22C\uC790\uB17C\uB9AC\uAC00 \uC720\uD6A8\uD558\uBA70 \uC911\uC7A5\uAE30 \uBCF4\uC720 \uAC00\uB2A5.",
+  Accumulate: "\uBD84\uD560\uB9E4\uC218. \uD55C \uBC88\uC5D0 \uC9C4\uC785\uD558\uC9C0 \uC54A\uACE0 \uAC00\uACA9 \uC870\uC815 \uC2DC \uB098\uB220\uC11C \uB9E4\uC218.",
+  "Accumulate Watch": "\uBD84\uD560\uB9E4\uC218 \uAD00\uCC30. \uC870\uAC74 \uD655\uC778 \uD6C4 \uC18C\uD3ED \uD655\uB300 \uAC80\uD1A0.",
+  "Buy on Weakness": "\uB20C\uB9BC\uBAA9 \uB9E4\uC218. \uCD94\uACA9\uBCF4\uB2E4 \uAC00\uACA9 \uC870\uC815 \uAD6C\uAC04\uC5D0\uC11C \uBD84\uD560 \uC811\uADFC.",
+  "Valuation Watch": "\uBC38\uB958\uC5D0\uC774\uC158 \uAD00\uCC30. \uD004\uB9AC\uD2F0\uB294 \uC720\uD6A8\uD558\uB098 \uAC00\uACA9 \uBD80\uB2F4 \uD655\uC778 \uD544\uC694.",
+  "Deep Dive Needed": "\uC2EC\uCE35 \uAC80\uD1A0. \uC815\uB7C9 \uC810\uC218\uB9CC\uC73C\uB85C \uD3B8\uC785\uD558\uAE30 \uC804 \uC0AC\uC5C5\uACFC \uC7AC\uBB34 \uAC80\uD1A0 \uD544\uC694.",
+  Trim: "\uC77C\uBD80\uCD95\uC18C. \uACFC\uB300\uB178\uCD9C\uC774\uB098 \uC810\uC218 \uB465\uD654 \uC2DC \uBE44\uC911 \uC870\uC808.",
+  "Trim / Rebalance": "\uC77C\uBD80\uCD95\uC18C \uB610\uB294 \uB9AC\uBC38\uB7F0\uC2F1. \uD5C8\uC6A9 \uBC34\uB4DC\uB97C \uBC97\uC5B4\uB09C \uB178\uCD9C\uC744 \uC870\uC815.",
+  "Risk Review": "\uB9AC\uC2A4\uD06C \uC7AC\uC810\uAC80. \uD22C\uC790\uB17C\uB9AC \uD6FC\uC190 \uC5EC\uBD80 \uD655\uC778 \uC804\uAE4C\uC9C0 \uC2E0\uADDC \uB9E4\uC218 \uC81C\uD55C.",
+  "Thesis Review": "\uD22C\uC790\uB17C\uB9AC \uC7AC\uC810\uAC80. \uC2E4\uC801, \uBC38\uB958, \uC218\uAE09 \uAC00\uC815\uC774 \uD6FC\uC190\uB418\uC5C8\uB294\uC9C0 \uD655\uC778.",
+  "Position Sizing": "\uBE44\uC911 \uC870\uC808. \uD655\uC2E0\uB3C4\uC640 \uBCC0\uB3D9\uC131\uC5D0 \uB9DE\uAC8C \uC885\uBAA9\uBCC4 \uB178\uCD9C\uC744 \uC870\uC808."
 };
 
 const macroRegimes: MacroRegime[] = [
@@ -593,11 +613,11 @@ const midSmallQuality: MidSmallQuality[] = [
 
 const commodityMonitors: CommodityMonitor[] = [
   commodity("Oil & Gas", "Up but volatile", "Backwardation", "Drawdown", "Medium", "Medium", ["XLE", "XOP", "OIH"], ["XOM", "CVX", "COP"], "Neutral+", "Energy cash-flow quality is useful in reflation, but avoid over-sizing because oil beta can reverse quickly."),
-  commodity("Copper", "Improving", "Mild contango", "Tightening", "High", "High", ["COPX", "CPER"], ["FCX", "SCCO", "풍산"], "Neutral+", "Copper exposure fits grid and AI power demand, with China demand as the main confirmation variable."),
+  commodity("Copper", "Improving", "Mild contango", "Tightening", "High", "High", ["COPX", "CPER"], ["FCX", "SCCO", "?띿궛"], "Neutral+", "Copper exposure fits grid and AI power demand, with China demand as the main confirmation variable."),
   commodity("Gold Miners", "Uptrend", "Spot-led", "Stable", "Medium", "Low", ["GLD", "IAU", "GDX"], ["NEM", "AEM", "GOLD"], "Neutral+", "Gold miners add operating leverage to gold, but position sizing should reflect high drawdown risk."),
   commodity("Uranium", "Structural upcycle", "Tight physical", "Low inventory", "Low", "Medium", ["URA", "URNM"], ["CCJ", "CEG", "UEC"], "Neutral+", "Nuclear demand supports a satellite allocation, with liquidity and volatility controls."),
-  commodity("Steel", "Mixed", "Contango", "Elevated", "High", "High", ["SLX"], ["POSCO홀딩스", "NUE"], "Neutral-", "Steel needs better China and inventory signals before moving above neutral."),
-  commodity("Battery Materials", "Weak stabilization", "Contango", "High", "High", "High", ["LIT"], ["ALB", "SQM", "에코프로비엠"], "Underweight", "Oversupply and weak pricing argue for fundamental review before allocation is increased."),
+  commodity("Steel", "Mixed", "Contango", "Elevated", "High", "High", ["SLX"], ["POSCO Holdings", "NUE"], "Neutral-", "Steel needs better China and inventory signals before moving above neutral."),
+  commodity("Battery Materials", "Weak stabilization", "Contango", "High", "High", "High", ["LIT"], ["ALB", "SQM", "EcoPro BM"], "Underweight", "Oversupply and weak pricing argue for fundamental review before allocation is increased."),
   commodity("Power Equipment", "Strong", "Order-book driven", "Tight supply", "Medium", "Medium", ["GRID", "PAVE"], ["ETN", "PWR", "HD Hyundai Electric"], "Overweight", "Grid capex and transformer shortage support quality industrial compounders."),
   commodity("Infrastructure", "Stable uptrend", "Demand-led", "Neutral", "Low", "Medium", ["PAVE", "XLI"], ["CAT", "URI", "GEV"], "Overweight", "Infrastructure provides top-down exposure with more diversified earnings drivers than single commodities."),
   commodity("Shipping", "Cycle rebound", "Freight-led", "Tightening", "High", "High", ["BOAT"], ["HMM", "ZIM", "MATX"], "Neutral", "Freight momentum is improving, but cyclicality keeps this as a tactical satellite.")
@@ -921,31 +941,32 @@ const riskBudgetItems: RiskBudgetItem[] = [
   { item: "Small/Mid Cap Liquidity Risk", current: "7%", limit: "10%", status: "Within", suggestedAction: "Require trading-value confirmation before adding." },
   { item: "Commodity Beta", current: "8%", limit: "12%", status: "Within", suggestedAction: "Use as reflation hedge, not core risk." },
   { item: "Duration Exposure", current: "5%", limit: "8%", status: "Within", suggestedAction: "Keep TLT underweight until real-yield trend turns." },
-  { item: "Cash Buffer", current: "3%", limit: "평시 0~3% / 경계 3~5% / 위험 5~10%", status: "Watch", suggestedAction: "Stress condition이 2개 이상일 때만 5% 이상으로 올립니다." }
+  { item: "Cash Buffer", current: "3%", limit: "Normal 0~3% / Watch 3~5% / Stress 5~10%", status: "Watch", suggestedAction: "Move above 5% only when two or more stress conditions trigger." }
 ];
 
 const etfRelativeScores: EtfRelativeScore[] = [
-  { ticker: "QUAL", benchmark: "S&P500", excess1m: 0.6, excess3m: 1.2, excess6m: 2.7, excess1y: 3.8, trackingError: 3.9, informationRatio: 0.58, relativeStrength: 71, maxDrawdownVsBm: 1.8, activeRecommendation: "중립+ / 품질 틸트 유지", warning: "BM 대비 지속성 양호. 신규 비중확대는 분할 접근." },
-  { ticker: "MOAT", benchmark: "S&P500", excess1m: 0.2, excess3m: 0.8, excess6m: 1.9, excess1y: 2.6, trackingError: 4.5, informationRatio: 0.41, relativeStrength: 66, maxDrawdownVsBm: 1.2, activeRecommendation: "중립+ / Core 보완", warning: "정보비율은 양호하지만 유동성은 QUAL보다 낮음." },
-  { ticker: "SMH", benchmark: "QQQ / Nasdaq100", excess1m: 3.4, excess3m: 4.6, excess6m: 8.9, excess1y: 14.2, trackingError: 12.8, informationRatio: 0.62, relativeStrength: 86, maxDrawdownVsBm: -3.6, activeRecommendation: "중립+ / 과대비중 제한", warning: "초과수익 지속성은 있으나 MDD와 집중도 리스크가 큼." },
-  { ticker: "XLE", benchmark: "S&P500", excess1m: 2.1, excess3m: -1.8, excess6m: -2.4, excess1y: 0.5, trackingError: 10.2, informationRatio: -0.16, relativeStrength: 48, maxDrawdownVsBm: -5.8, activeRecommendation: "중립 이하", warning: "3M/6M 초과수익 음수라 Overweight 금지." },
-  { ticker: "GLD", benchmark: "60/40", excess1m: 1.4, excess3m: 2.6, excess6m: 5.7, excess1y: 8.3, trackingError: 8.4, informationRatio: 0.54, relativeStrength: 78, maxDrawdownVsBm: 2.4, activeRecommendation: "헤지 목적 중립+", warning: "수익 목적보다 달러/금리 리스크 완충 용도." },
-  { ticker: "TLT", benchmark: "60/40", excess1m: -0.7, excess3m: -3.8, excess6m: -6.5, excess1y: -8.9, trackingError: 11.9, informationRatio: -0.72, relativeStrength: 31, maxDrawdownVsBm: -9.2, activeRecommendation: "비중축소", warning: "실질금리 반등 국면에서 듀레이션 틸트 제한." }
+  { ticker: "QUAL", benchmark: "S&P500", excess1m: 0.6, excess3m: 1.2, excess6m: 2.7, excess1y: 3.8, trackingError: 3.9, informationRatio: 0.58, relativeStrength: 71, maxDrawdownVsBm: 1.8, activeRecommendation: "Neutral+ quality tilt", warning: "Durable excess return; add in stages only." },
+  { ticker: "MOAT", benchmark: "S&P500", excess1m: 0.2, excess3m: 0.8, excess6m: 1.9, excess1y: 2.6, trackingError: 4.5, informationRatio: 0.41, relativeStrength: 66, maxDrawdownVsBm: 1.2, activeRecommendation: "Neutral+ core complement", warning: "IR is acceptable, but liquidity is weaker than QUAL." },
+  { ticker: "SMH", benchmark: "QQQ / Nasdaq100", excess1m: 3.4, excess3m: 4.6, excess6m: 8.9, excess1y: 14.2, trackingError: 12.8, informationRatio: 0.62, relativeStrength: 86, maxDrawdownVsBm: -3.6, activeRecommendation: "Neutral+ with cap", warning: "Relative momentum is strong, but MDD and concentration risk require a position cap." },
+  { ticker: "XLE", benchmark: "S&P500", excess1m: 2.1, excess3m: -1.8, excess6m: -2.4, excess1y: 0.5, trackingError: 10.2, informationRatio: -0.16, relativeStrength: 48, maxDrawdownVsBm: -5.8, activeRecommendation: "Neutral or below", warning: "3M/6M excess return is negative; Overweight is blocked." },
+  { ticker: "GLD", benchmark: "60/40", excess1m: 1.4, excess3m: 2.6, excess6m: 5.7, excess1y: 8.3, trackingError: 8.4, informationRatio: 0.54, relativeStrength: 78, maxDrawdownVsBm: 2.4, activeRecommendation: "Neutral+ hedge", warning: "Use as a rates/USD hedge, not as a return engine." },
+  { ticker: "TLT", benchmark: "60/40", excess1m: -0.7, excess3m: -3.8, excess6m: -6.5, excess1y: -8.9, trackingError: 11.9, informationRatio: -0.72, relativeStrength: 31, maxDrawdownVsBm: -9.2, activeRecommendation: "Underweight", warning: "Real-yield rebound limits duration tilt." }
 ];
 
 const domesticEtfs: DomesticEtf[] = [
-  { name: "TIME 미국나스닥100액티브", code: "A489000", manager: "타임폴리오", style: "Active", benchmark: "Nasdaq100", return1m: 5.8, return3m: 9.4, return6m: 17.2, return1y: 29.1, return3y: 58.4, ytd: 14.8, excessVsBm: 2.6, aum: 1430, tradingValue: 42, totalFee: 0.8, realizedCost: 0.96, premiumDiscount: 0.11, trackingError: 6.4, topHoldings: ["NVDA", "MSFT", "AVGO", "AAPL"], top10Concentration: 54, pensionEligible: "연금/IRP 가능", recommendation: "중립+" },
-  { name: "TIGER 미국나스닥100", code: "133690", manager: "미래에셋", style: "Passive", benchmark: "Nasdaq100", return1m: 4.9, return3m: 8.0, return6m: 14.1, return1y: 25.7, return3y: 51.2, ytd: 12.6, excessVsBm: -0.2, aum: 38400, tradingValue: 620, totalFee: 0.07, realizedCost: 0.18, premiumDiscount: 0.03, trackingError: 1.1, topHoldings: ["MSFT", "NVDA", "AAPL", "AMZN"], top10Concentration: 49, pensionEligible: "연금/IRP 가능", recommendation: "중립" },
-  { name: "KODEX 미국나스닥100TR", code: "379810", manager: "삼성", style: "Passive", benchmark: "Nasdaq100 TR", return1m: 4.8, return3m: 8.1, return6m: 14.4, return1y: 26.1, return3y: 52.0, ytd: 12.9, excessVsBm: 0.1, aum: 12600, tradingValue: 210, totalFee: 0.05, realizedCost: 0.16, premiumDiscount: 0.02, trackingError: 0.9, topHoldings: ["MSFT", "NVDA", "AAPL", "META"], top10Concentration: 50, pensionEligible: "연금/IRP 가능", recommendation: "중립" },
-  { name: "ACE 글로벌반도체TOP4 Plus SOLACTIVE", code: "446770", manager: "한국투자", style: "Passive", benchmark: "Global Semiconductor", return1m: 7.2, return3m: 11.8, return6m: 22.5, return1y: 41.3, return3y: 63.0, ytd: 19.4, excessVsBm: 4.7, aum: 8200, tradingValue: 165, totalFee: 0.45, realizedCost: 0.61, premiumDiscount: 0.08, trackingError: 8.7, topHoldings: ["NVDA", "TSM", "ASML", "AVGO"], top10Concentration: 72, pensionEligible: "연금 가능", recommendation: "관찰" },
-  { name: "KODEX 미국AI테크TOP10", code: "485540", manager: "삼성", style: "Active", benchmark: "US AI Tech", return1m: 6.4, return3m: 10.1, return6m: 18.9, return1y: 33.5, return3y: 0, ytd: 16.1, excessVsBm: 3.1, aum: 5100, tradingValue: 138, totalFee: 0.39, realizedCost: 0.58, premiumDiscount: 0.09, trackingError: 7.5, topHoldings: ["NVDA", "MSFT", "AVGO", "AMD"], top10Concentration: 66, pensionEligible: "연금/IRP 가능", recommendation: "중립+" }
+  { name: "TIME US Nasdaq100 Active", code: "A489000", manager: "Timefolio", style: "Active", benchmark: "Nasdaq100", return1m: 5.8, return3m: 9.4, return6m: 17.2, return1y: 29.1, return3y: 58.4, ytd: 14.8, excessVsBm: 2.6, aum: 1430, tradingValue: 42, totalFee: 0.8, realizedCost: 0.96, premiumDiscount: 0.11, trackingError: 6.4, topHoldings: ["NVDA", "MSFT", "AVGO", "AAPL"], top10Concentration: 54, pensionEligible: "Pension/IRP eligible", recommendation: "Neutral+" },
+  { name: "TIGER US Nasdaq100", code: "133690", manager: "Mirae Asset", style: "Passive", benchmark: "Nasdaq100", return1m: 4.9, return3m: 8.0, return6m: 14.1, return1y: 25.7, return3y: 51.2, ytd: 12.6, excessVsBm: -0.2, aum: 38400, tradingValue: 620, totalFee: 0.07, realizedCost: 0.18, premiumDiscount: 0.03, trackingError: 1.1, topHoldings: ["MSFT", "NVDA", "AAPL", "AMZN"], top10Concentration: 49, pensionEligible: "Pension/IRP eligible", recommendation: "Neutral" },
+  { name: "KODEX US Nasdaq100 TR", code: "379810", manager: "Samsung", style: "Passive", benchmark: "Nasdaq100 TR", return1m: 4.8, return3m: 8.1, return6m: 14.4, return1y: 26.1, return3y: 52.0, ytd: 12.9, excessVsBm: 0.1, aum: 12600, tradingValue: 210, totalFee: 0.05, realizedCost: 0.16, premiumDiscount: 0.02, trackingError: 0.9, topHoldings: ["MSFT", "NVDA", "AAPL", "META"], top10Concentration: 50, pensionEligible: "Pension/IRP eligible", recommendation: "Neutral" },
+  { name: "ACE Global Semiconductor TOP4 Plus", code: "446770", manager: "Korea Investment", style: "Passive", benchmark: "Global Semiconductor", return1m: 7.2, return3m: 11.8, return6m: 22.5, return1y: 41.3, return3y: 63.0, ytd: 19.4, excessVsBm: 4.7, aum: 8200, tradingValue: 165, totalFee: 0.45, realizedCost: 0.61, premiumDiscount: 0.08, trackingError: 8.7, topHoldings: ["NVDA", "TSM", "ASML", "AVGO"], top10Concentration: 72, pensionEligible: "Pension eligible", recommendation: "Watch" },
+  { name: "KODEX US AI Tech TOP10", code: "485540", manager: "Samsung", style: "Active", benchmark: "US AI Tech", return1m: 6.4, return3m: 10.1, return6m: 18.9, return1y: 33.5, return3y: 0, ytd: 16.1, excessVsBm: 3.1, aum: 5100, tradingValue: 138, totalFee: 0.39, realizedCost: 0.58, premiumDiscount: 0.09, trackingError: 7.5, topHoldings: ["NVDA", "MSFT", "AVGO", "AMD"], top10Concentration: 66, pensionEligible: "Pension/IRP eligible", recommendation: "Neutral+" }
 ];
 
 const qqqAlternatives: QqqAlternative[] = [
-  { name: "TIME 미국나스닥100액티브", code: "A489000", category: "나스닥100 액티브", excess1m: 0.9, excess3m: 1.4, excess6m: 3.1, excess1y: 3.4, krwReturn: 29.1, fxEffect: 4.2, fee: 0.96, aum: 1430, tradingValue: 42, mdd: -18.5, volatility: 22.4, holdingDiff: "NVDA/AVGO 비중 확대", recommended: "분할 접근" },
-  { name: "TIGER 미국나스닥100", code: "133690", category: "나스닥100 패시브", excess1m: 0.0, excess3m: -0.1, excess6m: 0.0, excess1y: -0.3, krwReturn: 25.7, fxEffect: 4.1, fee: 0.18, aum: 38400, tradingValue: 620, mdd: -17.2, volatility: 20.8, holdingDiff: "QQQ와 유사", recommended: "핵심 대체" },
-  { name: "KODEX 미국AI테크TOP10", code: "485540", category: "미국테크TOP", excess1m: 1.5, excess3m: 2.1, excess6m: 4.8, excess1y: 7.8, krwReturn: 33.5, fxEffect: 4.3, fee: 0.58, aum: 5100, tradingValue: 138, mdd: -22.6, volatility: 27.4, holdingDiff: "AI 집중도 높음", recommended: "위성 틸트" },
-  { name: "ACE 글로벌반도체TOP4 Plus", code: "446770", category: "AI/반도체", excess1m: 2.3, excess3m: 3.8, excess6m: 8.4, excess1y: 15.6, krwReturn: 41.3, fxEffect: 4.8, fee: 0.61, aum: 8200, tradingValue: 165, mdd: -28.4, volatility: 32.1, holdingDiff: "반도체 집중", recommended: "과대비중 제한" }
+  { name: "QQQ", code: "QQQ", category: "US listed Nasdaq100", excess1m: 0, excess3m: 0, excess6m: 0, excess1y: 0, krwReturn: 25.9, fxEffect: 4.0, fee: 0.20, aum: 291000, tradingValue: 9500, mdd: -17.0, volatility: 20.5, holdingDiff: "Benchmark vehicle", recommended: "Core reference" },
+  { name: "TIME US Nasdaq100 Active", code: "A489000", category: "Korea-listed active Nasdaq100", excess1m: 0.9, excess3m: 1.4, excess6m: 3.1, excess1y: 3.4, krwReturn: 29.1, fxEffect: 4.2, fee: 0.96, aum: 1430, tradingValue: 42, mdd: -18.5, volatility: 22.4, holdingDiff: "Higher NVDA/AVGO active weights", recommended: "Staged tilt" },
+  { name: "TIGER US Nasdaq100", code: "133690", category: "Korea-listed passive Nasdaq100", excess1m: 0.0, excess3m: -0.1, excess6m: 0.0, excess1y: -0.3, krwReturn: 25.7, fxEffect: 4.1, fee: 0.18, aum: 38400, tradingValue: 620, mdd: -17.2, volatility: 20.8, holdingDiff: "Close to QQQ", recommended: "Pension substitute" },
+  { name: "KODEX US AI Tech TOP10", code: "485540", category: "Korea-listed AI/Tech active", excess1m: 1.5, excess3m: 2.1, excess6m: 4.8, excess1y: 7.8, krwReturn: 33.5, fxEffect: 4.3, fee: 0.58, aum: 5100, tradingValue: 138, mdd: -22.6, volatility: 27.4, holdingDiff: "Higher AI concentration", recommended: "Active tilt" },
+  { name: "ACE Global Semiconductor TOP4 Plus", code: "446770", category: "Korea-listed semiconductor", excess1m: 2.3, excess3m: 3.8, excess6m: 8.4, excess1y: 15.6, krwReturn: 41.3, fxEffect: 4.8, fee: 0.61, aum: 8200, tradingValue: 165, mdd: -28.4, volatility: 32.1, holdingDiff: "Semiconductor concentration", recommended: "Cap position size" }
 ];
 
 function rowAsset(
@@ -1259,7 +1280,7 @@ function currentRegimeLabel() {
 function currentRegimeInterpretation() {
   const regime = currentRegime();
   const second = secondaryRegime();
-  return `${regime.name} 우위지만 확정 국면은 아닙니다. ${second.name} 가능성도 ${second.probability}%로 높아 퀄리티 성장주와 원자재/산업재 헤지를 병행하는 접근이 적절합니다.`;
+  return `${regime.name}-biased but not confirmed. ${second.name} probability is still ${second.probability}%, so quality growth should be paired with selective commodity and industrial hedges.`;
 }
 
 function basisDateForGroups(snapshot: MarketSnapshot, groups: Indicator["group"][]) {
@@ -1289,13 +1310,12 @@ function sourceIssueCounts(snapshot: MarketSnapshot) {
 
 function dataLoadLabel(snapshot: MarketSnapshot, state: "loaded" | "live" | "fallback") {
   const counts = sourceIssueCounts(snapshot);
-  if (state === "fallback") return "대체 데이터 / 모델값 포함";
-  if (counts.error || counts.stale) return `일부 데이터 지연 / 오래된 소스 ${counts.stale}개 · 오류 ${counts.error}개`;
+  if (state === "fallback") return "Fallback / modeled data included";
+  if (counts.error || counts.stale) return `Loaded with ${counts.stale} stale sources and ${counts.error} errors`;
   const modeledCount = allDataStatuses(snapshot).filter((status) => status === "Modeled" || status === "Fallback").length;
-  if (modeledCount) return "일부 모델값 포함";
-  return "정상 로드";
+  if (modeledCount) return "Partially updated with modeled data";
+  return "Loaded";
 }
-
 function regimeInputs(snapshot: MarketSnapshot) {
   const inputIds = [
     ["ISM Manufacturing", "ism-mfg"],
@@ -1436,57 +1456,37 @@ function confidenceLevel(score: number): ConfidenceLevel {
 }
 
 function localizedOption(option: string) {
-  if (option === "All") return "\uC804\uCCB4";
+  if (option === "All") return "All";
   if (option in actionLabel) return actionLabel[option as InvestmentAction];
   if (option in statusLabel) return statusLabel[option as UiDataStatus];
   return option;
 }
 
 function fieldLabel(label: string) {
-  const labels: Record<string, string> = {
-    Action: "\uD22C\uC790 \uC561\uC158",
-    "Data Status": "\uB370\uC774\uD130 \uC0C1\uD0DC",
-    "Asset Class": "\uC790\uC0B0\uAD70",
-    Region: "\uC9C0\uC5ED",
-    Sector: "\uC139\uD130",
-    Theme: "\uD14C\uB9C8",
-    "Risk Level": "\uB9AC\uC2A4\uD06C \uC218\uC900",
-    Confidence: "\uC2E0\uB8B0\uB3C4",
-    Search: "\uAC80\uC0C9",
-    Currency: "\uAE30\uC900\uD1B5\uD654",
-    Rebalance: "\uB9AC\uBC38\uB7F0\uC2F1",
-    Execution: "\uCCB4\uACB0\uAC00\uC815",
-    Benchmark: "BM",
-    "Return Basis": "\uC218\uC775\uB960 \uAE30\uC900",
-    "Trading Cost bps": "\uAC70\uB798\uBE44\uC6A9(bp)",
-    "FX Cost bps": "\uD658\uC804\uBE44\uC6A9(bp)",
-    "Min Market Cap": "\uCD5C\uC18C \uC2DC\uAC00\uCD1D\uC561",
-    "Min Trading Value": "\uCD5C\uC18C \uAC70\uB798\uB300\uAE08"
-  };
-  return labels[label] ?? label;
+  return label;
 }
 
 function investorActionText(value: string) {
   return value
-    .replaceAll("Add only on weakness", "\uCD94\uACA9\uB9E4\uC218\uBCF4\uB2E4 \uB20C\uB9BC\uBAA9 \uC911\uC2EC \uC811\uADFC")
-    .replaceAll("Keep valuation discipline", "\uBC38\uB958\uC5D0\uC774\uC158 \uBD80\uB2F4\uC744 \uAC10\uC548\uD574 \uBD84\uD560 \uC811\uADFC")
-    .replaceAll("keep valuation discipline", "\uBC38\uB958\uC5D0\uC774\uC158 \uBD80\uB2F4\uC744 \uAC10\uC548\uD574 \uBD84\uD560 \uC811\uADFC")
-    .replaceAll("avoid oversized duration exposure", "\uC7A5\uAE30 \uC131\uC7A5\uC8FC \uACFC\uB300\uB178\uCD9C \uC81C\uD55C")
-    .replaceAll("Stagger accumulation", "\uD55C \uBC88\uC5D0 \uBE44\uC911\uD655\uB300\uD558\uC9C0 \uB9D0\uACE0 \uBD84\uD560 \uC811\uADFC")
-    .replaceAll("Move candidates to thesis review", "\uD22C\uC790\uB17C\uB9AC \uD6FC\uC190 \uC5EC\uBD80 \uC7AC\uC810\uAC80")
-    .replaceAll("Reduce position sizing", "\uC885\uBAA9\uBCC4 \uBE44\uC911 \uCD95\uC18C");
+    .replaceAll("Add only on weakness", "Stagger accumulation on weakness")
+    .replaceAll("Keep valuation discipline", "Keep valuation discipline")
+    .replaceAll("keep valuation discipline", "keep valuation discipline")
+    .replaceAll("avoid oversized duration exposure", "avoid oversized duration exposure")
+    .replaceAll("Stagger accumulation", "Stagger accumulation")
+    .replaceAll("Move candidates to thesis review", "Move candidates to thesis review")
+    .replaceAll("Reduce position sizing", "Reduce position sizing");
 }
 
 function macroIssueSummary(issue: MacroIssue) {
-  if (issue.title === "US real yield rebound") return "\uC2E4\uC9C8\uAE08\uB9AC \uBC18\uB4F1\uC73C\uB85C \uC131\uC7A5\uC8FC \uBC38\uB958\uC5D0\uC774\uC158 \uBD80\uB2F4\uC774 \uCEE4\uC84C\uC2B5\uB2C8\uB2E4.";
-  if (issue.title === "USD/KRW breakout risk") return "\uB2EC\uB7EC/\uC6D0 \uC0C1\uC2B9\uC740 \uC678\uAD6D\uC778 \uC218\uAE09\uACFC \uCF54\uC2A4\uB2E5 \uC131\uC7A5\uC8FC\uC5D0 \uBD80\uB2F4\uC785\uB2C8\uB2E4.";
-  if (issue.title === "Copper strength needs China confirmation") return "\uAD6C\uB9AC \uAC15\uC138\uB294 \uAE0D\uC815\uC801\uC774\uB098 \uC911\uAD6D \uC218\uC694 \uD655\uC778 \uC804\uAE4C\uC9C0 \uC120\uBCC4 \uC811\uADFC\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.";
-  if (issue.title === "Liquidity drag from TGA rebuild") return "TGA \uC7AC\uCD95\uC801\uC740 \uC21C\uC720\uB3D9\uC131\uC5D0 \uBD80\uB2F4\uC744 \uC8FC\uC5B4 \uBCA0\uD0C0 \uD655\uB300\uB97C \uC81C\uD55C\uD569\uB2C8\uB2E4.";
+  if (issue.title === "US real yield rebound") return "Real yields are pressuring long-duration growth valuations.";
+  if (issue.title === "USD/KRW breakout risk") return "KRW weakness raises foreign-flow risk for Korea growth exposure.";
+  if (issue.title === "Copper strength needs China confirmation") return "Copper is constructive, but China demand confirmation is still needed.";
+  if (issue.title === "Liquidity drag from TGA rebuild") return "TGA rebuild is a liquidity headwind and limits beta expansion.";
   return investorActionText(issue.interpretation);
 }
 
 function Pill({ children, className = "", title }: { children: React.ReactNode; className?: string; title?: string }) {
-  return <span title={title} className={`inline-flex items-center rounded border px-2 py-1 text-xs font-semibold ${className}`}>{children}</span>;
+  return <span title={title} className={`badge-nowrap inline-flex items-center rounded border px-2 py-1 text-xs font-semibold ${className}`}>{children}</span>;
 }
 
 function SectionHeader({ eyebrow, title, icon }: { eyebrow: string; title: string; icon: React.ReactNode }) {
@@ -1513,7 +1513,7 @@ function StatCard({ label, value, detail, tone = "neutral" }: { label: string; v
 
 function ActionPill({ action }: { action: InvestmentAction }) {
   return (
-    <Pill className={actionClass[action]} title={action}>
+    <Pill className={actionClass[action]} title={actionTooltip[action] ?? action}>
       <span>{actionLabel[action]}</span>
       <span className="sr-only">{action}</span>
     </Pill>
@@ -1664,7 +1664,7 @@ function TopIdeas() {
   const stocks = [...qualityStocks].sort((a, b) => qualityFormulaScore(b) - qualityFormulaScore(a)).slice(0, 5);
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="ETF / 퀄리티 종목 핵심 아이디어" title="탑다운 관점에서 우선 검토할 실행 수단" icon={<Gem className="h-5 w-5" />} />
+      <SectionHeader eyebrow="ETF / Quality Stock Ideas" title="Top-down execution candidates" icon={<Gem className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
           <div className="mb-3 font-semibold text-white">ETF Top Ideas</div>
@@ -1697,7 +1697,7 @@ function HomeRiskDataIssues({ snapshot }: { snapshot: MarketSnapshot }) {
   const counts = sourceIssueCounts(snapshot);
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="리스크·데이터 이슈" title="오늘의 배분 판단을 흔들 수 있는 요인" icon={<ShieldAlert className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Risk & Data Issues" title="Factors that can change today's allocation call" icon={<ShieldAlert className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <StatCard label="Macro Confidence" value={`${macroRegimeConfidence(snapshot, currentRegime())}/100`} tone="caution" />
         <StatCard label="Reliability" value={`${reliabilityScore(snapshot)}/100`} tone={reliabilityScore(snapshot) >= 85 ? "positive" : "caution"} />
@@ -1719,7 +1719,7 @@ function MacroSnapshot({ snapshot, compact = false, limit }: { snapshot: MarketS
   const groups = ["Rates", "FX", "Volatility", "Credit", "Liquidity", "Commodities", "Korea Macro", "Growth"] as MacroCategory[];
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="매크로 스냅샷" title="자산배분 전 먼저 확인할 핵심 원자료" icon={<Gauge className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Macro Snapshot" title="Raw inputs before allocation" icon={<Gauge className="h-5 w-5" />} />
       <div className="space-y-3">
         {groups.map((group, index) => {
           const groupRows = visibleRows.filter((row) => row.category === group);
@@ -1765,48 +1765,29 @@ function MacroSnapshot({ snapshot, compact = false, limit }: { snapshot: MarketS
 
 function MacroIssueTape({ compact = false, limit }: { compact?: boolean; limit?: number }) {
   const rows = compact ? macroIssues.slice(0, limit ?? 4) : macroIssues;
-  const severityClass: Record<MacroIssue["severity"], string> = {
-    High: toneClass.negative,
-    Medium: toneClass.caution,
-    Low: toneClass.neutral
-  };
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow={"\uB9E4\uD06C\uB85C \uC774\uC288 \uD750\uB984"} title={"\uC624\uB298\uC758 \uC774\uC288\uC640 \uC790\uC0B0\uBC30\uBD84 \uC601\uD5A5"} icon={<AlertTriangle className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Macro Issue Tape" title="Macro issues that can change the active sleeve" icon={<RadioTower className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {rows.map((issue) => (
           <article key={issue.title} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Pill className={severityClass[issue.severity]}>{severityLabel[issue.severity]}</Pill>
-                  <Pill className={toneClass.neutral}>{issue.category}</Pill>
-                  <DataStatusPill status={issue.dataStatus} />
-                </div>
-                <h3 className="mt-3 text-lg font-semibold text-white">{issueTitleKo[issue.title] ?? issue.title}</h3>
+                <Pill className={issue.severity === "High" ? toneClass.negative : issue.severity === "Medium" ? toneClass.caution : toneClass.neutral}>{severityLabel[issue.severity]}</Pill>
+                <h3 className="mt-3 text-lg font-semibold text-white">{issue.title}</h3>
+                <div className="mt-1 text-xs uppercase tracking-[0.12em] text-muted">{issue.category}</div>
               </div>
-              <div className="text-right text-xs text-muted">{issue.timestamp}</div>
+              <DataStatusPill status={issue.dataStatus} />
             </div>
-            <div className="mt-4 space-y-3 text-sm">
-              <div className="rounded border border-white/10 bg-black/20 p-3">
-                <div className="text-xs uppercase tracking-[0.12em] text-white/50">요약</div>
-                <div className="mt-1 leading-relaxed text-white/80">{macroIssueSummary(issue)}</div>
-              </div>
-              <div className="rounded border border-white/10 bg-black/20 p-3">
-                <div className="text-xs uppercase tracking-[0.12em] text-white/50">영향</div>
-                <div className="mt-1 leading-relaxed text-white/80">
-                  {issue.affectedAssetClasses.join(", ")} / {issue.affectedEtfs.join(", ")} / {issue.affectedStocks.join(", ")}
-                </div>
-              </div>
-              <div className="rounded border border-white/10 bg-black/20 p-3">
-                <div className="text-xs uppercase tracking-[0.12em] text-white/50">대응</div>
-                <div className="mt-1 leading-relaxed text-accent">{investorActionText(issue.suggestedAction)}</div>
-              </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <InfoBlock label="Summary" value={macroIssueSummary(issue)} />
+              <InfoBlock label="Impact" value={[...issue.affectedAssetClasses, ...issue.affectedEtfs].slice(0, 5).join(", ")} />
+              <InfoBlock label="Action" value={investorActionText(issue.suggestedAction)} />
             </div>
-            <WhyDetails label="상세 보기">
-              <div>관련 지표: {issue.relatedIndicators.join(", ")}</div>
-              <div>출처: {issue.source}</div>
-              <div>업데이트 시각: {issue.timestamp}</div>
+            <WhyDetails label="Korean Detail">
+              <div>?? ??: {issue.relatedIndicators.join(", ")}</div>
+              <div>??: {issue.source}</div>
+              <div>???? ??: {issue.timestamp}</div>
             </WhyDetails>
           </article>
         ))}
@@ -1831,7 +1812,7 @@ function GroupedMacroIndicators({ snapshot }: { snapshot: MarketSnapshot }) {
     ?? liquidityCreditMetrics.find((item) => item.id === id);
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="핵심 시장 지표" title="지표군별 매크로 보드" icon={<Gauge className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Key Market Indicators" title="Grouped macro board" icon={<Gauge className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {groups.map((group) => (
           <div key={group.label} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
@@ -1931,7 +1912,7 @@ function RatesFxLiquidityDashboard({ snapshot }: { snapshot: MarketSnapshot }) {
   const sections = macroMonitorSections.filter((section) => ["Rates", "Liquidity & Credit", "FX & Korea"].includes(section.eyebrow));
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="금리 / 환율 / 유동성" title="오늘의 배분에 영향을 주는 매크로 압력" icon={<SlidersHorizontal className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Rates / FX / Liquidity" title="Macro pressure on today's allocation" icon={<SlidersHorizontal className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {sections.map((section) => {
           const rows = macroMetrics(snapshot, section.metrics).slice(0, 4);
@@ -1959,7 +1940,7 @@ function RatesFxLiquidityDashboard({ snapshot }: { snapshot: MarketSnapshot }) {
 function MacroImpactMap() {
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="매크로 → 섹터·ETF 영향 지도" title="매크로 변화가 배분 조정으로 이어지는 경로" icon={<Layers3 className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Macro to Sector/ETF Impact Map" title="How macro inputs translate into tilt decisions" icon={<Layers3 className="h-5 w-5" />} />
       <div className="thin-scrollbar overflow-x-auto">
         <table className="w-full min-w-[1040px] text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
@@ -2045,80 +2026,47 @@ function RiskAndDataView({ snapshot, compact = false }: { snapshot: MarketSnapsh
 function MacroRegimeSummary({ snapshot, compact = false }: { snapshot: MarketSnapshot; compact?: boolean }) {
   const regime = currentRegime();
   const confidence = macroRegimeConfidence(snapshot, regime);
+  const rows = compact ? macroRegimes.slice(0, 2) : macroRegimes;
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="매크로 국면 요약" title={`${currentRegimeLabel()}: ${regime.quadrant}`} icon={<Globe2 className="h-5 w-5" />} />
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1.1fr]">
-        <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="text-xs uppercase tracking-[0.14em] text-muted">현재 국면</div>
-              <div className="mt-2 text-3xl font-semibold text-white">{currentRegimeLabel()}</div>
-              <div className="mt-1 text-sm text-muted">{regime.quadrant}</div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <StatCard label="Probability" value={`${regime.probability}%`} tone="positive" />
-              <StatCard label="MoM Change" value={formatPercent(regime.changeMoM)} tone={regime.changeMoM >= 0 ? "positive" : "caution"} />
-              <StatCard label="Previous" value={regime.previousRegime} tone="neutral" />
-              <StatCard label="Confidence" value={`${confidence}/100`} tone={confidence >= 70 ? "positive" : confidence >= 55 ? "caution" : "negative"} />
-            </div>
-          </div>
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-            <InfoBlock label="선호 자산군" value={regime.preferredAssets.join(", ")} />
-            <InfoBlock label="선호 섹터" value={regime.preferredSectors.join(", ")} />
-            <InfoBlock label="회피 섹터" value={regime.avoidSectors.join(", ")} />
-            <InfoBlock label="추천 ETF" value={regime.recommendedEtfs.join(", ")} />
-            <InfoBlock label="주요 리스크" value={regime.keyRisks.join(", ")} />
+      <SectionHeader eyebrow="Macro Regime Summary" title={`${currentRegimeLabel()}: ${regime.quadrant}`} icon={<Globe2 className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_1fr]">
+        <div className="rounded-lg border border-accent/25 bg-accent/5 p-4">
+          <div className="text-xs uppercase tracking-[0.14em] text-muted">Current Regime</div>
+          <div className="mt-2 text-2xl font-semibold text-white">{currentRegimeLabel()}</div>
+          <p className="description mt-3 text-sm leading-relaxed text-white/75">Goldilocks is leading, but Reflation probability remains meaningful. Keep quality growth exposure while using industrial and commodity hedges selectively.</p>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <InfoBlock label="Confidence" value={`${confidence}/100`} />
+            <InfoBlock label="Monthly Change" value={`${formatSigned(regime.changeMoM)}pt`} />
+            <InfoBlock label="Previous Regime" value={regime.previousRegime} />
+            <InfoBlock label="Probability" value={`${regime.probability}%`} />
           </div>
         </div>
-        <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-          <div className="mb-3 font-semibold text-white">Macro Regime Matrix</div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {macroRegimes.map((item) => (
-              <div key={item.name} className={`rounded-lg border p-3 ${item.name === regime.name ? "border-positive/45 bg-positive/10" : "border-white/10 bg-black/20"}`}>
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="font-semibold text-white">{item.name}</div>
-                    <div className="text-xs text-muted">{item.quadrant}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-mono text-xl text-white">{item.probability}%</div>
-                    <div className="text-xs text-muted">Conf. {macroRegimeConfidence(snapshot, item)}</div>
-                  </div>
-                </div>
-                <div className="mt-2 h-1.5 rounded bg-white/10">
-                  <div className="h-1.5 rounded bg-positive" style={{ width: `${item.probability}%` }} />
-                </div>
+        <div className="grid grid-cols-1 gap-3">
+          <InfoBlock label="Preferred Asset Classes" value={regime.preferredAssets.join(", ")} />
+          <InfoBlock label="Preferred Sectors" value={regime.preferredSectors.join(", ")} />
+          <InfoBlock label="Sectors to Avoid" value={regime.avoidSectors.join(", ")} />
+          <InfoBlock label="Preferred ETFs" value={regime.recommendedEtfs.join(", ")} />
+          <InfoBlock label="Key Risks" value={regime.keyRisks.join(", ")} />
+        </div>
+      </div>
+      {!compact ? (
+        <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {rows.map((row) => (
+            <div key={row.name} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="font-semibold text-white">{row.name}</div>
+                <div className="font-mono text-accent">{row.probability}%</div>
               </div>
-            ))}
-          </div>
-          {!compact ? <MacroInputs snapshot={snapshot} /> : null}
+              <div className="mt-2 text-sm text-muted">{row.quadrant}</div>
+              <div className="mt-3 text-xs text-white/70">{row.preferredAssets.join(", ")}</div>
+            </div>
+          ))}
         </div>
-      </div>
-      <div className="mt-4">
-        <InfoBlock label="Interpretation" value={currentRegimeInterpretation()} />
-      </div>
-      {compact ? <MacroInputs snapshot={snapshot} /> : null}
+      ) : null}
     </section>
   );
 }
-
-function MacroInputs({ snapshot }: { snapshot: MarketSnapshot }) {
-  return (
-    <details className="mt-4 rounded-lg border border-white/10 bg-black/20 p-4" open>
-      <summary className="cursor-pointer list-none font-semibold text-white">사용 지표</summary>
-      <div className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-3 xl:grid-cols-4">
-        {regimeInputs(snapshot).map(([label, value]) => (
-          <div key={label} className="flex justify-between gap-3 rounded bg-white/[0.03] px-3 py-2">
-            <span className="text-muted">{label}</span>
-            <span className="font-mono text-white">{value}</span>
-          </div>
-        ))}
-      </div>
-    </details>
-  );
-}
-
 function AssetAllocationView({ compact = false, limit }: { compact?: boolean; limit?: number }) {
   const [actionFilter, setActionFilter] = React.useState("All");
   const [riskFilter, setRiskFilter] = React.useState("All");
@@ -2132,7 +2080,7 @@ function AssetAllocationView({ compact = false, limit }: { compact?: boolean; li
   const rows = compact ? filtered.slice(0, limit ?? 10) : filtered;
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="자산배분" title="자산군별 권고 비중" icon={<BriefcaseBusiness className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Active Tilt Allocation" title="Suggested weights by asset class" icon={<BriefcaseBusiness className="h-5 w-5" />} />
       {!compact ? (
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
           <Select label="Action" value={actionFilter} onChange={setActionFilter} options={["All", "Overweight", "Neutral+", "Neutral", "Neutral-", "Underweight", "Avoid"]} />
@@ -2212,7 +2160,7 @@ function SectorEtfBoard({ compact = false, limit }: { compact?: boolean; limit?:
     .sort((a, b) => etfScore(b) - etfScore(a));
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="섹터·ETF 배분 보드" title="섹터 ETF와 원자재 ETF 평가" icon={<Layers3 className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Sector & ETF Allocation Board" title="ETF and commodity sleeve evaluation" icon={<Layers3 className="h-5 w-5" />} />
       <p className="mb-4 text-sm text-muted">ETF Allocation Score = Macro Fit 30% + Trend 20% + Valuation/Mean Reversion 15% + Earnings or Commodity Cycle 15% + Liquidity 10% + Risk/Drawdown 10%</p>
       {!compact ? (
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4 xl:grid-cols-8">
@@ -2275,11 +2223,11 @@ function EtfTable({ rows }: { rows: EtfAllocation[] }) {
 function EtfRelativeToBenchmarkBoard() {
   return (
     <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-      <SectionHeader eyebrow="BM 대비 ETF 점검" title="절대점수보다 초과수익 지속성과 정보비율을 우선 확인" icon={<LineChart className="h-5 w-5" />} />
+      <SectionHeader eyebrow="BM-relative ETF Check" title="Prioritize persistent excess return and information ratio" icon={<LineChart className="h-5 w-5" />} />
       <div className="thin-scrollbar overflow-x-auto">
         <table className="w-full min-w-[1280px] text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-            <tr>{["ETF", "BM", "1M 초과", "3M 초과", "6M 초과", "1Y 초과", "TE", "IR", "상대강도", "MDD vs BM", "액티브 권고", "판정"].map((head) => <th key={head} className="px-5 py-4">{head}</th>)}</tr>
+            <tr>{["ETF", "BM", "1M Excess", "3M Excess", "6M Excess", "1Y Excess", "TE", "IR", "Relative Strength", "MDD vs BM", "Active Recommendation", "Decision"].map((head) => <th key={head} className="px-5 py-4">{head}</th>)}</tr>
           </thead>
           <tbody>
             {etfRelativeScores.map((row) => (
@@ -2310,10 +2258,10 @@ function DomesticEtfRankings() {
   const activeRows = domesticEtfs.filter((row) => row.style === "Active");
   return (
     <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-      <SectionHeader eyebrow="국내 상장 ETF 랭킹" title="국내 상장 패시브·액티브 ETF와 패시브 대체 후보" icon={<Layers3 className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Korea-listed ETF Ranking" title="Korea-listed passive, active, and substitute ETFs" icon={<Layers3 className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <DomesticEtfMiniTable title="국내 상장 패시브 ETF 대체 후보" rows={passiveRows} />
-        <DomesticEtfMiniTable title="국내 상장 액티브 ETF 랭킹" rows={activeRows} />
+        <DomesticEtfMiniTable title="Korea-listed Passive ETF Substitutes" rows={passiveRows} />
+        <DomesticEtfMiniTable title="Korea-listed Active ETF Ranking" rows={activeRows} />
       </div>
     </section>
   );
@@ -2326,23 +2274,23 @@ function DomesticEtfMiniTable({ title, rows }: { title: string; rows: DomesticEt
       <div className="thin-scrollbar mt-3 overflow-x-auto">
         <table className="w-full min-w-[980px] text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-            <tr>{["ETF명", "코드", "운용사", "기초지수", "1M", "3M", "6M", "1Y", "3Y", "YTD", "초과", "AUM", "거래대금", "총보수", "실비용", "괴리", "TE", "Top10", "연금", "추천"].map((head) => <th key={head} className="px-5 py-4">{head}</th>)}</tr>
+            <tr>{["ETF Name", "Code", "Manager", "Benchmark", "1M", "3M", "6M", "1Y", "3Y", "YTD", "Excess", "AUM", "Trading Value", "Fee", "Real Cost", "Premium/Discount", "TE", "Top10", "Pension", "Recommendation"].map((head) => <th key={head} className="px-5 py-4">{head}</th>)}</tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.code} className="border-t border-white/10">
-                <td className="px-5 py-4 font-medium text-white">{row.name}<div className="mt-1 text-xs text-muted">{row.topHoldings.join(", ")}</div></td>
+                <td className="description px-5 py-4 font-medium text-white">{row.name}<div className="mt-1 text-xs text-muted">{row.topHoldings.join(", ")}</div></td>
                 <td className="px-5 py-4 font-mono text-white">{row.code}</td>
                 <td className="px-5 py-4 text-muted">{row.manager}</td>
                 <td className="px-5 py-4 text-muted">{row.benchmark}</td>
-                {[row.return1m, row.return3m, row.return6m, row.return1y, row.return3y, row.ytd, row.excessVsBm].map((value, index) => <td key={index} className={value < 0 ? "px-5 py-4 font-mono text-negative" : "px-5 py-4 font-mono text-positive"}>{formatSigned(value)}%</td>)}
-                <td className="px-5 py-4 font-mono text-white">{row.aum.toLocaleString()}억</td>
-                <td className="px-5 py-4 font-mono text-white">{row.tradingValue}억</td>
-                <td className="px-5 py-4 font-mono text-muted">{row.totalFee.toFixed(2)}%</td>
-                <td className="px-5 py-4 font-mono text-muted">{row.realizedCost.toFixed(2)}%</td>
-                <td className="px-5 py-4 font-mono text-muted">{formatSigned(row.premiumDiscount)}%</td>
-                <td className="px-5 py-4 font-mono text-muted">{row.trackingError.toFixed(1)}%</td>
-                <td className="px-5 py-4 font-mono text-caution">{row.top10Concentration}%</td>
+                {[row.return1m, row.return3m, row.return6m, row.return1y, row.return3y, row.ytd, row.excessVsBm].map((value, index) => <td key={index} className={value < 0 ? "numeric px-5 py-4 font-mono text-negative" : "numeric px-5 py-4 font-mono text-positive"}>{formatSigned(value)}%</td>)}
+                <td className="numeric px-5 py-4 font-mono text-white">{row.aum.toLocaleString()}</td>
+                <td className="numeric px-5 py-4 font-mono text-white">{row.tradingValue}</td>
+                <td className="numeric px-5 py-4 font-mono text-muted">{row.totalFee.toFixed(2)}%</td>
+                <td className="numeric px-5 py-4 font-mono text-muted">{row.realizedCost.toFixed(2)}%</td>
+                <td className="numeric px-5 py-4 font-mono text-muted">{formatSigned(row.premiumDiscount)}%</td>
+                <td className="numeric px-5 py-4 font-mono text-muted">{row.trackingError.toFixed(1)}%</td>
+                <td className="numeric px-5 py-4 font-mono text-caution">{row.top10Concentration}%</td>
                 <td className="px-5 py-4 text-muted">{row.pensionEligible}</td>
                 <td className="px-5 py-4 text-accent">{row.recommendation}</td>
               </tr>
@@ -2357,30 +2305,30 @@ function DomesticEtfMiniTable({ title, rows }: { title: string; rows: DomesticEt
 function QqqReplacementEngine() {
   return (
     <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-      <SectionHeader eyebrow="QQQ 대체 후보 엔진" title="나스닥100 노출이 필요할 때 국내 상장 대체 ETF 자동 비교" icon={<Search className="h-5 w-5" />} />
+      <SectionHeader eyebrow="QQQ Replacement Engine" title="Rank QQQ and Korea-listed Nasdaq alternatives" icon={<Search className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {qqqAlternatives.map((row) => (
           <article key={row.code} className="rounded-lg border border-white/10 bg-black/20 p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="font-semibold text-white">{row.name}</div>
-                <div className="mt-1 text-xs text-muted">{row.code} · {row.category}</div>
+                <div className="mt-1 text-xs text-muted">{row.code} ? {row.category}</div>
               </div>
-              <Pill className={row.recommended.includes("핵심") ? toneClass.positive : row.recommended.includes("제한") ? toneClass.caution : toneClass.neutral}>{row.recommended}</Pill>
+              <Pill className={row.recommended.includes("Core") ? toneClass.positive : row.recommended.includes("Cap") ? toneClass.caution : toneClass.neutral}>{row.recommended}</Pill>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
-              <InfoBlock label="QQQ 대비 1M" value={`${formatSigned(row.excess1m)}%`} />
-              <InfoBlock label="QQQ 대비 3M" value={`${formatSigned(row.excess3m)}%`} />
-              <InfoBlock label="QQQ 대비 6M" value={`${formatSigned(row.excess6m)}%`} />
-              <InfoBlock label="QQQ 대비 1Y" value={`${formatSigned(row.excess1y)}%`} />
-              <InfoBlock label="원화 수익률" value={`${formatSigned(row.krwReturn)}%`} />
-              <InfoBlock label="환율 효과" value={`${formatSigned(row.fxEffect)}%`} />
-              <InfoBlock label="총보수" value={`${row.fee.toFixed(2)}%`} />
-              <InfoBlock label="AUM / 거래대금" value={`${row.aum.toLocaleString()}억 / ${row.tradingValue}억`} />
+              <InfoBlock label="1M vs QQQ" value={`${formatSigned(row.excess1m)}%`} />
+              <InfoBlock label="3M vs QQQ" value={`${formatSigned(row.excess3m)}%`} />
+              <InfoBlock label="6M vs QQQ" value={`${formatSigned(row.excess6m)}%`} />
+              <InfoBlock label="1Y vs QQQ" value={`${formatSigned(row.excess1y)}%`} />
+              <InfoBlock label="KRW Return" value={`${formatSigned(row.krwReturn)}%`} />
+              <InfoBlock label="FX Effect" value={`${formatSigned(row.fxEffect)}%`} />
+              <InfoBlock label="Fee" value={`${row.fee.toFixed(2)}%`} />
+              <InfoBlock label="AUM / Trading Value" value={`${row.aum.toLocaleString()} / ${row.tradingValue}`} />
             </div>
-            <WhyDetails label="구성·리스크 보기">
-              <div>MDD {formatSigned(row.mdd)}%, 변동성 {row.volatility.toFixed(1)}%</div>
-              <div>구성종목 차이: {row.holdingDiff}</div>
+            <WhyDetails label="Holdings / Risk Details">
+              <div>MDD {formatSigned(row.mdd)}%, volatility {row.volatility.toFixed(1)}%</div>
+              <div>Holding difference: {row.holdingDiff}</div>
             </WhyDetails>
           </article>
         ))}
@@ -2388,26 +2336,25 @@ function QqqReplacementEngine() {
     </section>
   );
 }
-
 function DomesticExecutionSleeves() {
   const sleeves = [
-    ["SMH/SOXX 대체 후보", "국내 반도체·AI 액티브/패시브 ETF", "반도체 3M/6M 초과수익 양수일 때만 확대"],
-    ["원자재 ETF", "금·구리·에너지·광산 ETF", "물가 재가속 또는 공급 쇼크 확인 시 조건부 사용"],
-    ["채권 ETF", "단기채, 중기채, 장기국채 ETF", "실질금리 급등 구간에서는 장기채 제한"],
-    ["금 ETF", "국내 금현물·금선물·금광산 ETF", "달러 약세와 실질금리 하락 시 헤지 확대"],
-    ["전력기기/인프라 ETF", "전력망, 인프라, 산업재 ETF", "AI 전력 수요와 수주 사이클 확인 시 중립+"],
-    ["방산 ETF", "국내 방산 테마 ETF", "수주 모멘텀과 밸류에이션 과열을 동시에 점검"],
-    ["배당/퀄리티 ETF", "퀄리티 배당, 가치, 로우볼 ETF", "BM Core 주변 방어적 틸트로 활용"]
+    ["SMH/SOXX Alternatives", "Korea-listed semiconductor and AI active/passive ETFs", "Expand only when 3M/6M excess return is positive."],
+    ["Commodity ETF", "Gold, copper, energy, and miner ETFs", "Use only when reflation or supply-shock evidence appears."],
+    ["Bond ETF", "Short, intermediate, and long-duration bond ETFs", "Limit long duration while real yields are rising."],
+    ["Gold ETF", "Physical gold, gold futures, and gold miner ETFs", "Increase hedge only when USD weakens or real yields fall."],
+    ["Power / Infrastructure ETF", "Grid, infrastructure, and industrial ETFs", "Use as a neutral+ AI power demand sleeve."],
+    ["Defense ETF", "Korea-listed defense theme ETFs", "Check order momentum and valuation crowding together."],
+    ["Dividend / Quality ETF", "Quality dividend, value, and low-vol ETFs", "Use as defensive tilt around BM Core."]
   ];
   return (
     <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-      <SectionHeader eyebrow="국내 ETF 실행수단 지도" title="섹터별 국내 상장 대체 후보" icon={<Layers3 className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Korea-listed ETF Execution Map" title="Korea-listed substitutes by sleeve" icon={<Layers3 className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         {sleeves.map(([title, universe, rule]) => (
           <article key={title} className="rounded-lg border border-white/10 bg-black/20 p-4">
             <div className="font-semibold text-white">{title}</div>
-            <div className="mt-2 text-sm text-accent">{universe}</div>
-            <div className="mt-2 text-sm text-white/70">{rule}</div>
+            <div className="description mt-2 text-sm text-accent">{universe}</div>
+            <div className="description mt-2 text-sm text-white/70">{rule}</div>
           </article>
         ))}
       </div>
@@ -2438,7 +2385,7 @@ function QualityStockCandidates({ compact = false, limit }: { compact?: boolean;
     .sort((a, b) => b.qualityScore - a.qualityScore);
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="퀄리티 종목 후보" title="퀄리티 종목 후보" icon={<Gem className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Quality Stock Candidates" title="Quality Stock Candidates" icon={<Gem className="h-5 w-5" />} />
       <p className="mb-4 text-sm text-muted">Quality Stock Score = Business Quality 25% + Financial Quality 20% + Growth Durability 20% + Valuation Discipline 15% + Earnings Revision 10% + Liquidity/Risk 10%</p>
       {!compact ? (
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4 xl:grid-cols-8">
@@ -2533,7 +2480,7 @@ function MidSmallQualityWatchlist({ compact = false, limit }: { compact?: boolea
   const visibleRows = compact ? rows.slice(0, limit ?? rows.length) : rows;
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="미드스몰캡 퀄리티 관심군" title="미드스몰캡 퀄리티 필터" icon={<Sprout className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Mid/Small Cap Quality Watchlist" title="Mid/small quality filters" icon={<Sprout className="h-5 w-5" />} />
       {!compact ? (
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4 xl:grid-cols-6">
           <NumberInput label="Min Market Cap" value={minMarketCap} onChange={setMinMarketCap} />
@@ -2595,29 +2542,29 @@ function MidSmallQualityWatchlist({ compact = false, limit }: { compact?: boolea
 
 function TenbaggerScreener() {
   const rows = [
-    ["042700.KQ", "한미반도체", "HBM 장비", "82", "AI 메모리 병목 장비", "매출 CAGR 24% · ROIC 34% · 52주 고점 -8%", "CB/오버행 낮음, 밸류 부담은 분할 관찰"],
-    ["267260.KQ", "HD현대일렉트릭", "전력기기", "78", "AI 전력 수요와 전력망 증설", "예상 매출 성장 22% · ROE 26% · 기관/외국인 동반", "핵심 추세 유지, 과열 시 비중만 조절"],
-    ["298380.KQ", "에이비엘바이오", "바이오 플랫폼", "66", "ADC·이중항체 플랫폼", "TAM 높음 · 침투율 초기 · FCF 변동성", "임상/현금흐름 확인 전 심층 검토"],
-    ["112610.KQ", "씨에스윈드", "재생에너지 기자재", "61", "전력 인프라와 해상풍력", "매출 CAGR 16% · FCF 개선 필요", "순차입금/EBITDA와 수주 마진 점검"]
+    ["042700.KQ", "Hanmi Semiconductor", "HBM equipment", "82", "AI memory bottleneck equipment", "Revenue CAGR 24% / ROIC 34% / 8% below 52W high", "Low overhang, valuation needs staged entry"],
+    ["267260.KQ", "HD Hyundai Electric", "Power equipment", "78", "AI power demand and grid expansion", "Expected revenue growth 22% / ROE 26% / institutional flow", "Trend intact, size only after pullbacks"],
+    ["298380.KQ", "ABL Bio", "Bio platform", "66", "ADC and bispecific antibody platform", "Large TAM / early penetration / FCF volatility", "Deep dive required before sizing"],
+    ["112610.KQ", "CS Wind", "Renewable equipment", "61", "Power infrastructure and offshore wind", "Revenue CAGR 16% / FCF improvement needed", "Check leverage and order margin" ]
   ];
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="미드·스몰캡 알파" title="텐베거 후보 스크리너" icon={<Sprout className="h-5 w-5" />} />
-      <p className="mb-4 text-sm text-muted">구조적 성장 섹터, 매출 CAGR, 예상 성장률, OPM 개선, ROE/ROIC, 순차입금/EBITDA, FCF 개선, 거래대금 증가, 기관/외국인 수급, 52주 신고가 근접, CB/오버행, 지배구조, TAM, 침투율, 영업레버리지를 함께 봅니다.</p>
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        {rows.map(([ticker, name, sector, score, thesis, metrics, risk]) => (
+      <SectionHeader eyebrow="Mid/Small Cap Alpha" title="Tenbagger Candidate Screener" icon={<Sprout className="h-5 w-5" />} />
+      <p className="description mb-4 text-sm text-muted">Screen structural growth, revenue CAGR, margin improvement, ROE/ROIC, leverage, FCF trend, liquidity, ownership flow, 52-week high proximity, CB/overhang, governance, TAM, penetration, and operating leverage.</p>
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+        {rows.map(([ticker, name, theme, score, thesis, metrics, risk]) => (
           <article key={ticker} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="font-mono text-white">{ticker}</div>
+                <div className="font-mono text-xs text-muted">{ticker}</div>
                 <div className="mt-1 font-semibold text-white">{name}</div>
-                <div className="mt-1 text-xs text-muted">{sector}</div>
+                <div className="mt-1 text-sm text-accent">{theme}</div>
               </div>
-              <Pill className={Number(score) >= 75 ? toneClass.positive : toneClass.caution}>텐베거 점수 {score}</Pill>
+              <Pill className={Number(score) >= 75 ? toneClass.positive : toneClass.caution}>Alpha score {score}</Pill>
             </div>
-            <div className="mt-3 text-sm text-white/75">구조적 성장: {thesis}</div>
-            <div className="mt-2 text-sm text-accent">{metrics}</div>
-            <div className="mt-2 text-sm text-muted">리스크: {risk}</div>
+            <div className="description mt-3 text-sm text-white/75">Structural growth: {thesis}</div>
+            <div className="description mt-2 text-sm text-muted">{metrics}</div>
+            <div className="description mt-2 text-sm text-muted">Risk: {risk}</div>
           </article>
         ))}
       </div>
@@ -2626,91 +2573,52 @@ function TenbaggerScreener() {
 }
 
 function CommodityResourceMonitor({ compact = false, limit }: { compact?: boolean; limit?: number }) {
-  const [actionFilter, setActionFilter] = React.useState("All");
-  const [categoryFilter, setCategoryFilter] = React.useState("All");
-  const [riskFilter, setRiskFilter] = React.useState("All");
-  const [statusFilter, setStatusFilter] = React.useState("All");
-  const [confidenceFilter, setConfidenceFilter] = React.useState("All");
-  const categoryOptions = ["All", ...commodityMonitors.map((item) => item.category)];
-  const commodityRiskLevel = (row: CommodityMonitor) => {
-    if (row.dollarSensitivity === "High" || row.chinaDemandSensitivity === "High") return "High";
-    if (row.dollarSensitivity === "Medium" || row.chinaDemandSensitivity === "Medium") return "Medium";
-    return "Low";
-  };
-  const filteredRows = commodityMonitors
-    .filter((row) => actionFilter === "All" || row.action === actionFilter)
-    .filter((row) => categoryFilter === "All" || row.category === categoryFilter)
-    .filter((row) => riskFilter === "All" || commodityRiskLevel(row) === riskFilter)
-    .filter((row) => statusFilter === "All" || row.dataStatus === statusFilter)
-    .filter((row) => confidenceFilter === "All" || confidenceLevel(row.confidence) === confidenceFilter);
-  const rows = compact ? filteredRows.slice(0, limit ?? 9) : filteredRows;
+  const rows = compact ? commodityMonitors.slice(0, limit ?? 6) : commodityMonitors;
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow={"\uCC44\uAD8C\u00B7\uC6D0\uC790\uC7AC\u00B7\uB300\uCCB4 ETF"} title={"\uB9E4\uD06C\uB85C \uC870\uAC74\uBD80 \uD2F8\uD2B8 \uBAA8\uB4C8"} icon={<Factory className="h-5 w-5" />} />
-      {!compact ? (
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-5">
-          <Select label="Action" value={actionFilter} onChange={setActionFilter} options={["All", "Overweight", "Neutral+", "Neutral", "Neutral-", "Underweight", "Avoid"]} />
-          <Select label="Asset Class" value={categoryFilter} onChange={setCategoryFilter} options={categoryOptions} />
-          <Select label="Risk Level" value={riskFilter} onChange={setRiskFilter} options={["All", "Low", "Medium", "High"]} />
-          <Select label="Data Status" value={statusFilter} onChange={setStatusFilter} options={["All", "Live", "Delayed", "Stale", "Modeled", "Fallback", "Error"]} />
-          <Select label="Confidence" value={confidenceFilter} onChange={setConfidenceFilter} options={["All", "High", "Medium", "Low"]} />
-        </div>
-      ) : null}
+      <SectionHeader eyebrow="Conditional Hedges" title="Commodity, bond, and alternative ETF tilt rules" icon={<Factory className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {rows.map((row) => (
-          <details key={row.category} className="rounded-lg border border-white/10 bg-white/[0.03] p-4" open={!compact}>
-            <summary className="cursor-pointer list-none">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="font-semibold text-white">{row.category}</div>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
-                    <span>{row.commodityTrend}</span>
-                    <DataStatusPill status={row.dataStatus} />
-                    <Pill className="border-purple-400/45 bg-purple-400/10 text-purple-200">Proxy / Assumption</Pill>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <ActionPill action={row.action} />
-                  <WhyDetails>
-                    <div>Commodity trend: {row.commodityTrend}</div>
-                    <div>Futures curve: {row.futuresCurve}</div>
-                    <div>Inventory: {row.inventoryTrend}</div>
-                    <div>Dollar/China sensitivity: {row.dollarSensitivity} / {row.chinaDemandSensitivity}</div>
-                    <div>Conclusion: {row.rationale}</div>
-                  </WhyDetails>
-                </div>
+          <article key={row.category} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="font-semibold text-white">{row.category}</div>
+                <div className="mt-1 text-xs text-muted">Confidence {row.confidence}/100</div>
               </div>
-            </summary>
-            <div className="mt-3 grid grid-cols-1 gap-2 text-sm">
-              <InfoBlock label="Underlying Commodity Trend" value={row.commodityTrend} />
-              <InfoBlock label="Futures Curve" value={row.futuresCurve} />
-              <InfoBlock label="Inventory Trend" value={row.inventoryTrend} />
-              <InfoBlock label="Dollar / China Sensitivity" value={`${row.dollarSensitivity} / ${row.chinaDemandSensitivity}`} />
-              <InfoBlock label="Data Basis" value={`Proxy/Assumption; confidence ${row.confidence}/100`} />
-              <InfoBlock label="Related ETFs" value={row.relatedEtfs.join(", ")} />
-              <InfoBlock label="Related Stocks" value={row.relatedStocks.join(", ")} />
-              <InfoBlock label="Rationale" value={row.rationale} />
+              <ActionPill action={row.action} />
             </div>
-          </details>
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <InfoBlock label="Trend" value={row.commodityTrend} />
+              <InfoBlock label="Curve" value={row.futuresCurve} />
+              <InfoBlock label="Inventory" value={row.inventoryTrend} />
+              <InfoBlock label="Data" value={row.dataStatus} />
+            </div>
+            <p className="description mt-3 text-sm text-white/70">{row.rationale}</p>
+            <WhyDetails label="Related Assets">
+              <div>ETFs: {row.relatedEtfs.join(", ")}</div>
+              <div>Stocks: {row.relatedStocks.join(", ")}</div>
+              <div>Dollar sensitivity: {row.dollarSensitivity}</div>
+              <div>China demand sensitivity: {row.chinaDemandSensitivity}</div>
+            </WhyDetails>
+          </article>
         ))}
       </div>
       {!compact ? (
-        <details className="mt-5 rounded-lg border border-white/10 bg-white/[0.03] p-4" open>
-          <summary className="cursor-pointer list-none font-semibold text-white">채권·원자재·대체 ETF 조건부 틸트</summary>
+        <details className="mt-5 rounded-lg border border-white/10 bg-black/20 p-4" open>
+          <summary className="cursor-pointer list-none font-semibold text-white">Conditional Tilt Playbook</summary>
           <div className="mt-3 grid grid-cols-1 gap-4 xl:grid-cols-2">
             {[
-              ["채권", "금리 하락 기대가 높아질 때", "TLT, IEF, 국내 장기국채 ETF", "실질금리 급등 시 장기채 제한", "현재는 단기채·현금성 ETF 우선"],
-              ["원자재", "인플레이션 재가속 또는 공급 쇼크", "DBC, PDBC, XLE, XOP, OIH", "성장 둔화와 재고 증가 동반 시 제한", "상시 분산이 아니라 조건부 틸트"],
-              ["구리·중국 수요", "구리 강세와 중국 PMI 개선 동시 확인", "COPX, CPER, PAVE, GRID", "구리만 강하고 수요 확인이 없을 때 제한", "확인 후 분할 접근"],
-              ["금", "실질금리 하락 또는 달러 약세", "GLD, IAU, GDX", "실질금리와 달러가 동시에 상승할 때 제한", "헤지 목적 중립+ 유지"]
-            ].map(([sleeve, condition, etfs, avoid, action]) => (
-              <article key={sleeve} className="rounded-lg border border-white/10 bg-black/20 p-4">
-                <div className="font-semibold text-white">{sleeve}</div>
-                <div className="mt-2 text-sm text-white/75">조건: {condition}</div>
-                <div className="mt-1 text-sm text-accent">후보 ETF: {etfs}</div>
-                <div className="mt-1 text-sm text-muted">제한 조건: {avoid}</div>
-                <div className="mt-2 text-sm text-white/80">현재 액션: {action}</div>
-              </article>
+              ["Bonds", "Use TLT/IEF only when falling-rate confidence improves", "Limit long duration when real yields are rising", "Prefer BIL/SHY while rate uncertainty remains high"],
+              ["Commodities", "Use DBC/PDBC when reflation or supply shocks appear", "Do not hold as permanent diversification", "Treat as a conditional active sleeve"],
+              ["Copper / China demand", "Use COPX/CPER/PAVE/GRID when copper and China PMI confirm together", "Limit if copper rises without demand confirmation", "Stage entries only"],
+              ["Gold", "Use GLD/IAU/GDX when real yields fall or USD weakens", "Limit when USD and real yields rise together", "Keep as a hedge sleeve" ]
+            ].map(([name, condition, avoid, action]) => (
+              <div key={name} className="rounded border border-white/10 bg-white/[0.03] p-3">
+                <div className="font-semibold text-white">{name}</div>
+                <div className="description mt-2 text-sm text-white/75">Condition: {condition}</div>
+                <div className="description mt-1 text-sm text-muted">Limit: {avoid}</div>
+                <div className="description mt-2 text-sm text-accent">Current action: {action}</div>
+              </div>
             ))}
           </div>
         </details>
@@ -2730,7 +2638,7 @@ function RiskValuationAlerts({ snapshot, compact = false, limit }: { snapshot: M
   const rows = compact ? filteredRows.slice(0, limit ?? 6) : filteredRows;
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="리스크·밸류에이션 알림" title="리스크와 밸류에이션 알림" icon={<ShieldAlert className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Risk & Valuation Alerts" title="Risk and valuation alerts" icon={<ShieldAlert className="h-5 w-5" />} />
       {!compact ? (
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
           <Select label="Risk Level" value={severityFilter} onChange={setSeverityFilter} options={["All", "Red", "Orange", "Yellow"]} />
@@ -2746,7 +2654,7 @@ function RiskValuationAlerts({ snapshot, compact = false, limit }: { snapshot: M
             <summary className="cursor-pointer list-none">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <Pill className={alert.severity === "Red" ? toneClass.negative : alert.severity === "Orange" ? toneClass.caution : "border-accent/35 bg-accent/10 text-accent"}>{alert.severity} · {alert.type}</Pill>
+                  <Pill className={alert.severity === "Red" ? toneClass.negative : alert.severity === "Orange" ? toneClass.caution : "border-accent/35 bg-accent/10 text-accent"}>{alert.severity} ? {alert.type}</Pill>
                   <h3 className="mt-2 font-semibold text-white">{alert.title}</h3>
                   <p className="mt-1 text-sm text-white/75">{alert.trigger}</p>
                 </div>
@@ -2799,7 +2707,7 @@ function MyWatchlistView({ compact = false }: { compact?: boolean }) {
 
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="내 관심자산" title="관심 ETF · 주식 · 원자재" icon={<Gem className="h-5 w-5" />} />
+      <SectionHeader eyebrow="My Watchlist" title="Tracked ETFs, stocks, and commodities" icon={<Gem className="h-5 w-5" />} />
       {!compact ? (
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4 xl:grid-cols-7">
           <Input label="Search" value={query} onChange={setQuery} />
@@ -2851,7 +2759,7 @@ function MyWatchlistView({ compact = false }: { compact?: boolean }) {
 function PortfolioConstructionView() {
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="포트폴리오 구성" title="Core / Satellite / Tactical 구조" icon={<Landmark className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Portfolio Construction" title="BM Core / Active Tilt / Defense structure" icon={<Landmark className="h-5 w-5" />} />
       <div className="thin-scrollbar overflow-x-auto">
         <table className="w-full min-w-[1000px] text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
@@ -2884,7 +2792,7 @@ function RiskBudgetView() {
   };
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="리스크 예산" title="포트폴리오 노출 한도와 압력 요인" icon={<ShieldAlert className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Risk Budget" title="Exposure limits and pressure points" icon={<ShieldAlert className="h-5 w-5" />} />
       <div className="thin-scrollbar overflow-x-auto">
         <table className="w-full min-w-[920px] text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
@@ -2915,6 +2823,160 @@ function formatBacktestRatio(value: number) {
   return value.toFixed(2);
 }
 
+function BenchmarkBuilder() {
+  const presets: Record<string, { asset: string; weight: number; currency: "USD" | "KRW" }[]> = {
+    "S&P500 100%": [{ asset: "SPY", weight: 100, currency: "USD" }],
+    "Nasdaq100 100%": [{ asset: "QQQ", weight: 100, currency: "USD" }],
+    "KOSPI200 100%": [{ asset: "KOSPI200", weight: 100, currency: "KRW" }],
+    "ACWI 100%": [{ asset: "ACWI", weight: 100, currency: "USD" }],
+    "60/40": [{ asset: "SPY", weight: 60, currency: "USD" }, { asset: "IEF", weight: 40, currency: "USD" }],
+    Custom: [
+      { asset: "QQQ", weight: 50, currency: "USD" },
+      { asset: "SPY", weight: 30, currency: "USD" },
+      { asset: "KOSPI200", weight: 10, currency: "KRW" },
+      { asset: "BIL", weight: 10, currency: "USD" }
+    ]
+  };
+  const [preset, setPreset] = React.useState("Custom");
+  const [rows, setRows] = React.useState(presets.Custom);
+  const [rebalance, setRebalance] = React.useState<RebalancePolicy>("Monthly");
+  const [returnBasis, setReturnBasis] = React.useState<ReturnBasis>("Total Return");
+  const [reportingCurrency, setReportingCurrency] = React.useState<BacktestCurrency>("KRW");
+  const total = rows.reduce((sum, row) => sum + Number(row.weight || 0), 0);
+  const applyPreset = (nextPreset: string) => {
+    setPreset(nextPreset);
+    setRows(presets[nextPreset].map((row) => ({ ...row })));
+  };
+  const updateRow = (index: number, patch: Partial<(typeof rows)[number]>) => {
+    setRows((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row));
+  };
+
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Benchmark Builder" title="User-defined BM Core" icon={<SlidersHorizontal className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <Select label="Preset" value={preset} onChange={applyPreset} options={Object.keys(presets)} />
+        <Select label="Rebalance Frequency" value={rebalance} onChange={(value) => setRebalance(value as RebalancePolicy)} options={["Weekly", "Monthly", "Signal Change"]} />
+        <Select label="Return Basis" value={returnBasis} onChange={(value) => setReturnBasis(value as ReturnBasis)} options={["Total Return", "Price Return"]} />
+        <Select label="Reporting Currency" value={reportingCurrency} onChange={(value) => setReportingCurrency(value as BacktestCurrency)} options={["KRW", "USD"]} />
+      </div>
+      <div className="mt-4 thin-scrollbar overflow-x-auto">
+        <table className="w-full min-w-[760px] table-fixed text-left text-sm">
+          <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
+            <tr>{["Asset / ETF", "Weight", "Currency", "Role"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => (
+              <tr key={`${row.asset}-${index}`} className="border-t border-white/10">
+                <td className="px-4 py-3"><input className="w-full rounded border border-white/10 bg-black/30 px-3 py-2 text-white" value={row.asset} onChange={(event) => updateRow(index, { asset: event.target.value })} /></td>
+                <td className="numeric px-4 py-3"><input type="number" className="w-24 rounded border border-white/10 bg-black/30 px-3 py-2 text-right text-white" value={row.weight} onChange={(event) => updateRow(index, { weight: Number(event.target.value) })} /></td>
+                <td className="px-4 py-3">
+                  <select className="rounded border border-white/10 bg-black/30 px-3 py-2 text-white" value={row.currency} onChange={(event) => updateRow(index, { currency: event.target.value as "USD" | "KRW" })}>
+                    <option>USD</option>
+                    <option>KRW</option>
+                  </select>
+                </td>
+                <td className="description px-4 py-3 text-muted">{index === 0 ? "Primary beta anchor" : row.asset === "BIL" ? "Defense / cash-like ballast" : "Core benchmark sleeve"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className={`mt-3 rounded border px-3 py-2 text-sm ${total === 100 ? "border-positive/30 bg-positive/10 text-positive" : "border-negative/30 bg-negative/10 text-negative"}`}>
+        Total weight {total.toFixed(1)}%. {total === 100 ? "Valid benchmark core." : "Invalid benchmark core: weights must sum to 100% before saving."}
+      </div>
+    </section>
+  );
+}
+
+function ActiveSleeveByRegime() {
+  const regimes = [
+    ["Goldilocks", "Nasdaq100 / active Nasdaq ETF, Quality ETF, Semiconductor ETF, AI infrastructure ETF, selected quality stocks, low cash"],
+    ["Reflation", "Industrial ETF, copper ETF, energy ETF, power equipment ETF, Korea export quality, optional gold"],
+    ["Slowdown", "Quality ETF, healthcare ETF, gold ETF, short/intermediate bonds, cash"],
+    ["Stagflation", "Energy ETF, gold ETF, broad commodity ETF, short bond/cash, low-duration quality"],
+    ["Risk-off", "Cash/BIL, short bonds, gold, minimum equity core only"]
+  ];
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Active Sleeve Rules" title="Regime-based candidate set, capped at 5~6 assets" icon={<Layers3 className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
+        {regimes.map(([name, sleeve]) => (
+          <article key={name} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+            <div className="font-semibold text-white">{name}</div>
+            <p className="description mt-2 text-sm text-white/70">{sleeve}</p>
+          </article>
+        ))}
+      </div>
+      <div className="mt-4 rounded border border-caution/25 bg-caution/5 px-3 py-2 text-sm text-caution">
+        Current regime confidence is near 60/100, so active tilt is capped at 10% and aggressive overweight signals are disabled.
+      </div>
+    </section>
+  );
+}
+
+function PortfolioRecommendation() {
+  const coreRows = [
+    ["QQQ", "50%"],
+    ["SPY", "30%"],
+    ["KOSPI200", "10%"],
+    ["BIL", "10%"]
+  ];
+  const tiltRows = [
+    ["SMH", "+5%"],
+    ["TIME Nasdaq Active", "+3%"],
+    ["PAVE / GRID", "+2%"],
+    ["Cash / BIL", "-10%"]
+  ];
+  const finalRows = [
+    ["QQQ", "45%", "BM core"],
+    ["SPY", "30%", "BM core"],
+    ["KOSPI200", "10%", "BM core"],
+    ["SMH", "5%", "Semiconductor tilt"],
+    ["TIME Nasdaq Active", "3%", "Active Nasdaq tilt"],
+    ["BIL", "7%", "Defense / cash"]
+  ];
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Portfolio Recommendation" title="BM Core + Macro Active Tilt" icon={<BriefcaseBusiness className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <CompactList title="BM Core" rows={coreRows} />
+        <CompactList title="Active Tilt" rows={tiltRows} />
+        <div className="rounded-lg border border-accent/25 bg-accent/5 p-4">
+          <div className="mb-3 font-semibold text-white">Final Portfolio</div>
+          <div className="space-y-2">
+            {finalRows.map(([asset, weight, role]) => (
+              <div key={asset} className="grid grid-cols-[1fr_auto] gap-3 rounded border border-white/10 bg-black/20 px-3 py-2">
+                <div>
+                  <div className="font-medium text-white">{asset}</div>
+                  <div className="description text-xs text-muted">{role}</div>
+                </div>
+                <div className="numeric font-mono text-accent">{weight}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CompactList({ title, rows }: { title: string; rows: string[][] }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+      <div className="mb-3 font-semibold text-white">{title}</div>
+      <div className="space-y-2">
+        {rows.map(([asset, weight]) => (
+          <div key={asset} className="flex items-center justify-between gap-3 rounded border border-white/10 bg-black/20 px-3 py-2">
+            <span className="font-medium text-white">{asset}</span>
+            <span className="numeric font-mono text-accent">{weight}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function returnHeatClass(value: number) {
   if (value >= 0.04) return "border-positive/35 bg-positive/15";
   if (value >= 0) return "border-positive/20 bg-positive/5";
@@ -2927,18 +2989,18 @@ function BacktestLabView() {
   const preview = React.useMemo(() => buildReconstructedBacktestPreview(settings), [settings]);
   const passedCount = preview.passCriteria.filter((row) => row.passed).length;
   const metricRows = [
-    ["누적수익률", formatBacktestPercent(preview.metrics.cumulativeReturn), "3년 누적"],
+    ["Cumulative Return", formatBacktestPercent(preview.metrics.cumulativeReturn), "3Y cumulative"],
     ["CAGR", formatBacktestPercent(preview.metrics.cagr), "annualized"],
-    ["BM 대비 초과수익", formatBacktestPercent(preview.metrics.excessReturnVsBenchmark), `vs ${settings.benchmark}`],
+    ["Excess Return vs BM", formatBacktestPercent(preview.metrics.excessReturnVsBenchmark), `vs ${settings.benchmark}`],
     ["Sharpe", formatBacktestRatio(preview.metrics.sharpeRatio), "rf 3.5%"],
     ["Sortino", formatBacktestRatio(preview.metrics.sortinoRatio), "downside risk"],
     ["MDD", formatBacktestPercent(preview.metrics.maxDrawdown), `BM ${formatBacktestPercent(preview.metrics.benchmarkMaxDrawdown)}`],
-    ["MDD 개선폭", formatBacktestPercent(preview.metrics.mddImprovement), "BM 대비"],
-    ["상승장 참여율", formatBacktestPercent(preview.metrics.upCapture), "Up capture"],
-    ["하락장 방어율", formatBacktestPercent(1 - preview.metrics.downCapture), "Downside defense"],
+    ["MDD Improvement", formatBacktestPercent(preview.metrics.mddImprovement), "vs BM"],
+    ["Upside Participation", formatBacktestPercent(preview.metrics.upCapture), "Up capture"],
+    ["Downside Defense", formatBacktestPercent(1 - preview.metrics.downCapture), "Downside defense"],
     ["Information Ratio", formatBacktestRatio(preview.metrics.informationRatio), `TE ${formatBacktestPercent(preview.metrics.trackingError)}`],
     ["Turnover", formatBacktestPercent(preview.metrics.turnover), "annualized"],
-    ["비용 차감 초과수익", formatBacktestPercent(preview.metrics.afterCostExcessReturn), "거래비용 반영"]
+    ["After-cost Excess Return", formatBacktestPercent(preview.metrics.afterCostExcessReturn), "net of transaction cost"]
   ];
   const chartData = preview.points
     .filter((_, index) => index % 21 === 0)
@@ -2957,13 +3019,13 @@ function BacktestLabView() {
   return (
     <div className="space-y-6">
       <section className="panel rounded-lg border-caution/35 bg-caution/5 p-5">
-        <SectionHeader eyebrow="백테스트 Lab" title="BM Core + Dashboard Active Tilt 3년 백테스트" icon={<BarChart3 className="h-5 w-5" />} />
+        <SectionHeader eyebrow="Backtest Lab" title="BM Core + Macro Active Tilt 3-year replay" icon={<BarChart3 className="h-5 w-5" />} />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
           <StatCard label="BM Core" value={`${Math.round(preview.coreTiltPolicy.benchmarkCoreWeight * 100)}%`} detail={settings.benchmark} tone="positive" />
-          <StatCard label="Active Tilt" value={`${Math.round(preview.coreTiltPolicy.activeTiltTarget * 100)}%`} detail={`한도 ${Math.round(preview.coreTiltPolicy.activeTiltMax * 100)}%`} tone="caution" />
-          <StatCard label="Regime Confidence" value={`${preview.coreTiltPolicy.regimeConfidence}/100`} detail="현재 50~65 구간: 틸트 최대 10%" tone="caution" />
-          <StatCard label="Reliability" value={`${preview.coreTiltPolicy.dataReliability}/100`} detail="신규 확대는 분할 접근" tone="caution" />
-          <StatCard label="실전 후보" value={`${passedCount}/7`} detail={passedCount >= 3 ? "통과" : "보류"} tone={passedCount >= 3 ? "positive" : "negative"} />
+          <StatCard label="Active Tilt" value={`${Math.round(preview.coreTiltPolicy.activeTiltTarget * 100)}%`} detail={`cap ${Math.round(preview.coreTiltPolicy.activeTiltMax * 100)}%`} tone="caution" />
+          <StatCard label="Regime Confidence" value={`${preview.coreTiltPolicy.regimeConfidence}/100`} detail="Current 50~65 band: max 10% tilt" tone="caution" />
+          <StatCard label="Reliability" value={`${preview.coreTiltPolicy.dataReliability}/100`} detail="New additions should be staged" tone="caution" />
+          <StatCard label="Live Candidate Gate" value={`${passedCount}/7`} detail={passedCount >= 3 ? "Pass" : "Hold"} tone={passedCount >= 3 ? "positive" : "negative"} />
         </div>
         <div className="mt-4 grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
           {BACKTEST_LIMITATIONS.map((warning) => (
@@ -2972,18 +3034,22 @@ function BacktestLabView() {
         </div>
       </section>
 
+      <BenchmarkBuilder />
+      <PortfolioRecommendation />
+      <ActiveSleeveByRegime />
+
       <section className="panel rounded-lg p-5">
-        <SectionHeader eyebrow="전략 구조" title="전체 포트폴리오 대체가 아니라 BM 주변 액티브 틸트" icon={<BriefcaseBusiness className="h-5 w-5" />} />
+        <SectionHeader eyebrow="Strategy Structure" title="BM Core 70~85% plus constrained active tilt" icon={<BriefcaseBusiness className="h-5 w-5" />} />
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <InfoBlock label="운용 구조" value={`BM Core ${Math.round(preview.coreTiltPolicy.benchmarkCoreWeight * 100)}% + Dashboard Active Tilt ${Math.round(preview.coreTiltPolicy.activeTiltTarget * 100)}%`} />
-          <InfoBlock label="현금 규칙" value={preview.coreTiltPolicy.cashRange} />
-          <InfoBlock label="신뢰도 규칙" value={preview.coreTiltPolicy.reliabilityRule} />
+          <InfoBlock label="Portfolio Structure" value={`BM Core ${Math.round(preview.coreTiltPolicy.benchmarkCoreWeight * 100)}% + Dashboard Active Tilt ${Math.round(preview.coreTiltPolicy.activeTiltTarget * 100)}%`} />
+          <InfoBlock label="Cash Rule" value={preview.coreTiltPolicy.cashRange} />
+          <InfoBlock label="Reliability Rule" value={preview.coreTiltPolicy.reliabilityRule} />
         </div>
         <p className="mt-3 rounded border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/75">{preview.coreTiltPolicy.cashCondition}</p>
       </section>
 
       <section className="panel rounded-lg p-5">
-        <SectionHeader eyebrow="백테스트 설정" title="체결, 비용, 통화, BM 가정" icon={<SlidersHorizontal className="h-5 w-5" />} />
+        <SectionHeader eyebrow="Backtest Settings" title="Execution, cost, currency, and benchmark assumptions" icon={<SlidersHorizontal className="h-5 w-5" />} />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-7">
           <Select label="Currency" value={settings.currency} onChange={(value) => updateSetting("currency", value as BacktestSettings["currency"])} options={["KRW", "USD"]} />
           <Select label="Rebalance" value={settings.rebalancePolicy} onChange={(value) => updateSetting("rebalancePolicy", value as BacktestSettings["rebalancePolicy"])} options={["Weekly", "Monthly", "Signal Change"]} />
@@ -2999,7 +3065,7 @@ function BacktestLabView() {
       </section>
 
       <section className="panel rounded-lg p-5">
-        <SectionHeader eyebrow="성과 요약" title="BM 대비 성과와 리스크 조정 지표" icon={<LineChart className="h-5 w-5" />} />
+        <SectionHeader eyebrow="Performance Summary" title="BM-relative performance and risk-adjusted metrics" icon={<LineChart className="h-5 w-5" />} />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
           {metricRows.map(([label, value, detail]) => (
             <StatCard key={label} label={label} value={value} detail={detail} tone={String(value).startsWith("-") ? "negative" : "neutral"} />
@@ -3118,7 +3184,7 @@ function BacktestLabView() {
       </div>
 
       <section className="panel rounded-lg p-5">
-        <SectionHeader eyebrow="백테스트 진단" title="왜 BM에 이겼거나 졌는가" icon={<AlertTriangle className="h-5 w-5" />} />
+        <SectionHeader eyebrow="Backtest Attribution" title="Why the strategy won or lost versus BM" icon={<AlertTriangle className="h-5 w-5" />} />
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
           {preview.diagnostics.map((row) => (
             <div key={row.factor} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
@@ -3133,12 +3199,12 @@ function BacktestLabView() {
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {[
-            ["전략이 왜 BM에 졌는가?", "현금·원자재·채권 헤지가 강한 BM 상승장에서 상대성과를 일부 낮춥니다."],
-            ["상승장 참여율이 낮았는가?", `상승장 참여율은 ${formatBacktestPercent(preview.metrics.upCapture)}로 BM Core를 유지해 과거보다 개선됩니다.`],
-            ["하락장 방어는 되었는가?", `하락장 방어율은 ${formatBacktestPercent(1 - preview.metrics.downCapture)}로 MDD 개선 여부와 함께 판단합니다.`],
-            ["현금이 성과를 깎았는가?", "조건부 현금은 완충 역할이지만 5% 이상 상시는 금지합니다."],
-            ["원자재/채권 헤지가 손실을 냈는가?", "헤지는 국면별로 필요하지만 BM 대비 지속성 없는 구간에서는 중립 이하로 제한합니다."],
-            ["ETF 선택이 BM보다 나빴는가?", "3M/6M 초과수익과 Information Ratio가 낮으면 Overweight를 차단합니다."]
+            ["Why did the strategy lag BM?", "Cash, commodity, and bond sleeves can drag during strong benchmark rallies."],
+            ["Was upside participation too low?", `Upside participation is ${formatBacktestPercent(preview.metrics.upCapture)}; BM Core is designed to improve this.`],
+            ["Did downside defense work?", `Downside defense is ${formatBacktestPercent(1 - preview.metrics.downCapture)}; compare with MDD improvement.`],
+            ["Did cash drag performance?", "Cash is conditional and should not stay above 5% unless stress triggers are active."],
+            ["Did hedges hurt returns?", "Commodity and bond hedges are limited to neutral or below when BM-relative persistence is weak."],
+            ["ETF ?좏깮??BM蹂대떎 ?섎뭅?붽??", "3M/6M 珥덇낵?섏씡怨?Information Ratio媛 ??쑝硫?Overweight瑜?李⑤떒?⑸땲??"]
           ].map(([question, answer]) => (
             <InfoBlock key={question} label={question} value={answer} />
           ))}
@@ -3146,11 +3212,11 @@ function BacktestLabView() {
       </section>
 
       <section className="panel rounded-lg p-5">
-        <SectionHeader eyebrow="실전 후보 통과 조건" title="7개 조건 중 최소 3개 이상 충족 필요" icon={<ShieldAlert className="h-5 w-5" />} />
+        <SectionHeader eyebrow="Live Candidate Gate" title="At least 3 of 7 pass conditions are required" icon={<ShieldAlert className="h-5 w-5" />} />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           {preview.passCriteria.map((row) => (
             <div key={row.criterion} className={`rounded-lg border p-4 ${row.passed ? "border-positive/35 bg-positive/10" : "border-white/10 bg-white/[0.03]"}`}>
-              <Pill className={row.passed ? toneClass.positive : toneClass.neutral}>{row.passed ? "통과" : "미충족"}</Pill>
+              <Pill className={row.passed ? toneClass.positive : toneClass.neutral}>{row.passed ? "Pass" : "Not met"}</Pill>
               <div className="mt-3 font-semibold text-white">{row.criterion}</div>
               <div className="mt-1 text-sm text-white/70">{row.detail}</div>
             </div>
@@ -3159,7 +3225,7 @@ function BacktestLabView() {
       </section>
 
       <section className="panel rounded-lg p-5">
-        <SectionHeader eyebrow="전략 룰북" title="대시보드 신호가 BM 주변 틸트로 변환되는 방식" icon={<Database className="h-5 w-5" />} />
+        <SectionHeader eyebrow="Strategy Rulebook" title="How dashboard signals become BM-relative tilts" icon={<Database className="h-5 w-5" />} />
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
           {BACKTEST_STRATEGY_RULES.map((group) => (
             <div key={group.name} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
@@ -3201,29 +3267,29 @@ function DataReliability({ snapshot, compact = false }: { snapshot: MarketSnapsh
   const groups = reliabilityGroups(snapshot);
   const overall = reliabilityScore(snapshot);
   const signalRules = [
-    ["정상", "100%", "신호를 그대로 투자 판단에 반영"],
-    ["지연", "70~80%", "신규 확대는 분할 접근"],
-    ["오래된 데이터", "0~30%", "신규 비중확대 금지, 경고만 표시"],
-    ["모델값", "보조 해석", "투자 액션 직접 생성 금지"],
-    ["대체 데이터", "보조 해석", "신규 편입 금지"],
-    ["오류", "0%", "관련 신호 비활성화"]
+    ["Live", "100%", "Signal can be reflected in allocation."],
+    ["Delayed", "70~80%", "New additions should be staged."],
+    ["Stale", "0~30%", "No new overweight; warning only."],
+    ["Modeled", "Support only", "No direct investment action."],
+    ["Fallback", "Support only", "No new inclusion."],
+    ["Error", "0%", "Related signal disabled."]
   ];
   const sourceCandidates = [
-    ["미국", "FRED API", "금리·신용·유동성"],
-    ["미국", "BLS Public Data API", "물가·고용·임금"],
-    ["미국", "BEA API", "GDP·PCE·소비"],
-    ["미국", "EIA Open Data API", "에너지·재고"],
-    ["미국", "U.S. Treasury Fiscal Data API", "TGA·재정·국채 발행"],
-    ["미국", "SEC EDGAR API", "공시·13F·기업 데이터"],
-    ["한국", "한국은행 ECOS API", "금리·환율·경제지표"],
-    ["한국", "KRX Data Marketplace / KRX Open API", "지수·수급·공매도·ETF"],
-    ["한국", "한국투자증권 Open API", "시세·거래대금·수급"],
-    ["한국", "OpenDART API", "재무제표·CB·오버행"],
-    ["ETF", "KRX ETF / 운용사 / FunETF", "수익률·AUM·보수·괴리율·추적오차"]
+    ["US", "FRED API", "Rates, credit, liquidity"],
+    ["US", "BLS Public Data API", "Inflation and labor"],
+    ["US", "BEA API", "GDP and PCE"],
+    ["US", "EIA Open Data API", "Energy and inventory"],
+    ["US", "Treasury Fiscal Data", "TGA and fiscal data"],
+    ["US", "SEC EDGAR API", "Filings and fundamentals"],
+    ["Korea", "BOK ECOS API", "Rates, FX, macro"],
+    ["Korea", "KRX Open API", "Indexes, flows, ETF"],
+    ["Korea", "KIS Open API", "Prices and flows"],
+    ["Korea", "OpenDART API", "Fundamentals and overhang"],
+    ["ETF", "KRX ETF / issuers / FunETF", "Returns, AUM, fee, holdings"]
   ];
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow={"\uB370\uC774\uD130 \uC2E0\uB8B0\uB3C4"} title={"\uB370\uC774\uD130 \uC2E0\uC120\uB3C4\uC640 \uD22C\uC790 \uBC18\uC601 \uC81C\uD55C"} icon={<Database className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Data Reliability" title="Freshness, status, and signal limits" icon={<Database className="h-5 w-5" />} />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-7">
         <StatCard label="Overall" value={`${overall}/100`} detail="Weighted reliability" tone={overall >= 85 ? "positive" : overall >= 65 ? "caution" : "negative"} />
         <StatCard label="Live" value={counts.live} tone="positive" />
@@ -3233,66 +3299,41 @@ function DataReliability({ snapshot, compact = false }: { snapshot: MarketSnapsh
         <StatCard label="Fallback" value={counts.fallback} tone="neutral" />
         <StatCard label="Error" value={counts.error} tone="negative" />
       </div>
-      <p className="mt-3 text-xs text-muted">Overall = Market Price 25% + Flow 15% + Macro 25% + ETF 10% + Fundamental 15% + Commodity 10%. Stale, fallback, and error items are reflected automatically.</p>
-      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {groups.map((group) => (
-          <div key={group.label} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-white">{group.label}</div>
-                <div className="mt-1 text-xs text-muted">{group.detail}</div>
+      {!compact ? (
+        <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-3">
+          {groups.map((group) => (
+            <div key={group.label} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="font-semibold text-white">{group.label}</div>
+                <div className="font-mono text-accent">{group.score}/100</div>
               </div>
-              <DataStatusPill status={uiStatusFromDataStatus(group.status)} />
+              <p className="description mt-2 text-sm text-muted">{group.penalty || "No active penalty"}</p>
             </div>
-            <div className="mt-3 flex items-end justify-between">
-              <div className="font-mono text-2xl font-semibold text-white">{group.score}/100</div>
-              {group.penalty ? <div className="text-xs text-caution">Penalty -{group.penalty}</div> : <div className="text-xs text-muted">No penalty</div>}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-        <StatCard label="Macro Regime Confidence" value={`${macroRegimeConfidence(snapshot, currentRegime())}/100`} detail="Reduced when ISM Report on Business is stale or errors." tone={macroRegimeConfidence(snapshot, currentRegime()) >= 70 ? "positive" : "caution"} />
-        <StatCard label="Flow Score Confidence" value={`${flowScoreConfidence(snapshot)}/100`} detail="Reduced when KRX investor flow endpoints are stale." tone={flowScoreConfidence(snapshot) >= 70 ? "positive" : "caution"} />
-      </div>
-      <details className="mt-4 rounded-lg border border-white/10 bg-white/[0.03] p-4" open={!compact}>
-        <summary className="cursor-pointer list-none font-semibold text-white">Source fetch logs</summary>
-        <div className="mt-3 grid grid-cols-1 gap-2 text-sm lg:grid-cols-2">
-          {sourceLogs(snapshot).slice(0, compact ? 8 : 30).map((log) => {
-            const displayStatus = log.source.toLowerCase().includes("fallback") ? "Fallback" : log.status;
-            return (
-              <div key={log.id} className="flex items-center justify-between gap-3 rounded border border-white/10 px-3 py-2">
-                <span className="truncate text-muted">{log.source}</span>
-                <DataStatusPill status={displayStatus} />
-              </div>
-            );
-          })}
+          ))}
         </div>
-      </details>
+      ) : null}
       {!compact ? (
         <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <details className="rounded-lg border border-white/10 bg-white/[0.03] p-4" open>
-            <summary className="cursor-pointer list-none font-semibold text-white">데이터 상태별 투자 반영 제한</summary>
-            <div className="mt-3 grid grid-cols-1 gap-2">
-              {signalRules.map(([status, reflection, rule]) => (
-                <div key={status} className="grid grid-cols-1 gap-2 rounded border border-white/10 bg-black/20 px-3 py-2 text-sm md:grid-cols-[120px_100px_1fr]">
-                  <div className="font-semibold text-white">{status}</div>
-                  <div className="font-mono text-accent">{reflection}</div>
-                  <div className="text-white/70">{rule}</div>
+          <details className="rounded-lg border border-white/10 bg-black/20 p-4" open>
+            <summary className="cursor-pointer list-none font-semibold text-white">Data Status Signal Limits</summary>
+            <div className="mt-3 space-y-2">
+              {signalRules.map(([status, reflect, rule]) => (
+                <div key={status} className="grid grid-cols-[120px_90px_1fr] gap-3 rounded border border-white/10 bg-white/[0.03] px-3 py-2 text-sm">
+                  <span className="font-semibold text-white">{status}</span>
+                  <span className="numeric font-mono text-accent">{reflect}</span>
+                  <span className="description text-muted">{rule}</span>
                 </div>
               ))}
             </div>
           </details>
-          <details className="rounded-lg border border-white/10 bg-white/[0.03] p-4" open>
-            <summary className="cursor-pointer list-none font-semibold text-white">무료·공개 데이터 연결 후보</summary>
-            <div className="mt-3 grid grid-cols-1 gap-2">
+          <details className="rounded-lg border border-white/10 bg-black/20 p-4" open>
+            <summary className="cursor-pointer list-none font-semibold text-white">Free / Public Data Candidates</summary>
+            <div className="mt-3 space-y-2">
               {sourceCandidates.map(([region, source, coverage]) => (
-                <div key={`${region}-${source}`} className="rounded border border-white/10 bg-black/20 px-3 py-2 text-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-semibold text-white">{source}</span>
-                    <span className="text-xs text-muted">{region}</span>
-                  </div>
-                  <div className="mt-1 text-white/70">{coverage}</div>
+                <div key={`${region}-${source}`} className="grid grid-cols-[70px_1fr_1fr] gap-3 rounded border border-white/10 bg-white/[0.03] px-3 py-2 text-sm">
+                  <span className="font-semibold text-accent">{region}</span>
+                  <span className="text-white">{source}</span>
+                  <span className="description text-muted">{coverage}</span>
                 </div>
               ))}
             </div>
@@ -3302,31 +3343,24 @@ function DataReliability({ snapshot, compact = false }: { snapshot: MarketSnapsh
     </section>
   );
 }
-
-function KeyIndicatorPanel({ snapshot }: { snapshot: MarketSnapshot }) {
-  const ids = ["spx", "kospi", "vix", "us-10y", "real-yield-10y", "dxy", "usd-krw", "hy-oas", "net-liquidity", "kr-export-20d"];
+function UnitLegend() {
+  const rows = [
+    ["Rates", "bp change"],
+    ["Spreads", "bp change"],
+    ["FX / Indices / Commodities", "% change"],
+    ["YoY indicators", "pp change"],
+    ["Flows", "amount basis + direction"]
+  ];
   return (
-    <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow={"\uC2DC\uC7A5 \uD575\uC2EC \uC9C0\uD45C"} title={"\uD575\uC2EC \uC9C0\uD45C"} icon={<Gauge className="h-5 w-5" />} />
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
-        {ids.map((id) => {
-          const indicator = getIndicator(snapshot, id);
-          if (!indicator) return null;
-          return (
-            <details key={id} className="rounded-lg border border-white/10 bg-white/[0.03] p-3" open>
-              <summary className="cursor-pointer list-none">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="font-semibold text-white">{indicator.name}</div>
-                  <div className={indicator.changePercent >= 0 ? "text-positive" : "text-negative"}>{formatPercent(indicator.changePercent)}</div>
-                </div>
-              </summary>
-              <div className="mt-2 flex items-center justify-between text-xs text-muted">
-                <span>{formatNumber(indicator.value, indicator.unit)}</span>
-                <DataStatusPill status={uiStatusForIndicator(indicator)} />
-              </div>
-            </details>
-          );
-        })}
+    <section className="panel rounded-lg p-4">
+      <div className="text-xs uppercase tracking-[0.16em] text-muted">Number Unit Legend</div>
+      <div className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-5">
+        {rows.map(([label, value]) => (
+          <div key={label} className="rounded border border-white/10 bg-black/20 px-3 py-2">
+            <div className="text-white/50">{label}</div>
+            <div className="mt-1 text-white/80">{value}</div>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -3336,7 +3370,7 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-white/10 bg-black/20 p-3">
       <div className="text-xs uppercase tracking-[0.12em] text-white/50">{label}</div>
-      <div className="mt-1 text-sm text-white/80">{value}</div>
+      <div className="description mt-1 text-sm text-white/80">{value}</div>
     </div>
   );
 }
@@ -3374,31 +3408,8 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
   return (
     <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white">
       <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
-      {label}
+      <span>{label}</span>
     </label>
-  );
-}
-
-function UnitLegend() {
-  const rows = [
-    ["Rates", "bp change"],
-    ["Spreads", "bp change"],
-    ["FX / Indices / Commodities", "% change"],
-    ["YoY indicators", "pp change"],
-    ["Flows", "amount basis + direction"]
-  ];
-  return (
-    <section className="panel rounded-lg p-4">
-      <div className="text-xs uppercase tracking-[0.16em] text-muted">Number Unit Legend</div>
-      <div className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-5">
-        {rows.map(([label, value]) => (
-          <div key={label} className="rounded border border-white/10 bg-black/20 px-3 py-2">
-            <div className="text-white/50">{label}</div>
-            <div className="mt-1 text-white/80">{value}</div>
-          </div>
-        ))}
-      </div>
-    </section>
   );
 }
 
@@ -3416,22 +3427,21 @@ function DataFreshnessNotice({ snapshot, dataStatus, nextRefreshMs }: { snapshot
   return (
     <section className="mx-auto mt-4 max-w-[1680px] rounded-lg border border-caution/25 bg-caution/5 p-4">
       <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-        <InfoBlock label="대시보드 생성 시각" value={formatFullDateTime(snapshot.generatedAt)} />
-        <InfoBlock label="시장 가격 기준일" value={basisDateForGroups(snapshot, ["price", "future", "volatility"])} />
-        <InfoBlock label="매크로 데이터 기준일" value={basisDateForGroups(snapshot, ["macro", "rates", "inflation", "credit", "liquidity"])} />
-        <InfoBlock label="수급 데이터 기준일" value={basisDateForGroups(snapshot, ["flow"])} />
-        <InfoBlock label="펀더멘털 데이터 기준일" value={`${lastTradingDay(snapshot)} 모델값 포함`} />
-        <InfoBlock label="이슈 흐름 업데이트 시각" value={issueTapeUpdatedAt()} />
-        <InfoBlock label="다음 예상 갱신" value={`${nextRefreshLabel(nextRefreshMs)} / ${refreshCadenceLabel(nextRefreshMs)}`} />
-        <InfoBlock label="실시간·지연·모델값·오류" value={`정상 ${counts.live} · 지연 ${counts.delayed} · 모델 ${counts.modeled} · 오류 ${counts.error}`} />
+        <InfoBlock label="Dashboard Generated At" value={formatFullDateTime(snapshot.generatedAt)} />
+        <InfoBlock label="Market Price Basis Date" value={basisDateForGroups(snapshot, ["price", "future", "volatility"])} />
+        <InfoBlock label="Macro Data Basis Date" value={basisDateForGroups(snapshot, ["macro", "rates", "inflation", "credit", "liquidity"])} />
+        <InfoBlock label="Flow Data Basis Date" value={basisDateForGroups(snapshot, ["flow"])} />
+        <InfoBlock label="Fundamental Data Basis Date" value={`${lastTradingDay(snapshot)} modeled`} />
+        <InfoBlock label="Issue Tape Updated At" value={issueTapeUpdatedAt()} />
+        <InfoBlock label="Next Expected Refresh" value={`${nextRefreshLabel(nextRefreshMs)} / ${refreshCadenceLabel(nextRefreshMs)}`} />
+        <InfoBlock label="Status Mix" value={`Live ${counts.live} / Delayed ${counts.delayed} / Modeled ${counts.modeled} / Error ${counts.error}`} />
       </div>
       <div className="mt-3 rounded border border-white/10 bg-black/20 px-3 py-2 text-sm text-caution">
-        화면 갱신 주기와 실제 데이터 기준일은 다를 수 있습니다. 현재 상태: {dataLoadLabel(snapshot, dataStatus)}.
+        Refresh cadence is not the same as data basis date. Current state: {dataLoadLabel(snapshot, dataStatus)}.
       </div>
     </section>
   );
 }
-
 export function MarketDashboard() {
   const [active, setActive] = React.useState<NavItem>("Home");
   const [snapshot, setSnapshot] = React.useState<MarketSnapshot>(marketSnapshot);
@@ -3503,15 +3513,15 @@ export function MarketDashboard() {
             <p className="mt-1 text-sm text-muted">{ko.subtitle}</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-2 text-xs text-muted sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
-          <HeaderStat label="대시보드 생성 시각" value={formatFullDateTime(snapshot.generatedAt)} />
-          <HeaderStat label="시장 데이터 기준일" value={basisDateForGroups(snapshot, ["price", "future", "volatility"])} />
-          <HeaderStat label="매크로 데이터 기준일" value={basisDateForGroups(snapshot, ["macro", "rates", "inflation", "credit", "liquidity"])} />
-          <HeaderStat label="수급 데이터 기준일" value={basisDateForGroups(snapshot, ["flow"])} />
-          <HeaderStat label="펀더멘털 데이터 기준일" value={`${lastTradingDay(snapshot)} 모델값`} />
-          <HeaderStat label="이슈 흐름 업데이트" value={issueTapeUpdatedAt()} />
-          <HeaderStat label="다음 예상 갱신" value={`${nextRefreshLabel(nextRefreshMs)} / ${refreshCadenceLabel(nextRefreshMs)}`} />
-          <HeaderStat label="신뢰도 / 로드 상태" value={`${reliabilityScore(snapshot)}/100 · ${dataLoadLabel(snapshot, dataStatus)}`} />
+                <div className="grid grid-cols-1 gap-2 text-xs text-muted sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
+          <HeaderStat label="Dashboard Generated At" value={formatFullDateTime(snapshot.generatedAt)} />
+          <HeaderStat label="Market Data Basis" value={basisDateForGroups(snapshot, ["price", "future", "volatility"])} />
+          <HeaderStat label="Macro Data Basis" value={basisDateForGroups(snapshot, ["macro", "rates", "inflation", "credit", "liquidity"])} />
+          <HeaderStat label="Flow Data Basis" value={basisDateForGroups(snapshot, ["flow"])} />
+          <HeaderStat label="Fundamental Basis" value={`${lastTradingDay(snapshot)} modeled`} />
+          <HeaderStat label="Issue Tape Updated" value={issueTapeUpdatedAt()} />
+          <HeaderStat label="Next Refresh" value={`${nextRefreshLabel(nextRefreshMs)} / ${refreshCadenceLabel(nextRefreshMs)}`} />
+          <HeaderStat label="Reliability / Load State" value={`${reliabilityScore(snapshot)}/100 ? ${dataLoadLabel(snapshot, dataStatus)}`} />
         </div>
       </header>
       <DataFreshnessNotice snapshot={snapshot} dataStatus={dataStatus} nextRefreshMs={nextRefreshMs} />
