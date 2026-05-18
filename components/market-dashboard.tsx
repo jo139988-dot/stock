@@ -301,6 +301,65 @@ type RiskBudgetItem = {
   suggestedAction: string;
 };
 
+type DomesticEtf = {
+  name: string;
+  code: string;
+  manager: string;
+  style: "Active" | "Passive";
+  benchmark: string;
+  return1m: number;
+  return3m: number;
+  return6m: number;
+  return1y: number;
+  return3y: number;
+  ytd: number;
+  excessVsBm: number;
+  aum: number;
+  tradingValue: number;
+  totalFee: number;
+  realizedCost: number;
+  premiumDiscount: number;
+  trackingError: number;
+  topHoldings: string[];
+  top10Concentration: number;
+  pensionEligible: string;
+  recommendation: "비중확대" | "중립+" | "중립" | "관찰" | "회피";
+};
+
+type EtfRelativeScore = {
+  ticker: string;
+  benchmark: string;
+  excess1m: number;
+  excess3m: number;
+  excess6m: number;
+  excess1y: number;
+  trackingError: number;
+  informationRatio: number;
+  relativeStrength: number;
+  maxDrawdownVsBm: number;
+  activeRecommendation: string;
+  warning: string;
+};
+
+type QqqAlternative = {
+  name: string;
+  code: string;
+  category: string;
+  excess1m: number;
+  excess3m: number;
+  excess6m: number;
+  excess1y: number;
+  krwReturn: number;
+  fxEffect: number;
+  fee: number;
+  aum: number;
+  tradingValue: number;
+  mdd: number;
+  volatility: number;
+  holdingDiff: string;
+  recommended: string;
+};
+
 const toneClass: Record<IndicatorTone, string> = {
   positive: "border-positive/35 bg-positive/10 text-positive",
   neutral: "border-white/10 bg-white/5 text-muted",
@@ -862,7 +921,31 @@ const riskBudgetItems: RiskBudgetItem[] = [
   { item: "Small/Mid Cap Liquidity Risk", current: "7%", limit: "10%", status: "Within", suggestedAction: "Require trading-value confirmation before adding." },
   { item: "Commodity Beta", current: "8%", limit: "12%", status: "Within", suggestedAction: "Use as reflation hedge, not core risk." },
   { item: "Duration Exposure", current: "5%", limit: "8%", status: "Within", suggestedAction: "Keep TLT underweight until real-yield trend turns." },
-  { item: "Cash Buffer", current: "4%", limit: "4-6% target", status: "Watch", suggestedAction: "Maintain tactical buffer while macro confidence is below 65." }
+  { item: "Cash Buffer", current: "3%", limit: "평시 0~3% / 경계 3~5% / 위험 5~10%", status: "Watch", suggestedAction: "Stress condition이 2개 이상일 때만 5% 이상으로 올립니다." }
+];
+
+const etfRelativeScores: EtfRelativeScore[] = [
+  { ticker: "QUAL", benchmark: "S&P500", excess1m: 0.6, excess3m: 1.2, excess6m: 2.7, excess1y: 3.8, trackingError: 3.9, informationRatio: 0.58, relativeStrength: 71, maxDrawdownVsBm: 1.8, activeRecommendation: "중립+ / 품질 틸트 유지", warning: "BM 대비 지속성 양호. 신규 비중확대는 분할 접근." },
+  { ticker: "MOAT", benchmark: "S&P500", excess1m: 0.2, excess3m: 0.8, excess6m: 1.9, excess1y: 2.6, trackingError: 4.5, informationRatio: 0.41, relativeStrength: 66, maxDrawdownVsBm: 1.2, activeRecommendation: "중립+ / Core 보완", warning: "정보비율은 양호하지만 유동성은 QUAL보다 낮음." },
+  { ticker: "SMH", benchmark: "QQQ / Nasdaq100", excess1m: 3.4, excess3m: 4.6, excess6m: 8.9, excess1y: 14.2, trackingError: 12.8, informationRatio: 0.62, relativeStrength: 86, maxDrawdownVsBm: -3.6, activeRecommendation: "중립+ / 과대비중 제한", warning: "초과수익 지속성은 있으나 MDD와 집중도 리스크가 큼." },
+  { ticker: "XLE", benchmark: "S&P500", excess1m: 2.1, excess3m: -1.8, excess6m: -2.4, excess1y: 0.5, trackingError: 10.2, informationRatio: -0.16, relativeStrength: 48, maxDrawdownVsBm: -5.8, activeRecommendation: "중립 이하", warning: "3M/6M 초과수익 음수라 Overweight 금지." },
+  { ticker: "GLD", benchmark: "60/40", excess1m: 1.4, excess3m: 2.6, excess6m: 5.7, excess1y: 8.3, trackingError: 8.4, informationRatio: 0.54, relativeStrength: 78, maxDrawdownVsBm: 2.4, activeRecommendation: "헤지 목적 중립+", warning: "수익 목적보다 달러/금리 리스크 완충 용도." },
+  { ticker: "TLT", benchmark: "60/40", excess1m: -0.7, excess3m: -3.8, excess6m: -6.5, excess1y: -8.9, trackingError: 11.9, informationRatio: -0.72, relativeStrength: 31, maxDrawdownVsBm: -9.2, activeRecommendation: "비중축소", warning: "실질금리 반등 국면에서 듀레이션 틸트 제한." }
+];
+
+const domesticEtfs: DomesticEtf[] = [
+  { name: "TIME 미국나스닥100액티브", code: "A489000", manager: "타임폴리오", style: "Active", benchmark: "Nasdaq100", return1m: 5.8, return3m: 9.4, return6m: 17.2, return1y: 29.1, return3y: 58.4, ytd: 14.8, excessVsBm: 2.6, aum: 1430, tradingValue: 42, totalFee: 0.8, realizedCost: 0.96, premiumDiscount: 0.11, trackingError: 6.4, topHoldings: ["NVDA", "MSFT", "AVGO", "AAPL"], top10Concentration: 54, pensionEligible: "연금/IRP 가능", recommendation: "중립+" },
+  { name: "TIGER 미국나스닥100", code: "133690", manager: "미래에셋", style: "Passive", benchmark: "Nasdaq100", return1m: 4.9, return3m: 8.0, return6m: 14.1, return1y: 25.7, return3y: 51.2, ytd: 12.6, excessVsBm: -0.2, aum: 38400, tradingValue: 620, totalFee: 0.07, realizedCost: 0.18, premiumDiscount: 0.03, trackingError: 1.1, topHoldings: ["MSFT", "NVDA", "AAPL", "AMZN"], top10Concentration: 49, pensionEligible: "연금/IRP 가능", recommendation: "중립" },
+  { name: "KODEX 미국나스닥100TR", code: "379810", manager: "삼성", style: "Passive", benchmark: "Nasdaq100 TR", return1m: 4.8, return3m: 8.1, return6m: 14.4, return1y: 26.1, return3y: 52.0, ytd: 12.9, excessVsBm: 0.1, aum: 12600, tradingValue: 210, totalFee: 0.05, realizedCost: 0.16, premiumDiscount: 0.02, trackingError: 0.9, topHoldings: ["MSFT", "NVDA", "AAPL", "META"], top10Concentration: 50, pensionEligible: "연금/IRP 가능", recommendation: "중립" },
+  { name: "ACE 글로벌반도체TOP4 Plus SOLACTIVE", code: "446770", manager: "한국투자", style: "Passive", benchmark: "Global Semiconductor", return1m: 7.2, return3m: 11.8, return6m: 22.5, return1y: 41.3, return3y: 63.0, ytd: 19.4, excessVsBm: 4.7, aum: 8200, tradingValue: 165, totalFee: 0.45, realizedCost: 0.61, premiumDiscount: 0.08, trackingError: 8.7, topHoldings: ["NVDA", "TSM", "ASML", "AVGO"], top10Concentration: 72, pensionEligible: "연금 가능", recommendation: "관찰" },
+  { name: "KODEX 미국AI테크TOP10", code: "485540", manager: "삼성", style: "Active", benchmark: "US AI Tech", return1m: 6.4, return3m: 10.1, return6m: 18.9, return1y: 33.5, return3y: 0, ytd: 16.1, excessVsBm: 3.1, aum: 5100, tradingValue: 138, totalFee: 0.39, realizedCost: 0.58, premiumDiscount: 0.09, trackingError: 7.5, topHoldings: ["NVDA", "MSFT", "AVGO", "AMD"], top10Concentration: 66, pensionEligible: "연금/IRP 가능", recommendation: "중립+" }
+];
+
+const qqqAlternatives: QqqAlternative[] = [
+  { name: "TIME 미국나스닥100액티브", code: "A489000", category: "나스닥100 액티브", excess1m: 0.9, excess3m: 1.4, excess6m: 3.1, excess1y: 3.4, krwReturn: 29.1, fxEffect: 4.2, fee: 0.96, aum: 1430, tradingValue: 42, mdd: -18.5, volatility: 22.4, holdingDiff: "NVDA/AVGO 비중 확대", recommended: "분할 접근" },
+  { name: "TIGER 미국나스닥100", code: "133690", category: "나스닥100 패시브", excess1m: 0.0, excess3m: -0.1, excess6m: 0.0, excess1y: -0.3, krwReturn: 25.7, fxEffect: 4.1, fee: 0.18, aum: 38400, tradingValue: 620, mdd: -17.2, volatility: 20.8, holdingDiff: "QQQ와 유사", recommended: "핵심 대체" },
+  { name: "KODEX 미국AI테크TOP10", code: "485540", category: "미국테크TOP", excess1m: 1.5, excess3m: 2.1, excess6m: 4.8, excess1y: 7.8, krwReturn: 33.5, fxEffect: 4.3, fee: 0.58, aum: 5100, tradingValue: 138, mdd: -22.6, volatility: 27.4, holdingDiff: "AI 집중도 높음", recommended: "위성 틸트" },
+  { name: "ACE 글로벌반도체TOP4 Plus", code: "446770", category: "AI/반도체", excess1m: 2.3, excess3m: 3.8, excess6m: 8.4, excess1y: 15.6, krwReturn: 41.3, fxEffect: 4.8, fee: 0.61, aum: 8200, tradingValue: 165, mdd: -28.4, volatility: 32.1, holdingDiff: "반도체 집중", recommended: "과대비중 제한" }
 ];
 
 function rowAsset(
@@ -916,6 +999,10 @@ function formatNumber(value: number, unit = "") {
 
 function formatPercent(value: number) {
   return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
+}
+
+function formatSigned(value: number) {
+  return `${value >= 0 ? "+" : ""}${value.toFixed(1)}`;
 }
 
 function formatDateTime(value: string) {
@@ -1337,7 +1424,16 @@ function fieldLabel(label: string) {
     Theme: "\uD14C\uB9C8",
     "Risk Level": "\uB9AC\uC2A4\uD06C \uC218\uC900",
     Confidence: "\uC2E0\uB8B0\uB3C4",
-    Search: "\uAC80\uC0C9"
+    Search: "\uAC80\uC0C9",
+    Currency: "\uAE30\uC900\uD1B5\uD654",
+    Rebalance: "\uB9AC\uBC38\uB7F0\uC2F1",
+    Execution: "\uCCB4\uACB0\uAC00\uC815",
+    Benchmark: "BM",
+    "Return Basis": "\uC218\uC775\uB960 \uAE30\uC900",
+    "Trading Cost bps": "\uAC70\uB798\uBE44\uC6A9(bp)",
+    "FX Cost bps": "\uD658\uC804\uBE44\uC6A9(bp)",
+    "Min Market Cap": "\uCD5C\uC18C \uC2DC\uAC00\uCD1D\uC561",
+    "Min Trading Value": "\uCD5C\uC18C \uAC70\uB798\uB300\uAE08"
   };
   return labels[label] ?? label;
 }
@@ -1361,8 +1457,8 @@ function macroIssueSummary(issue: MacroIssue) {
   return investorActionText(issue.interpretation);
 }
 
-function Pill({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <span className={`inline-flex items-center rounded border px-2 py-1 text-xs font-semibold ${className}`}>{children}</span>;
+function Pill({ children, className = "", title }: { children: React.ReactNode; className?: string; title?: string }) {
+  return <span title={title} className={`inline-flex items-center rounded border px-2 py-1 text-xs font-semibold ${className}`}>{children}</span>;
 }
 
 function SectionHeader({ eyebrow, title, icon }: { eyebrow: string; title: string; icon: React.ReactNode }) {
@@ -1389,9 +1485,9 @@ function StatCard({ label, value, detail, tone = "neutral" }: { label: string; v
 
 function ActionPill({ action }: { action: InvestmentAction }) {
   return (
-    <Pill className={actionClass[action]}>
+    <Pill className={actionClass[action]} title={action}>
       <span>{actionLabel[action]}</span>
-      <span className="ml-1 text-[10px] font-normal opacity-65">{action}</span>
+      <span className="sr-only">{action}</span>
     </Pill>
   );
 }
@@ -1399,9 +1495,9 @@ function ActionPill({ action }: { action: InvestmentAction }) {
 function DataStatusPill({ status }: { status: UiDataStatus | DataStatus }) {
   const english = status === "Fresh" ? "Live" : status;
   return (
-    <Pill className={statusClass[status]}>
+    <Pill className={statusClass[status]} title={english}>
       <span>{statusLabel[status]}</span>
-      <span className="ml-1 text-[10px] font-normal opacity-65">{english}</span>
+      <span className="sr-only">{english}</span>
     </Pill>
   );
 }
@@ -1860,7 +1956,7 @@ function MacroEventCalendar({ compact = false, limit }: { compact?: boolean; lim
   const rows = compact ? macroEvents.slice(0, limit ?? 5) : macroEvents;
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow={"\uB9E4\uD06C\uB85C \uC774\uBCA4\uD2B8 \uCEA8\uB9B0\uB354"} title={"\uC608\uC815 \uC774\uBCA4\uD2B8 \uBC0F \uC0AC\uC804 \uD3EC\uC9C0\uC158 \uC810\uAC80"} icon={<Bell className="h-5 w-5" />} />
+      <SectionHeader eyebrow={"\uB9E4\uD06C\uB85C \uC774\uBCA4\uD2B8 \uCE98\uB9B0\uB354"} title={"\uC608\uC815 \uC774\uBCA4\uD2B8 \uBC0F \uC0AC\uC804 \uD3EC\uC9C0\uC158 \uC810\uAC80"} icon={<Bell className="h-5 w-5" />} />
       <div className="thin-scrollbar overflow-x-auto">
         <table className="w-full min-w-[1220px] text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
@@ -2101,6 +2197,13 @@ function SectorEtfBoard({ compact = false, limit }: { compact?: boolean; limit?:
         </div>
       ) : null}
       <EtfTable rows={compact ? rows.slice(0, limit ?? 12) : rows} />
+      {!compact ? (
+        <div className="mt-6 space-y-6">
+          <EtfRelativeToBenchmarkBoard />
+          <DomesticEtfRankings />
+          <QqqReplacementEngine />
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -2135,6 +2238,123 @@ function EtfTable({ rows }: { rows: EtfAllocation[] }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+function EtfRelativeToBenchmarkBoard() {
+  return (
+    <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+      <SectionHeader eyebrow="BM 대비 ETF 점검" title="절대점수보다 초과수익 지속성과 정보비율을 우선 확인" icon={<LineChart className="h-5 w-5" />} />
+      <div className="thin-scrollbar overflow-x-auto">
+        <table className="w-full min-w-[1280px] text-left text-sm">
+          <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
+            <tr>{["ETF", "BM", "1M 초과", "3M 초과", "6M 초과", "1Y 초과", "TE", "IR", "상대강도", "MDD vs BM", "액티브 권고", "판정"].map((head) => <th key={head} className="px-5 py-4">{head}</th>)}</tr>
+          </thead>
+          <tbody>
+            {etfRelativeScores.map((row) => (
+              <tr key={row.ticker} className="border-t border-white/10">
+                <td className="px-5 py-4 font-mono text-white">{row.ticker}</td>
+                <td className="px-5 py-4 text-muted">{row.benchmark}</td>
+                <td className="px-5 py-4 font-mono text-white">{formatSigned(row.excess1m)}%</td>
+                <td className={row.excess3m < 0 ? "px-5 py-4 font-mono text-negative" : "px-5 py-4 font-mono text-positive"}>{formatSigned(row.excess3m)}%</td>
+                <td className={row.excess6m < 0 ? "px-5 py-4 font-mono text-negative" : "px-5 py-4 font-mono text-positive"}>{formatSigned(row.excess6m)}%</td>
+                <td className="px-5 py-4 font-mono text-white">{formatSigned(row.excess1y)}%</td>
+                <td className="px-5 py-4 font-mono text-muted">{row.trackingError.toFixed(1)}%</td>
+                <td className={row.informationRatio < 0 ? "px-5 py-4 font-mono text-negative" : "px-5 py-4 font-mono text-positive"}>{row.informationRatio.toFixed(2)}</td>
+                <td className="px-5 py-4 font-mono text-white">{row.relativeStrength}</td>
+                <td className={row.maxDrawdownVsBm < 0 ? "px-5 py-4 font-mono text-negative" : "px-5 py-4 font-mono text-positive"}>{formatSigned(row.maxDrawdownVsBm)}%</td>
+                <td className="px-5 py-4 text-accent">{row.activeRecommendation}</td>
+                <td className="px-5 py-4 text-muted">{row.warning}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function DomesticEtfRankings() {
+  const passiveRows = domesticEtfs.filter((row) => row.style === "Passive");
+  const activeRows = domesticEtfs.filter((row) => row.style === "Active");
+  return (
+    <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+      <SectionHeader eyebrow="국내 상장 ETF 랭킹" title="국내 상장 패시브·액티브 ETF와 패시브 대체 후보" icon={<Layers3 className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <DomesticEtfMiniTable title="국내 상장 패시브 ETF 대체 후보" rows={passiveRows} />
+        <DomesticEtfMiniTable title="국내 상장 액티브 ETF 랭킹" rows={activeRows} />
+      </div>
+    </section>
+  );
+}
+
+function DomesticEtfMiniTable({ title, rows }: { title: string; rows: DomesticEtf[] }) {
+  return (
+    <details className="rounded-lg border border-white/10 bg-black/20 p-4" open>
+      <summary className="cursor-pointer list-none font-semibold text-white">{title}</summary>
+      <div className="thin-scrollbar mt-3 overflow-x-auto">
+        <table className="w-full min-w-[980px] text-left text-sm">
+          <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
+            <tr>{["ETF명", "코드", "운용사", "기초지수", "1M", "3M", "6M", "1Y", "3Y", "YTD", "초과", "AUM", "거래대금", "총보수", "실비용", "괴리", "TE", "Top10", "연금", "추천"].map((head) => <th key={head} className="px-5 py-4">{head}</th>)}</tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.code} className="border-t border-white/10">
+                <td className="px-5 py-4 font-medium text-white">{row.name}<div className="mt-1 text-xs text-muted">{row.topHoldings.join(", ")}</div></td>
+                <td className="px-5 py-4 font-mono text-white">{row.code}</td>
+                <td className="px-5 py-4 text-muted">{row.manager}</td>
+                <td className="px-5 py-4 text-muted">{row.benchmark}</td>
+                {[row.return1m, row.return3m, row.return6m, row.return1y, row.return3y, row.ytd, row.excessVsBm].map((value, index) => <td key={index} className={value < 0 ? "px-5 py-4 font-mono text-negative" : "px-5 py-4 font-mono text-positive"}>{formatSigned(value)}%</td>)}
+                <td className="px-5 py-4 font-mono text-white">{row.aum.toLocaleString()}억</td>
+                <td className="px-5 py-4 font-mono text-white">{row.tradingValue}억</td>
+                <td className="px-5 py-4 font-mono text-muted">{row.totalFee.toFixed(2)}%</td>
+                <td className="px-5 py-4 font-mono text-muted">{row.realizedCost.toFixed(2)}%</td>
+                <td className="px-5 py-4 font-mono text-muted">{formatSigned(row.premiumDiscount)}%</td>
+                <td className="px-5 py-4 font-mono text-muted">{row.trackingError.toFixed(1)}%</td>
+                <td className="px-5 py-4 font-mono text-caution">{row.top10Concentration}%</td>
+                <td className="px-5 py-4 text-muted">{row.pensionEligible}</td>
+                <td className="px-5 py-4 text-accent">{row.recommendation}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  );
+}
+
+function QqqReplacementEngine() {
+  return (
+    <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+      <SectionHeader eyebrow="QQQ 대체 후보 엔진" title="나스닥100 노출이 필요할 때 국내 상장 대체 ETF 자동 비교" icon={<Search className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {qqqAlternatives.map((row) => (
+          <article key={row.code} className="rounded-lg border border-white/10 bg-black/20 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="font-semibold text-white">{row.name}</div>
+                <div className="mt-1 text-xs text-muted">{row.code} · {row.category}</div>
+              </div>
+              <Pill className={row.recommended.includes("핵심") ? toneClass.positive : row.recommended.includes("제한") ? toneClass.caution : toneClass.neutral}>{row.recommended}</Pill>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
+              <InfoBlock label="QQQ 대비 1M" value={`${formatSigned(row.excess1m)}%`} />
+              <InfoBlock label="QQQ 대비 3M" value={`${formatSigned(row.excess3m)}%`} />
+              <InfoBlock label="QQQ 대비 6M" value={`${formatSigned(row.excess6m)}%`} />
+              <InfoBlock label="QQQ 대비 1Y" value={`${formatSigned(row.excess1y)}%`} />
+              <InfoBlock label="원화 수익률" value={`${formatSigned(row.krwReturn)}%`} />
+              <InfoBlock label="환율 효과" value={`${formatSigned(row.fxEffect)}%`} />
+              <InfoBlock label="총보수" value={`${row.fee.toFixed(2)}%`} />
+              <InfoBlock label="AUM / 거래대금" value={`${row.aum.toLocaleString()}억 / ${row.tradingValue}억`} />
+            </div>
+            <WhyDetails label="구성·리스크 보기">
+              <div>MDD {formatSigned(row.mdd)}%, 변동성 {row.volatility.toFixed(1)}%</div>
+              <div>구성종목 차이: {row.holdingDiff}</div>
+            </WhyDetails>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -2595,20 +2815,20 @@ function returnHeatClass(value: number) {
 function BacktestLabView() {
   const [settings, setSettings] = React.useState<BacktestSettings>(DEFAULT_BACKTEST_SETTINGS);
   const preview = React.useMemo(() => buildReconstructedBacktestPreview(settings), [settings]);
+  const passedCount = preview.passCriteria.filter((row) => row.passed).length;
   const metricRows = [
-    ["Cumulative Return", formatBacktestPercent(preview.metrics.cumulativeReturn), "3-year total"],
+    ["누적수익률", formatBacktestPercent(preview.metrics.cumulativeReturn), "3년 누적"],
     ["CAGR", formatBacktestPercent(preview.metrics.cagr), "annualized"],
-    ["Volatility", formatBacktestPercent(preview.metrics.annualizedVolatility), "annualized"],
+    ["BM 대비 초과수익", formatBacktestPercent(preview.metrics.excessReturnVsBenchmark), `vs ${settings.benchmark}`],
     ["Sharpe", formatBacktestRatio(preview.metrics.sharpeRatio), "rf 3.5%"],
     ["Sortino", formatBacktestRatio(preview.metrics.sortinoRatio), "downside risk"],
-    ["Max Drawdown", formatBacktestPercent(preview.metrics.maxDrawdown), "peak-to-trough"],
-    ["Calmar", formatBacktestRatio(preview.metrics.calmarRatio), "CAGR / MDD"],
-    ["Hit Ratio", formatBacktestPercent(preview.metrics.hitRatio), "daily positive"],
-    ["Best Month", formatBacktestPercent(preview.metrics.bestMonth), "monthly"],
-    ["Worst Month", formatBacktestPercent(preview.metrics.worstMonth), "monthly"],
+    ["MDD", formatBacktestPercent(preview.metrics.maxDrawdown), `BM ${formatBacktestPercent(preview.metrics.benchmarkMaxDrawdown)}`],
+    ["MDD 개선폭", formatBacktestPercent(preview.metrics.mddImprovement), "BM 대비"],
+    ["상승장 참여율", formatBacktestPercent(preview.metrics.upCapture), "Up capture"],
+    ["하락장 방어율", formatBacktestPercent(1 - preview.metrics.downCapture), "Downside defense"],
+    ["Information Ratio", formatBacktestRatio(preview.metrics.informationRatio), `TE ${formatBacktestPercent(preview.metrics.trackingError)}`],
     ["Turnover", formatBacktestPercent(preview.metrics.turnover), "annualized"],
-    ["Transaction Cost", formatBacktestPercent(preview.metrics.transactionCost), "estimated"],
-    ["Excess Return", formatBacktestPercent(preview.metrics.excessReturnVsBenchmark), `vs ${settings.benchmark}`]
+    ["비용 차감 초과수익", formatBacktestPercent(preview.metrics.afterCostExcessReturn), "거래비용 반영"]
   ];
   const chartData = preview.points
     .filter((_, index) => index % 21 === 0)
@@ -2627,13 +2847,13 @@ function BacktestLabView() {
   return (
     <div className="space-y-6">
       <section className="panel rounded-lg border-caution/35 bg-caution/5 p-5">
-        <SectionHeader eyebrow="Backtest Lab" title="3-year reconstructed engine design" icon={<BarChart3 className="h-5 w-5" />} />
+        <SectionHeader eyebrow="백테스트 Lab" title="BM Core + Dashboard Active Tilt 3년 백테스트" icon={<BarChart3 className="h-5 w-5" />} />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <StatCard label="Lookback" value={`${settings.lookbackYears}Y`} detail="Recent rolling window" tone="neutral" />
-          <StatCard label="Currency" value={settings.currency} detail="USD and KRW supported" tone="neutral" />
-          <StatCard label="Rebalance" value={settings.rebalancePolicy} detail="Weekly / Monthly / Signal" tone="neutral" />
-          <StatCard label="Execution" value={settings.executionPrice} detail="Signal + next trading day" tone="neutral" />
-          <StatCard label="Confidence" value={preview.confidence} detail="Based on return/fundamental data quality" tone={preview.confidence === "High" ? "positive" : preview.confidence === "Medium" ? "caution" : "negative"} />
+          <StatCard label="BM Core" value={`${Math.round(preview.coreTiltPolicy.benchmarkCoreWeight * 100)}%`} detail={settings.benchmark} tone="positive" />
+          <StatCard label="Active Tilt" value={`${Math.round(preview.coreTiltPolicy.activeTiltTarget * 100)}%`} detail={`한도 ${Math.round(preview.coreTiltPolicy.activeTiltMax * 100)}%`} tone="caution" />
+          <StatCard label="Regime Confidence" value={`${preview.coreTiltPolicy.regimeConfidence}/100`} detail="현재 50~65 구간: 틸트 최대 10%" tone="caution" />
+          <StatCard label="Reliability" value={`${preview.coreTiltPolicy.dataReliability}/100`} detail="신규 확대는 분할 접근" tone="caution" />
+          <StatCard label="실전 후보" value={`${passedCount}/7`} detail={passedCount >= 3 ? "통과" : "보류"} tone={passedCount >= 3 ? "positive" : "negative"} />
         </div>
         <div className="mt-4 grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
           {BACKTEST_LIMITATIONS.map((warning) => (
@@ -2643,7 +2863,17 @@ function BacktestLabView() {
       </section>
 
       <section className="panel rounded-lg p-5">
-        <SectionHeader eyebrow="Backtest Settings" title="Execution, cost, currency, and benchmark assumptions" icon={<SlidersHorizontal className="h-5 w-5" />} />
+        <SectionHeader eyebrow="전략 구조" title="전체 포트폴리오 대체가 아니라 BM 주변 액티브 틸트" icon={<BriefcaseBusiness className="h-5 w-5" />} />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <InfoBlock label="운용 구조" value={`BM Core ${Math.round(preview.coreTiltPolicy.benchmarkCoreWeight * 100)}% + Dashboard Active Tilt ${Math.round(preview.coreTiltPolicy.activeTiltTarget * 100)}%`} />
+          <InfoBlock label="현금 규칙" value={preview.coreTiltPolicy.cashRange} />
+          <InfoBlock label="신뢰도 규칙" value={preview.coreTiltPolicy.reliabilityRule} />
+        </div>
+        <p className="mt-3 rounded border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/75">{preview.coreTiltPolicy.cashCondition}</p>
+      </section>
+
+      <section className="panel rounded-lg p-5">
+        <SectionHeader eyebrow="백테스트 설정" title="체결, 비용, 통화, BM 가정" icon={<SlidersHorizontal className="h-5 w-5" />} />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-7">
           <Select label="Currency" value={settings.currency} onChange={(value) => updateSetting("currency", value as BacktestSettings["currency"])} options={["KRW", "USD"]} />
           <Select label="Rebalance" value={settings.rebalancePolicy} onChange={(value) => updateSetting("rebalancePolicy", value as BacktestSettings["rebalancePolicy"])} options={["Weekly", "Monthly", "Signal Change"]} />
@@ -2659,7 +2889,7 @@ function BacktestLabView() {
       </section>
 
       <section className="panel rounded-lg p-5">
-        <SectionHeader eyebrow="Performance Summary" title="Strategy results versus selected benchmark" icon={<LineChart className="h-5 w-5" />} />
+        <SectionHeader eyebrow="성과 요약" title="BM 대비 성과와 리스크 조정 지표" icon={<LineChart className="h-5 w-5" />} />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
           {metricRows.map(([label, value, detail]) => (
             <StatCard key={label} label={label} value={value} detail={detail} tone={String(value).startsWith("-") ? "negative" : "neutral"} />
@@ -2778,7 +3008,48 @@ function BacktestLabView() {
       </div>
 
       <section className="panel rounded-lg p-5">
-        <SectionHeader eyebrow="Strategy Rulebook" title="How dashboard signals become portfolio positions" icon={<Database className="h-5 w-5" />} />
+        <SectionHeader eyebrow="백테스트 진단" title="왜 BM에 이겼거나 졌는가" icon={<AlertTriangle className="h-5 w-5" />} />
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          {preview.diagnostics.map((row) => (
+            <div key={row.factor} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="font-semibold text-white">{row.factor}</div>
+                <Pill className={row.verdict === "Positive" ? toneClass.positive : row.verdict === "Negative" ? toneClass.negative : toneClass.neutral}>{row.verdict}</Pill>
+              </div>
+              <div className={row.effect < 0 ? "mt-2 font-mono text-negative" : "mt-2 font-mono text-positive"}>{formatBacktestPercent(row.effect)}</div>
+              <p className="mt-2 text-sm text-white/70">{row.explanation}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {[
+            ["전략이 왜 BM에 졌는가?", "현금·원자재·채권 헤지가 강한 BM 상승장에서 상대성과를 일부 낮춥니다."],
+            ["상승장 참여율이 낮았는가?", `상승장 참여율은 ${formatBacktestPercent(preview.metrics.upCapture)}로 BM Core를 유지해 과거보다 개선됩니다.`],
+            ["하락장 방어는 되었는가?", `하락장 방어율은 ${formatBacktestPercent(1 - preview.metrics.downCapture)}로 MDD 개선 여부와 함께 판단합니다.`],
+            ["현금이 성과를 깎았는가?", "조건부 현금은 완충 역할이지만 5% 이상 상시는 금지합니다."],
+            ["원자재/채권 헤지가 손실을 냈는가?", "헤지는 국면별로 필요하지만 BM 대비 지속성 없는 구간에서는 중립 이하로 제한합니다."],
+            ["ETF 선택이 BM보다 나빴는가?", "3M/6M 초과수익과 Information Ratio가 낮으면 Overweight를 차단합니다."]
+          ].map(([question, answer]) => (
+            <InfoBlock key={question} label={question} value={answer} />
+          ))}
+        </div>
+      </section>
+
+      <section className="panel rounded-lg p-5">
+        <SectionHeader eyebrow="실전 후보 통과 조건" title="7개 조건 중 최소 3개 이상 충족 필요" icon={<ShieldAlert className="h-5 w-5" />} />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {preview.passCriteria.map((row) => (
+            <div key={row.criterion} className={`rounded-lg border p-4 ${row.passed ? "border-positive/35 bg-positive/10" : "border-white/10 bg-white/[0.03]"}`}>
+              <Pill className={row.passed ? toneClass.positive : toneClass.neutral}>{row.passed ? "통과" : "미충족"}</Pill>
+              <div className="mt-3 font-semibold text-white">{row.criterion}</div>
+              <div className="mt-1 text-sm text-white/70">{row.detail}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel rounded-lg p-5">
+        <SectionHeader eyebrow="전략 룰북" title="대시보드 신호가 BM 주변 틸트로 변환되는 방식" icon={<Database className="h-5 w-5" />} />
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
           {BACKTEST_STRATEGY_RULES.map((group) => (
             <div key={group.name} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">

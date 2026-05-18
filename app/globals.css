@@ -19,11 +19,36 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
+  font-family:
+    Pretendard,
+    "Noto Sans KR",
+    "Apple SD Gothic Neo",
+    "Malgun Gothic",
+    "Segoe UI",
+    system-ui,
+    sans-serif;
+  line-height: 1.55;
+  word-break: keep-all;
   background:
     linear-gradient(180deg, rgba(19, 24, 31, 0.94), #080b0f 440px),
     repeating-linear-gradient(90deg, transparent 0 79px, var(--grid-line) 79px 80px),
     repeating-linear-gradient(180deg, transparent 0 79px, var(--grid-line) 79px 80px);
   color: #e7edf4;
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+th,
+td {
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+.font-mono {
+  word-break: normal;
 }
 
 button,
