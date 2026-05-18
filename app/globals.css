@@ -29,6 +29,8 @@ body {
     sans-serif;
   line-height: 1.55;
   word-break: keep-all;
+  overflow-wrap: break-word;
+  letter-spacing: -0.01em;
   background:
     linear-gradient(180deg, rgba(19, 24, 31, 0.94), #080b0f 440px),
     repeating-linear-gradient(90deg, transparent 0 79px, var(--grid-line) 79px 80px),
@@ -39,16 +41,28 @@ body {
 table {
   border-collapse: separate;
   border-spacing: 0;
+  table-layout: fixed;
 }
 
 th,
 td {
   vertical-align: top;
   line-height: 1.5;
+  padding: 1rem 1.25rem;
+  overflow-wrap: break-word;
 }
 
 .font-mono {
   word-break: normal;
+}
+
+.numeric {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.badge-nowrap {
+  white-space: nowrap;
 }
 
 button,
