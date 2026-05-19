@@ -13,13 +13,7 @@
   },
   "triggers": {
     "crons": [
-      "*/5 * * * *",
-      "*/15 * * * *",
-      "7 * * * *",
-      "10 7 * * 1-5",
-      "10 21 * * 1-5",
-      "0 22 * * 0-4",
-      "0 15 * * *"
+      "*/5 * * * *"
     ]
   }
   // Optional D1 binding for persistent latest snapshots and pipeline logs.

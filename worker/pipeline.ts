@@ -35,9 +35,34 @@ export function jobGroupForCron(cron?: string): PipelineJobGroup {
   if (cron === "7 * * * *") return "issues_disclosures_events";
   if (cron === "10 7 * * 1-5") return "korea_close";
   if (cron === "10 21 * * 1-5") return "us_close";
-  if (cron === "0 22 * * 0-4") return "morning_strategy";
-  if (cron === "0 15 * * *") return "midnight_audit";
   return "prices_fx_etf";
+}
+
+export function jobGroupsForCron(cron?: string, scheduledTime?: number): PipelineJobGroup[] {
+  if (cron !== "*/5 * * * *") {
+    const groups: PipelineJobGroup[] = [jobGroupForCron(cron)];
+    const hourUtc = typeof scheduledTime === "number" ? new Date(scheduledTime).getUTCHours() : undefined;
+
+    if (cron === "10 21 * * 1-5") groups.push("morning_strategy");
+    if (cron === "7 * * * *" && hourUtc === 15) groups.push("midnight_audit");
+
+    return Array.from(new Set(groups));
+  }
+
+  const now = typeof scheduledTime === "number" ? new Date(scheduledTime) : new Date();
+  const minuteUtc = now.getUTCMinutes();
+  const hourUtc = now.getUTCHours();
+  const dayUtc = now.getUTCDay();
+  const isWeekdayUtc = dayUtc >= 1 && dayUtc <= 5;
+  const groups: PipelineJobGroup[] = ["prices_fx_etf"];
+
+  if (minuteUtc % 15 === 0) groups.push("rates_commodities_volatility");
+  if (minuteUtc === 5) groups.push("issues_disclosures_events");
+  if (isWeekdayUtc && hourUtc === 7 && minuteUtc === 10) groups.push("korea_close");
+  if (isWeekdayUtc && hourUtc === 21 && minuteUtc === 10) groups.push("us_close", "morning_strategy");
+  if (hourUtc === 15 && minuteUtc === 0) groups.push("midnight_audit");
+
+  return Array.from(new Set(groups));
 }
 
 function isoNow() {

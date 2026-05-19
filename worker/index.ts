@@ -1,6 +1,6 @@
 import { marketSnapshot } from "../lib/market-data";
 import type { DataStatus, MarketSnapshot } from "../lib/market-types";
-import { jobGroupForCron, readLatestSnapshot, runDataPipeline, type PipelineEnv } from "./pipeline";
+import { jobGroupsForCron, readLatestSnapshot, runDataPipeline, type PipelineEnv } from "./pipeline";
 
 type Env = {
   ASSETS: {
@@ -147,11 +147,12 @@ export default {
   },
 
   async scheduled(controller: WorkerScheduledController, env: Env, ctx: WorkerExecutionContext): Promise<void> {
-    const group = jobGroupForCron(controller.cron);
-    ctx.waitUntil(runDataPipeline(env, group).then((snapshot) => {
-      snapshotCache = { snapshot, fetchedAt: Date.now() };
+    const groups = jobGroupsForCron(controller.cron, controller.scheduledTime);
+    ctx.waitUntil(Promise.all(groups.map((group) => runDataPipeline(env, group))).then((snapshots) => {
+      const snapshot = snapshots.at(-1);
+      if (snapshot) snapshotCache = { snapshot, fetchedAt: Date.now() };
     }).catch((error) => {
-      console.error("scheduled data pipeline failed", group, error);
+      console.error("scheduled data pipeline failed", groups.join(","), error);
     }));
   }
 };
