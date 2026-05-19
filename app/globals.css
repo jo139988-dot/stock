@@ -65,6 +65,10 @@ td {
   white-space: nowrap;
 }
 
+.badge {
+  white-space: nowrap;
+}
+
 .description {
   white-space: normal;
   word-break: keep-all;

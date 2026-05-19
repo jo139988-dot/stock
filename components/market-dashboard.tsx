@@ -399,7 +399,7 @@ const actionClass: Record<InvestmentAction, string> = {
 
 const ko = {
   title: "Macro Active Tilt Dashboard",
-  subtitle: "BM Core + Macro-driven 5~6 Asset Active Sleeve",
+  subtitle: "User-defined BM Core + 5~6 Asset Active Sleeve",
   menu: "Menu",
   actionLanguage: "Action Glossary",
   detail: "Details"
@@ -613,7 +613,7 @@ const midSmallQuality: MidSmallQuality[] = [
 
 const commodityMonitors: CommodityMonitor[] = [
   commodity("Oil & Gas", "Up but volatile", "Backwardation", "Drawdown", "Medium", "Medium", ["XLE", "XOP", "OIH"], ["XOM", "CVX", "COP"], "Neutral+", "Energy cash-flow quality is useful in reflation, but avoid over-sizing because oil beta can reverse quickly."),
-  commodity("Copper", "Improving", "Mild contango", "Tightening", "High", "High", ["COPX", "CPER"], ["FCX", "SCCO", "?띿궛"], "Neutral+", "Copper exposure fits grid and AI power demand, with China demand as the main confirmation variable."),
+  commodity("Copper", "Improving", "Mild contango", "Tightening", "High", "High", ["COPX", "CPER"], ["FCX", "SCCO", "Poongsan"], "Neutral+", "Copper exposure fits grid and AI power demand, with China demand as the main confirmation variable."),
   commodity("Gold Miners", "Uptrend", "Spot-led", "Stable", "Medium", "Low", ["GLD", "IAU", "GDX"], ["NEM", "AEM", "GOLD"], "Neutral+", "Gold miners add operating leverage to gold, but position sizing should reflect high drawdown risk."),
   commodity("Uranium", "Structural upcycle", "Tight physical", "Low inventory", "Low", "Medium", ["URA", "URNM"], ["CCJ", "CEG", "UEC"], "Neutral+", "Nuclear demand supports a satellite allocation, with liquidity and volatility controls."),
   commodity("Steel", "Mixed", "Contango", "Elevated", "High", "High", ["SLX"], ["POSCO Holdings", "NUE"], "Neutral-", "Steel needs better China and inventory signals before moving above neutral."),
@@ -1544,30 +1544,30 @@ function ExecutiveSummaryCard({ snapshot }: { snapshot: MarketSnapshot }) {
   const confidence = macroRegimeConfidence(snapshot, regime);
   const preferredAssets = assetAllocations.filter((item) => ["Overweight", "Neutral+"].includes(item.signal)).slice(0, 4);
   const preferredEtfs = [...etfAllocations].sort((a, b) => etfScore(b) - etfScore(a)).slice(0, 5);
-  const stockTypes = ["\uD575\uC2EC \uD004\uB9AC\uD2F0 \uBCF5\uB9AC \uC131\uC7A5\uC8FC", "AI \uC778\uD504\uB77C \uB9AC\uB354", "\uC7AC\uBB34 \uC548\uC815\uC131\uC774 \uB192\uC740 \uBBF8\uB4DC\uCEA1"];
+  const stockTypes = ["Core quality compounders", "AI infrastructure leaders", "Financially sound mid caps"];
   const topRisks = riskAlerts.slice(0, 3).map((alert) => alert.title.replace(" Alert", ""));
-  const macroDrivers = ["\uBBF8\uAD6D \uC2E4\uC9C8\uAE08\uB9AC \uBC18\uB4F1", "\uB2EC\uB7EC/\uC6D0 \uAC15\uC138", "HY OAS \uC548\uC815~\uD655\uB300", "\uD55C\uAD6D \uC218\uCD9C \uC0AC\uC774\uD074 \uC591\uD638", "\uAD6C\uB9AC\u00B7\uAE08 \uAC15\uC138"];
-  const whatChanged = macroIssues.slice(0, 3).map((issue) => issueTitleKo[issue.title] ?? issue.title).join(" / ");
-  const watchList = ["CPI/PCE", "FOMC \uC758\uC0AC\uB85D", "\uD55C\uAD6D \uC218\uCD9C 1~20\uC77C", "\uC911\uAD6D PMI"].join(", ");
+  const macroDrivers = ["US real yield rebound", "USD/KRW strength", "HY OAS stable to wider", "Korea export cycle constructive", "Copper and gold strength"];
+  const whatChanged = macroIssues.slice(0, 3).map((issue) => issue.title).join(" / ");
+  const watchList = ["CPI/PCE", "FOMC minutes", "Korea export 1~20 days", "China PMI"].join(", ");
   return (
     <section className="panel rounded-lg border-accent/35 bg-accent/5 p-5">
-      <SectionHeader eyebrow="Executive Summary" title={"\u0031\uBD84 \uD22C\uC790 \uBC30\uBD84 \uC694\uC57D"} icon={<RadioTower className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Executive Summary" title="1-minute active tilt summary" icon={<RadioTower className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
-        <StatCard label={"\uD604\uC7AC \uB9E4\uD06C\uB85C \uAD6D\uBA74"} value={currentRegimeLabel()} detail={regime.quadrant} tone="positive" />
-        <StatCard label={"\uAD6D\uBA74 \uC2E0\uB8B0\uB3C4"} value={`${confidence}/100`} detail={hasLogIssue(snapshot, /ISM Report on Business/i) ? "ISM \uB370\uC774\uD130 \uC624\uB958 \uD398\uB110\uD2F0 \uBC18\uC601" : "\uB9E4\uD06C\uB85C \uC785\uB825\uAC12 \uC0AC\uC6A9 \uAC00\uB2A5"} tone={confidence >= 70 ? "positive" : "caution"} />
-        <StatCard label={"\uC804\uCCB4 \uD22C\uC790 \uC2A4\uD0E0\uC2A4"} value={"\uC911\uB9BD+"} detail={"\uD004\uB9AC\uD2F0 \uC120\uD638"} tone="positive" />
-        <StatCard label={"\uC624\uB298\uC758 \uC6B4\uC6A9 \uC561\uC158"} value={"\uD575\uC2EC \uBCF4\uC720"} detail={"\uC120\uBCC4 \uBD84\uD560\uB9E4\uC218, \uC800\uD004\uB9AC\uD2F0 \uACBD\uAE30\uBBFC\uAC10\uC8FC \uD68C\uD53C"} tone="neutral" />
+        <StatCard label="Current Macro Regime" value={currentRegimeLabel()} detail={regime.quadrant} tone="positive" />
+        <StatCard label="Regime Confidence" value={`${confidence}/100`} detail={hasLogIssue(snapshot, /ISM Report on Business/i) ? "ISM data penalty reflected" : "Macro inputs usable"} tone={confidence >= 70 ? "positive" : "caution"} />
+        <StatCard label="Overall Stance" value="Neutral+" detail="Quality bias" tone="positive" />
+        <StatCard label="Today Action" value="Core Hold" detail="Selective accumulation; avoid low-quality cyclicals" tone="neutral" />
       </div>
       <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-4">
-        <InfoBlock label={"\uC120\uD638 \uC790\uC0B0\uAD70"} value={preferredAssets.map((item) => item.assetClass).join(", ")} />
-        <InfoBlock label={"\uC120\uD638 ETF"} value={preferredEtfs.map((item) => item.ticker).join(", ")} />
-        <InfoBlock label={"\uC120\uD638 \uC885\uBAA9 \uC720\uD615"} value={stockTypes.join(", ")} />
-        <InfoBlock label={"\uD575\uC2EC \uB9AC\uC2A4\uD06C"} value={topRisks.join(", ")} />
-        <InfoBlock label={"\uD575\uC2EC \uB9E4\uD06C\uB85C \uB3D9\uC778"} value={macroDrivers.join(", ")} />
-        <InfoBlock label={"\uC624\uB298 \uB2EC\uB77C\uC9C4 \uC810"} value={whatChanged} />
-        <InfoBlock label={"\uC774\uBC88 \uC8FC \uCCB4\uD06C \uD3EC\uC778\uD2B8"} value={watchList} />
-        <InfoBlock label={"\uAD6D\uBA74 \uD574\uC11D"} value={currentRegimeInterpretation()} />
-        <InfoBlock label={"\uB9E4\uD06C\uB85C \uB9AC\uC2A4\uD06C / \uB370\uC774\uD130 \uC2E0\uB8B0\uB3C4"} value={"\uB9AC\uC2A4\uD06C: \uC911\uC0C1 / \uC2E0\uB8B0\uB3C4: " + confidence + "/100"} />
+        <InfoBlock label="Preferred Asset Classes" value={preferredAssets.map((item) => item.assetClass).join(", ")} />
+        <InfoBlock label="Preferred ETFs" value={preferredEtfs.map((item) => item.ticker).join(", ")} />
+        <InfoBlock label="Preferred Stock Types" value={stockTypes.join(", ")} />
+        <InfoBlock label="Key Risks" value={topRisks.join(", ")} />
+        <InfoBlock label="Key Macro Drivers" value={macroDrivers.join(", ")} />
+        <InfoBlock label="What Changed Today" value={whatChanged} />
+        <InfoBlock label="What to Watch This Week" value={watchList} />
+        <InfoBlock label="Regime Interpretation" value={currentRegimeInterpretation()} />
+        <InfoBlock label="Macro Risk / Data Confidence" value={`Risk: medium-high / Confidence: ${confidence}/100`} />
       </div>
     </section>
   );
@@ -1577,27 +1577,30 @@ function HomeView({ snapshot }: { snapshot: MarketSnapshot }) {
   return (
     <div className="space-y-6">
       <ExecutiveSummaryCard snapshot={snapshot} />
-      <div className="hidden space-y-6 lg:block">
-        <TopMacroDrivers snapshot={snapshot} />
-        <MacroIssueTape compact limit={4} />
-        <AllocationChanges />
-        <TopIdeas />
-        <HomeRiskDataIssues snapshot={snapshot} />
-      </div>
-      <div className="space-y-4 lg:hidden">
-        <TopMacroDrivers snapshot={snapshot} />
-        <MacroIssueTape compact limit={4} />
-        <AllocationChanges />
-        <TopIdeas />
-        <details className="panel rounded-lg p-4">
-          <summary className="cursor-pointer list-none font-semibold text-white">{"\uCD94\uAC00 \uB300\uC2DC\uBCF4\uB4DC \uC139\uC158"}</summary>
-          <div className="mt-4 space-y-4">
-            <HomeRiskDataIssues snapshot={snapshot} />
-            <MacroEventCalendar compact limit={4} />
-          </div>
-        </details>
-      </div>
+      <TopMacroDrivers snapshot={snapshot} />
+      <MacroIssueTape compact limit={4} />
+      <ActiveTiltLimitSummary snapshot={snapshot} />
+      <TopIdeas />
+      <HomeRiskDataIssues snapshot={snapshot} />
     </div>
+  );
+}
+
+function ActiveTiltLimitSummary({ snapshot }: { snapshot: MarketSnapshot }) {
+  const confidence = macroRegimeConfidence(snapshot, currentRegime());
+  const reliability = reliabilityScore(snapshot);
+  const maxTilt = confidence >= 80 ? 30 : confidence >= 65 ? 20 : confidence >= 50 ? 10 : 0;
+  const state = confidence < 50 ? "Risk reduction only" : `Max active tilt ${maxTilt}%`;
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Active Tilt Limit" title="Regime confidence controls active sleeve size" icon={<SlidersHorizontal className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <StatCard label="Regime Confidence" value={`${confidence}/100`} detail="Current band: 50~65" tone="caution" />
+        <StatCard label="Active Tilt Cap" value={`${maxTilt}%`} detail={state} tone={maxTilt >= 20 ? "positive" : "caution"} />
+        <StatCard label="Data Reliability" value={`${reliability}/100`} detail={reliability < 90 ? "Stage new adds" : "Normal operation"} tone={reliability >= 90 ? "positive" : "caution"} />
+        <StatCard label="Sleeve Count" value="5~6" detail="Min 5%, max 30% per asset" tone="neutral" />
+      </div>
+    </section>
   );
 }
 
@@ -1605,7 +1608,7 @@ function TopMacroDrivers({ snapshot }: { snapshot: MarketSnapshot }) {
   const drivers = macroMetrics(snapshot, macroSnapshotConfigs).filter((row) => ["real-yield-10y", "usd-krw", "hy-oas", "kr-export-20d", "copper"].includes(row.id));
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow={"\uD575\uC2EC \uB9E4\uD06C\uB85C \uB3D9\uC778 TOP 5"} title={"\uC624\uB298 \uBC30\uBD84 \uD310\uB2E8\uC5D0 \uAC00\uC7A5 \uC911\uC694\uD55C \uC785\uB825\uAC12"} icon={<TrendingUp className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Top 5 Macro Drivers" title="Most important inputs for today's tilt decision" icon={<TrendingUp className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-5">
         {drivers.map((row) => (
           <div key={row.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
@@ -1967,48 +1970,42 @@ function MacroEventCalendar({ compact = false, limit }: { compact?: boolean; lim
   const rows = compact ? macroEvents.slice(0, limit ?? 5) : macroEvents;
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow={"\uB9E4\uD06C\uB85C \uC774\uBCA4\uD2B8 \uCE98\uB9B0\uB354"} title={"\uC608\uC815 \uC774\uBCA4\uD2B8 \uBC0F \uC0AC\uC804 \uD3EC\uC9C0\uC158 \uC810\uAC80"} icon={<Bell className="h-5 w-5" />} />
-      <div className="thin-scrollbar overflow-x-auto">
-        <table className="w-full min-w-[1220px] text-left text-sm">
-          <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-            <tr>{["\uB0A0\uC9DC", "\uC2DC\uAC04", "\uAD6D\uAC00", "\uC774\uBCA4\uD2B8", "\uC608\uC0C1\uCE58", "\uC774\uC804\uCE58", "\uC2E4\uC81C\uCE58", "\uC911\uC694\uB3C4", "\uC608\uC0C1 \uC2DC\uC7A5 \uC601\uD5A5", "\uC810\uAC80 \uC790\uC0B0", "\uC0AC\uC804 \uD3EC\uC9C0\uC158 \uC810\uAC80"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
-          </thead>
-          <tbody>
-            {rows.map((event) => (
-              <tr key={`${event.date}-${event.event}`} className="border-t border-white/10">
-                <td className="px-4 py-3 font-mono text-white">{event.date}</td>
-                <td className="px-4 py-3 text-muted">{event.time}</td>
-                <td className="px-4 py-3 text-muted">{event.country}</td>
-                <td className="px-4 py-3 font-medium text-white">{event.event}</td>
-                <td className="px-4 py-3 text-muted">{event.consensus}</td>
-                <td className="px-4 py-3 text-muted">{event.previous}</td>
-                <td className="px-4 py-3 text-muted">{event.actual}</td>
-                <td className="px-4 py-3"><Pill className={event.importance === "High" ? toneClass.negative : event.importance === "Medium" ? toneClass.caution : toneClass.neutral}>{event.importance}</Pill></td>
-                <td className="px-4 py-3 text-white/75">{event.likelyMarketImpact}</td>
-                <td className="px-4 py-3 text-muted">{event.assetsToWatch}</td>
-                <td className="px-4 py-3 text-accent">{event.positioningNote}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <SectionHeader eyebrow="Macro Event Calendar" title="Upcoming catalysts and pre-event positioning notes" icon={<Bell className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {rows.map((event) => (
+          <article key={`${event.date}-${event.event}`} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="font-mono text-sm text-accent">{event.date} / {event.time}</div>
+                <h3 className="mt-1 text-lg font-semibold text-white">{event.event}</h3>
+                <div className="mt-1 text-xs uppercase tracking-[0.12em] text-muted">{event.country}</div>
+              </div>
+              <Pill className={event.importance === "High" ? toneClass.negative : event.importance === "Medium" ? toneClass.caution : toneClass.neutral}>{event.importance}</Pill>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <InfoBlock label="Consensus" value={event.consensus} />
+              <InfoBlock label="Previous" value={event.previous} />
+              <InfoBlock label="Actual" value={event.actual} />
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <InfoBlock label="Market Impact" value={event.likelyMarketImpact} />
+              <InfoBlock label="Assets to Watch" value={event.assetsToWatch} />
+            </div>
+            <div className="description mt-3 rounded border border-white/10 bg-black/20 p-3 text-sm text-accent">{event.positioningNote}</div>
+          </article>
+        ))}
       </div>
     </section>
   );
 }
-
 function MacroCockpitView({ snapshot }: { snapshot: MarketSnapshot }) {
   return (
     <div className="space-y-6">
       <MacroSnapshot snapshot={snapshot} />
-      <GroupedMacroIndicators snapshot={snapshot} />
       <MacroIssueTape />
       <MacroMonitorSection snapshot={snapshot} section={macroMonitorSections[0]} />
-      <MacroMonitorSection snapshot={snapshot} section={macroMonitorSections[1]} />
-      <MacroMonitorSection snapshot={snapshot} section={macroMonitorSections[2]} />
       <MacroMonitorSection snapshot={snapshot} section={macroMonitorSections[3]} />
       <MacroMonitorSection snapshot={snapshot} section={macroMonitorSections[4]} />
-      <MacroMonitorSection snapshot={snapshot} section={macroMonitorSections[5]} />
-      <MacroImpactMap />
       <MacroEventCalendar />
     </div>
   );
@@ -2223,36 +2220,39 @@ function EtfTable({ rows }: { rows: EtfAllocation[] }) {
 function EtfRelativeToBenchmarkBoard() {
   return (
     <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-      <SectionHeader eyebrow="BM-relative ETF Check" title="Prioritize persistent excess return and information ratio" icon={<LineChart className="h-5 w-5" />} />
-      <div className="thin-scrollbar overflow-x-auto">
-        <table className="w-full min-w-[1280px] text-left text-sm">
-          <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-            <tr>{["ETF", "BM", "1M Excess", "3M Excess", "6M Excess", "1Y Excess", "TE", "IR", "Relative Strength", "MDD vs BM", "Active Recommendation", "Decision"].map((head) => <th key={head} className="px-5 py-4">{head}</th>)}</tr>
-          </thead>
-          <tbody>
-            {etfRelativeScores.map((row) => (
-              <tr key={row.ticker} className="border-t border-white/10">
-                <td className="px-5 py-4 font-mono text-white">{row.ticker}</td>
-                <td className="px-5 py-4 text-muted">{row.benchmark}</td>
-                <td className="px-5 py-4 font-mono text-white">{formatSigned(row.excess1m)}%</td>
-                <td className={row.excess3m < 0 ? "px-5 py-4 font-mono text-negative" : "px-5 py-4 font-mono text-positive"}>{formatSigned(row.excess3m)}%</td>
-                <td className={row.excess6m < 0 ? "px-5 py-4 font-mono text-negative" : "px-5 py-4 font-mono text-positive"}>{formatSigned(row.excess6m)}%</td>
-                <td className="px-5 py-4 font-mono text-white">{formatSigned(row.excess1y)}%</td>
-                <td className="px-5 py-4 font-mono text-muted">{row.trackingError.toFixed(1)}%</td>
-                <td className={row.informationRatio < 0 ? "px-5 py-4 font-mono text-negative" : "px-5 py-4 font-mono text-positive"}>{row.informationRatio.toFixed(2)}</td>
-                <td className="px-5 py-4 font-mono text-white">{row.relativeStrength}</td>
-                <td className={row.maxDrawdownVsBm < 0 ? "px-5 py-4 font-mono text-negative" : "px-5 py-4 font-mono text-positive"}>{formatSigned(row.maxDrawdownVsBm)}%</td>
-                <td className="px-5 py-4 text-accent">{row.activeRecommendation}</td>
-                <td className="px-5 py-4 text-muted">{row.warning}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <SectionHeader eyebrow="BM-relative ETF Check" title="Excess return, risk, and participation versus user BM" icon={<LineChart className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {etfRelativeScores.map((row) => {
+          const upsideParticipation = Math.max(55, Math.min(115, Math.round(70 + row.relativeStrength * 0.35)));
+          const downsideCapture = Math.max(35, Math.min(110, Math.round(92 - row.maxDrawdownVsBm * 2)));
+          const overweightAllowed = (row.excess3m > 0 || row.excess6m > 0) && row.informationRatio > 0 && row.relativeStrength >= 55;
+          return (
+            <article key={row.ticker} className="rounded-lg border border-white/10 bg-black/20 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="font-mono text-lg font-semibold text-white">{row.ticker}</div>
+                  <div className="mt-1 text-xs text-muted">BM: {row.benchmark}</div>
+                </div>
+                <Pill className={overweightAllowed ? toneClass.positive : toneClass.caution}>{overweightAllowed ? "Overweight allowed" : "Overweight blocked"}</Pill>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                <InfoBlock label="1M Excess" value={`${formatSigned(row.excess1m)}%`} />
+                <InfoBlock label="3M Excess" value={`${formatSigned(row.excess3m)}%`} />
+                <InfoBlock label="6M Excess" value={`${formatSigned(row.excess6m)}%`} />
+                <InfoBlock label="1Y Excess" value={`${formatSigned(row.excess1y)}%`} />
+                <InfoBlock label="Information Ratio" value={row.informationRatio.toFixed(2)} />
+                <InfoBlock label="Tracking Error" value={`${row.trackingError.toFixed(1)}%`} />
+                <InfoBlock label="MDD Difference" value={`${formatSigned(row.maxDrawdownVsBm)}%`} />
+                <InfoBlock label="Upside / Downside" value={`${upsideParticipation}% / ${downsideCapture}%`} />
+              </div>
+              <p className="description mt-3 text-sm text-white/70">{row.activeRecommendation}. {row.warning}</p>
+            </article>
+          );
+        })}
       </div>
     </section>
   );
 }
-
 function DomesticEtfRankings() {
   const passiveRows = domesticEtfs.filter((row) => row.style === "Passive");
   const activeRows = domesticEtfs.filter((row) => row.style === "Active");
@@ -2757,33 +2757,35 @@ function MyWatchlistView({ compact = false }: { compact?: boolean }) {
 }
 
 function PortfolioConstructionView() {
+  const cards = assetAllocations
+    .filter((row) => row.assetClass.includes("Cash") || row.rebalanceNeeded !== "Within band")
+    .slice(0, 6);
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Portfolio Construction" title="BM Core / Active Tilt / Defense structure" icon={<Landmark className="h-5 w-5" />} />
-      <div className="thin-scrollbar overflow-x-auto">
-        <table className="w-full min-w-[1000px] text-left text-sm">
-          <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-            <tr>{["bucket", "suggested", "min", "max", "regimeFit", "rebalanceTrigger", "riskComment"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
-          </thead>
-          <tbody>
-            {portfolioBuckets.map((row) => (
-              <tr key={row.bucket} className="border-t border-white/10">
-                <td className="px-4 py-3 font-medium text-white">{row.bucket}</td>
-                <td className="px-4 py-3 font-mono text-positive">{row.suggestedWeight}%</td>
-                <td className="px-4 py-3 font-mono text-muted">{row.minWeight}%</td>
-                <td className="px-4 py-3 font-mono text-muted">{row.maxWeight}%</td>
-                <td className="px-4 py-3 font-mono text-white">{row.regimeFit}</td>
-                <td className="px-4 py-3 text-muted">{row.rebalanceTrigger}</td>
-                <td className="px-4 py-3 text-muted">{row.riskComment}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <SectionHeader eyebrow="Rebalance Trigger" title="Portfolio bands shown as cards, not tables" icon={<Landmark className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {cards.map((row) => (
+          <article key={row.assetClass} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="font-semibold text-white">{row.assetClass}</div>
+                <div className="mt-1 text-xs uppercase tracking-[0.12em] text-muted">Active sleeve band</div>
+              </div>
+              <ActionPill action={row.signal} />
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <InfoBlock label="Current" value={`${row.currentWeight}%`} />
+              <InfoBlock label="Target" value={`${row.suggestedWeight}%`} />
+              <InfoBlock label="Band" value={`${row.minWeight}-${row.maxWeight}%`} />
+              <InfoBlock label="Rebalance" value={row.rebalanceNeeded === "Within band" ? "Hold" : row.rebalanceNeeded} />
+            </div>
+            <div className="description mt-3 rounded border border-white/10 bg-black/20 p-3 text-sm text-white/70">Trigger: {row.rebalanceTrigger}</div>
+          </article>
+        ))}
       </div>
     </section>
   );
 }
-
 function RiskBudgetView() {
   const statusClassMap: Record<RiskBudgetItem["status"], string> = {
     Within: toneClass.positive,
@@ -2909,7 +2911,7 @@ function ActiveSleeveByRegime() {
         ))}
       </div>
       <div className="mt-4 rounded border border-caution/25 bg-caution/5 px-3 py-2 text-sm text-caution">
-        Current regime confidence is near 60/100, so active tilt is capped at 10% and aggressive overweight signals are disabled.
+        Active Sleeve rule: default 5 assets, maximum 6 assets including cash/defense. Each asset must stay between 5% and 30%. Current regime confidence is near 60/100, so active tilt is capped at 10%.
       </div>
     </section>
   );
@@ -3204,7 +3206,7 @@ function BacktestLabView() {
             ["Did downside defense work?", `Downside defense is ${formatBacktestPercent(1 - preview.metrics.downCapture)}; compare with MDD improvement.`],
             ["Did cash drag performance?", "Cash is conditional and should not stay above 5% unless stress triggers are active."],
             ["Did hedges hurt returns?", "Commodity and bond hedges are limited to neutral or below when BM-relative persistence is weak."],
-            ["ETF ?좏깮??BM蹂대떎 ?섎뭅?붽??", "3M/6M 珥덇낵?섏씡怨?Information Ratio媛 ??쑝硫?Overweight瑜?李⑤떒?⑸땲??"]
+            ["Was ETF selection worse than BM?", "Overweight is blocked when 3M/6M excess return or information ratio is weak."]
           ].map(([question, answer]) => (
             <InfoBlock key={question} label={question} value={answer} />
           ))}
@@ -3424,20 +3426,26 @@ function HeaderStat({ label, value }: { label: string; value: string }) {
 
 function DataFreshnessNotice({ snapshot, dataStatus, nextRefreshMs }: { snapshot: MarketSnapshot; dataStatus: "loaded" | "live" | "fallback"; nextRefreshMs: number }) {
   const counts = dataStatusCounts(snapshot);
+  const marketDate = basisDateForGroups(snapshot, ["price", "future", "volatility"]);
+  const issueDate = issueTapeUpdatedAt();
+  const basisMismatch = marketDate !== "-" && issueDate !== "-" && !issueDate.includes(marketDate);
   return (
     <section className="mx-auto mt-4 max-w-[1680px] rounded-lg border border-caution/25 bg-caution/5 p-4">
       <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
         <InfoBlock label="Dashboard Generated At" value={formatFullDateTime(snapshot.generatedAt)} />
-        <InfoBlock label="Market Price Basis Date" value={basisDateForGroups(snapshot, ["price", "future", "volatility"])} />
+        <InfoBlock label="Signal Date" value={lastTradingDay(snapshot)} />
+        <InfoBlock label="Data Date" value={marketDate} />
+        <InfoBlock label="Tradable From" value="Next regular session open" />
+        <InfoBlock label="Market Price Basis Date" value={marketDate} />
         <InfoBlock label="Macro Data Basis Date" value={basisDateForGroups(snapshot, ["macro", "rates", "inflation", "credit", "liquidity"])} />
         <InfoBlock label="Flow Data Basis Date" value={basisDateForGroups(snapshot, ["flow"])} />
         <InfoBlock label="Fundamental Data Basis Date" value={`${lastTradingDay(snapshot)} modeled`} />
-        <InfoBlock label="Issue Tape Updated At" value={issueTapeUpdatedAt()} />
+        <InfoBlock label="Issue Tape Updated At" value={issueDate} />
         <InfoBlock label="Next Expected Refresh" value={`${nextRefreshLabel(nextRefreshMs)} / ${refreshCadenceLabel(nextRefreshMs)}`} />
         <InfoBlock label="Status Mix" value={`Live ${counts.live} / Delayed ${counts.delayed} / Modeled ${counts.modeled} / Error ${counts.error}`} />
       </div>
       <div className="mt-3 rounded border border-white/10 bg-black/20 px-3 py-2 text-sm text-caution">
-        Refresh cadence is not the same as data basis date. Current state: {dataLoadLabel(snapshot, dataStatus)}.
+        Refresh cadence is not the same as data basis date. Current state: {dataLoadLabel(snapshot, dataStatus)}. {basisMismatch ? "Market data and issue tape basis dates differ." : "Market data and issue tape dates are aligned."}
       </div>
     </section>
   );
@@ -3496,7 +3504,7 @@ export function MarketDashboard() {
     if (active === "Sector & ETF") return <SectorEtfBoard />;
     if (active === "Quality Stocks") return <><QualityStockCandidates /><MidSmallQualityWatchlist /><TenbaggerScreener /></>;
     if (active === "Commodity") return <CommodityResourceMonitor />;
-    if (active === "Portfolio") return <><PortfolioConstructionView /><RiskBudgetView /><MyWatchlistView /></>;
+    if (active === "Portfolio") return <><BenchmarkBuilder /><ActiveSleeveByRegime /><PortfolioConstructionView /><RiskBudgetView /></>;
     if (active === "Backtest Lab") return <BacktestLabView />;
     return <RiskAndDataView snapshot={snapshot} />;
   };
@@ -3513,7 +3521,7 @@ export function MarketDashboard() {
             <p className="mt-1 text-sm text-muted">{ko.subtitle}</p>
           </div>
         </div>
-                <div className="grid grid-cols-1 gap-2 text-xs text-muted sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
+        <div className="grid grid-cols-1 gap-2 text-xs text-muted sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
           <HeaderStat label="Dashboard Generated At" value={formatFullDateTime(snapshot.generatedAt)} />
           <HeaderStat label="Market Data Basis" value={basisDateForGroups(snapshot, ["price", "future", "volatility"])} />
           <HeaderStat label="Macro Data Basis" value={basisDateForGroups(snapshot, ["macro", "rates", "inflation", "credit", "liquidity"])} />
@@ -3521,7 +3529,7 @@ export function MarketDashboard() {
           <HeaderStat label="Fundamental Basis" value={`${lastTradingDay(snapshot)} modeled`} />
           <HeaderStat label="Issue Tape Updated" value={issueTapeUpdatedAt()} />
           <HeaderStat label="Next Refresh" value={`${nextRefreshLabel(nextRefreshMs)} / ${refreshCadenceLabel(nextRefreshMs)}`} />
-          <HeaderStat label="Reliability / Load State" value={`${reliabilityScore(snapshot)}/100 ? ${dataLoadLabel(snapshot, dataStatus)}`} />
+          <HeaderStat label="Reliability / Load State" value={`${reliabilityScore(snapshot)}/100 · ${dataLoadLabel(snapshot, dataStatus)}`} />
         </div>
       </header>
       <DataFreshnessNotice snapshot={snapshot} dataStatus={dataStatus} nextRefreshMs={nextRefreshMs} />
@@ -3550,10 +3558,10 @@ export function MarketDashboard() {
           <div className="mt-5 rounded-lg border border-white/10 bg-black/20 p-3">
             <div className="text-xs uppercase tracking-[0.14em] text-muted">{ko.actionLanguage}</div>
             <div className="mt-3 space-y-2 text-xs">
-              <div className="flex justify-between"><span>{"\uD655\uB300"}</span><span className="text-positive">{"\uBE44\uC911\uD655\uB300 / \uBD84\uD560\uB9E4\uC218"}</span></div>
-              <div className="flex justify-between"><span>{"\uADE0\uD615"}</span><span className="text-muted">{"\uC911\uB9BD"}</span></div>
-              <div className="flex justify-between"><span>{"\uC870\uC808"}</span><span className="text-caution">{"\uC77C\uBD80\uCD95\uC18C / \uB9AC\uBC38\uB7F0\uC2F1"}</span></div>
-              <div className="flex justify-between"><span>{"\uD68C\uD53C"}</span><span className="text-negative">{"\uB9AC\uC2A4\uD06C \uC7AC\uC810\uAC80"}</span></div>
+              <div className="flex justify-between"><span>Expand</span><span className="text-positive">Overweight / Accumulate</span></div>
+              <div className="flex justify-between"><span>Balance</span><span className="text-muted">Neutral</span></div>
+              <div className="flex justify-between"><span>Adjust</span><span className="text-caution">Trim / Rebalance</span></div>
+              <div className="flex justify-between"><span>Protect</span><span className="text-negative">Risk Review</span></div>
             </div>
           </div>
         </aside>
