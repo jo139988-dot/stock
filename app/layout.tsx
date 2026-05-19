@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Macro Market Dashboard",
-  description: "Rates, inflation, growth, liquidity, FX, commodities, credit, and market internals dashboard"
+  title: "Macro Active Tilt Dashboard",
+  description: "Macro-driven active tilt decision dashboard"
 };
 
 export default function RootLayout({
@@ -14,6 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
+      <head>
+        <meta charSet="utf-8" />
+      </head>
       <body>{children}</body>
     </html>
   );

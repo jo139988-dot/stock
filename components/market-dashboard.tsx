@@ -55,14 +55,12 @@ import type {
 } from "@/lib/market-types";
 
 const navItems = [
-  "Dashboard",
-  "Rates",
-  "Inflation",
-  "Growth",
-  "Liquidity",
-  "FX / Commodities",
-  "Risk Monitor",
-  "Data Status"
+  "Today",
+  "Macro",
+  "Tilt",
+  "Watchlist",
+  "Backtest",
+  "Data"
 ] as const;
 
 type NavItem = (typeof navItems)[number];
@@ -397,22 +395,20 @@ const actionClass: Record<InvestmentAction, string> = {
 };
 
 const ko = {
-  title: "Macro Market Dashboard",
-  subtitle: "Rates · Inflation · Growth · Liquidity · FX · Commodities · Credit · Market Internals",
+  title: "Macro Active Tilt Dashboard",
+  subtitle: "Macro regime · risk signals · conditional tilts · execution candidates",
   menu: "Menu",
   actionLanguage: "Macro Lens",
   detail: "Details"
 };
 
 const navLabel: Record<NavItem, string> = {
-  Dashboard: "Dashboard",
-  Rates: "Rates",
-  Inflation: "Inflation",
-  Growth: "Growth",
-  Liquidity: "Liquidity",
-  "FX / Commodities": "FX / Commodities",
-  "Risk Monitor": "Risk Monitor",
-  "Data Status": "Data Status"
+  Today: "Today",
+  Macro: "Macro",
+  Tilt: "Tilt",
+  Watchlist: "Watchlist",
+  Backtest: "Backtest",
+  Data: "Data"
 };
 
 const actionLabel: Record<InvestmentAction, string> = {
@@ -1543,8 +1539,9 @@ function ActionPill({ action }: { action: InvestmentAction }) {
 
 function DataStatusPill({ status }: { status: UiDataStatus | DataStatus }) {
   const english = status === "Fresh" ? "Live" : status;
+  const title = english === "Modeled" ? "proxy/model estimate. 원천 데이터가 아니라 계산 또는 추정 기반 지표입니다." : english;
   return (
-    <Pill className={statusClass[status]} title={english}>
+    <Pill className={statusClass[status]} title={title}>
       <span>{statusLabel[status]}</span>
       <span className="sr-only">{english}</span>
     </Pill>
@@ -1565,16 +1562,15 @@ function ExecutiveSummaryCard({ snapshot }: { snapshot: MarketSnapshot }) {
   const confidence = macroRegimeConfidence(snapshot, regime);
   const topRisks = riskAlerts.slice(0, 3).map((alert) => alert.title.replace(" Alert", ""));
   const macroDrivers = ["US real yield rebound", "USD/KRW strength", "HY OAS stable to wider", "Korea export cycle constructive", "Copper and gold strength"];
-  const whatChanged = macroIssues.slice(0, 3).map((issue) => issue.title).join(" / ");
   const watchList = ["CPI/PCE", "FOMC minutes", "Korea export 1~20 days", "China PMI"].join(", ");
   return (
     <section className="panel rounded-lg border-accent/35 bg-accent/5 p-5">
-      <SectionHeader eyebrow="Market Regime Summary" title="Macro environment at a glance" icon={<RadioTower className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Executive Summary" title="Macro active tilt decision frame" icon={<RadioTower className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
         <StatCard label="Current Macro Regime" value={currentRegimeLabel()} detail={regime.quadrant} tone="positive" />
         <StatCard label="Regime Confidence" value={`${confidence}/100`} detail={hasLogIssue(snapshot, /ISM Report on Business/i) ? "ISM data penalty reflected" : "Macro inputs usable"} tone={confidence >= 70 ? "positive" : "caution"} />
-        <StatCard label="Risk Appetite" value="Selective" detail="Not broad beta expansion" tone="neutral" />
-        <StatCard label="Data Reliability" value={`${reliabilityScore(snapshot)}/100`} detail={dataLoadLabel(snapshot, "loaded")} tone={reliabilityScore(snapshot) >= 85 ? "positive" : "caution"} />
+        <StatCard label="Overall Stance" value="Neutral+" detail="Selective risk taking, not broad beta expansion" tone="neutral" />
+        <StatCard label="Today Action" value="Conditional Tilt" detail="No chase; wait for price or FX confirmation" tone="caution" />
       </div>
       <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-4">
         <InfoBlock label="Asset Class Implication" value="Quality equity still supported, but long-duration valuation is capped by real yields." />
@@ -1582,10 +1578,20 @@ function ExecutiveSummaryCard({ snapshot }: { snapshot: MarketSnapshot }) {
         <InfoBlock label="Credit / Liquidity Read" value="Credit is not crisis-level, but HY/CCC spread widening limits broad beta." />
         <InfoBlock label="Key Risks" value={topRisks.join(", ")} />
         <InfoBlock label="Key Macro Drivers" value={macroDrivers.join(", ")} />
-        <InfoBlock label="What Changed Today" value={whatChanged} />
         <InfoBlock label="What to Watch This Week" value={watchList} />
         <InfoBlock label="Regime Interpretation" value={currentRegimeInterpretation()} />
         <InfoBlock label="Macro Risk / Data Confidence" value={`Risk: medium-high / Confidence: ${confidence}/100`} />
+      </div>
+      <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-4">
+        <div className="text-xs uppercase tracking-[0.14em] text-muted">Today Action Detail</div>
+        <ul className="mt-3 grid grid-cols-1 gap-2 text-sm text-white/75 md:grid-cols-2">
+          {[
+            "추격매수 금지",
+            "조정 시 퀄리티/반도체 중심 분할매수",
+            "저품질 경기민감주 회피",
+            "환율 안정 전 한국 성장주 비중 확대 보류"
+          ].map((item) => <li key={item} className="rounded border border-white/10 bg-white/[0.03] px-3 py-2">{item}</li>)}
+        </ul>
       </div>
     </section>
   );
@@ -1595,12 +1601,35 @@ function HomeView({ snapshot }: { snapshot: MarketSnapshot }) {
   return (
     <div className="space-y-6">
       <ExecutiveSummaryCard snapshot={snapshot} />
+      <WhatChangedToday />
       <TopMacroDrivers snapshot={snapshot} />
       <AssetClassImplication />
+      <ActionMatrix />
       <MacroIssueTape compact limit={4} />
       <MacroEventCalendar compact limit={4} />
       <HomeRiskDataIssues snapshot={snapshot} />
     </div>
+  );
+}
+
+function WhatChangedToday() {
+  const rows = [
+    ["US real yield rebound", "QQQ / SMH valuation pressure"],
+    ["USD/KRW breakout risk", "Korea equity and KOSDAQ growth flow risk"],
+    ["Copper strength needs China confirmation", "Industrials / materials conditional support"]
+  ];
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="What Changed Today" title="Three changes that matter most" icon={<AlertTriangle className="h-5 w-5" />} />
+      <div className="space-y-2">
+        {rows.map(([change, impact]) => (
+          <div key={change} className="flex flex-col gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-sm md:flex-row md:items-center md:justify-between">
+            <span className="font-medium text-white">{change}</span>
+            <span className="text-accent">{impact}</span>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -1628,6 +1657,38 @@ function AssetClassImplication() {
   );
 }
 
+function ActionMatrix() {
+  const rows = [
+    ["USD/KRW 추가 상승", "외국인 수급 부담", "한국 성장주 확대 보류", "KOSDAQ, EWY"],
+    ["HY OAS 확대", "크레딧 리스크 상승", "현금·단기채 확대", "BIL, SHY"],
+    ["Copper + China PMI 개선", "리플레이션 확인", "원자재 sleeve 확대", "COPX, PAVE, GRID"],
+    ["Real Yield 추가 상승", "장기 성장주 밸류에이션 부담", "추격매수 제한", "QQQ, SMH"],
+    ["Net Liquidity 악화", "광범위한 베타 확장 부담", "퀄리티와 유동성 우선", "Quality, Cash"]
+  ];
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Action Matrix" title="Conditional macro response table" icon={<SlidersHorizontal className="h-5 w-5" />} />
+      <div className="thin-scrollbar overflow-x-auto">
+        <table className="w-full min-w-[860px] text-left text-sm">
+          <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
+            <tr>{["Condition", "Read", "Action", "Related ETF / Asset Class"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+          </thead>
+          <tbody>
+            {rows.map(([condition, read, action, related]) => (
+              <tr key={condition} className="border-t border-white/10">
+                <td className="px-4 py-3 font-medium text-white">{condition}</td>
+                <td className="px-4 py-3 text-white/75">{read}</td>
+                <td className="px-4 py-3 text-accent">{action}</td>
+                <td className="px-4 py-3 font-mono text-muted">{related}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function ActiveTiltLimitSummary({ snapshot }: { snapshot: MarketSnapshot }) {
   const confidence = macroRegimeConfidence(snapshot, currentRegime());
   const reliability = reliabilityScore(snapshot);
@@ -1641,6 +1702,46 @@ function ActiveTiltLimitSummary({ snapshot }: { snapshot: MarketSnapshot }) {
         <StatCard label="Active Tilt Cap" value={`${maxTilt}%`} detail={state} tone={maxTilt >= 20 ? "positive" : "caution"} />
         <StatCard label="Data Reliability" value={`${reliability}/100`} detail={reliability < 90 ? "Stage new adds" : "Normal operation"} tone={reliability >= 90 ? "positive" : "caution"} />
         <StatCard label="Sleeve Count" value="5~6" detail="Min 5%, max 30% per asset" tone="neutral" />
+      </div>
+    </section>
+  );
+}
+
+function UserBmPlaceholder() {
+  const [weights, setWeights] = React.useState({
+    usEquity: 45,
+    koreaEquity: 20,
+    bonds: 15,
+    commodities: 10,
+    cash: 10
+  });
+  const total = Object.values(weights).reduce((sum, value) => sum + value, 0);
+  const update = (key: keyof typeof weights, value: number) => setWeights((current) => ({ ...current, [key]: value }));
+  const rows: Array<[keyof typeof weights, string]> = [
+    ["usEquity", "미국주식 %"],
+    ["koreaEquity", "한국주식 %"],
+    ["bonds", "채권 %"],
+    ["commodities", "원자재 %"],
+    ["cash", "현금 %"]
+  ];
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="User BM Placeholder" title="Benchmark weights for active tilt context" icon={<BriefcaseBusiness className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+        {rows.map(([key, label]) => (
+          <label key={key} className="block rounded-lg border border-white/10 bg-white/[0.03] p-3">
+            <span className="mb-2 block text-xs text-muted">{label}</span>
+            <input
+              type="number"
+              value={weights[key]}
+              onChange={(event) => update(key, Number(event.target.value))}
+              className="numeric w-full rounded border border-white/10 bg-black/30 px-3 py-2 text-right text-white outline-none"
+            />
+          </label>
+        ))}
+      </div>
+      <div className={`mt-3 rounded border px-3 py-2 text-sm ${total === 100 ? "border-positive/30 bg-positive/10 text-positive" : "border-negative/30 bg-negative/10 text-negative"}`}>
+        합계 {total.toFixed(1)}%. {total === 100 ? "BM 입력 구조가 유효합니다." : "합계가 100%가 아니면 저장할 수 없도록 연결할 예정입니다."}
       </div>
     </section>
   );
@@ -1709,10 +1810,11 @@ function TopIdeas() {
   const stocks = [...qualityStocks].sort((a, b) => qualityFormulaScore(b) - qualityFormulaScore(a)).slice(0, 5);
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="ETF / Quality Stock Ideas" title="Top-down execution candidates" icon={<Gem className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Watchlist" title="Execution Candidates and Quality Watchlist" icon={<Gem className="h-5 w-5" />} />
+      <p className="mb-4 text-sm text-muted">매크로 신호 기반 후보군입니다. 종목 추천이 아니라 조건부 관찰 대상이며, 실제 편입은 가격·환율·수급 확인 이후 판단합니다.</p>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-          <div className="mb-3 font-semibold text-white">ETF Top Ideas</div>
+          <div className="mb-3 font-semibold text-white">Execution Candidates</div>
           <div className="space-y-2">
             {etfs.map((row) => (
               <div key={row.ticker} className="flex items-center justify-between gap-3 rounded border border-white/10 bg-black/20 px-3 py-2">
@@ -1723,7 +1825,7 @@ function TopIdeas() {
           </div>
         </div>
         <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-          <div className="mb-3 font-semibold text-white">Quality Stock Top Ideas</div>
+          <div className="mb-3 font-semibold text-white">Quality Watchlist</div>
           <div className="space-y-2">
             {stocks.map((row) => (
               <div key={row.ticker} className="flex items-center justify-between gap-3 rounded border border-white/10 bg-black/20 px-3 py-2">
@@ -1830,11 +1932,11 @@ function MacroIssueTape({ compact = false, limit }: { compact?: boolean; limit?:
               <InfoBlock label="Affected Assets" value={issue.affectedAssetClasses.slice(0, 4).join(", ")} />
               <InfoBlock label="Monitoring Point" value={monitoringPointText(issue.suggestedAction)} />
             </div>
-            <WhyDetails label="Related Instruments">
-              <div>Indicators: {issue.relatedIndicators.join(", ")}</div>
-              <div>Related instruments: {[...issue.affectedEtfs, ...issue.affectedStocks].join(", ")}</div>
-              <div>Source: {issue.source}</div>
-              <div>Timestamp: {issue.timestamp}</div>
+            <WhyDetails label="Korean Detail">
+              <div>핵심 지표: {issue.relatedIndicators.join(", ")}</div>
+              <div>관련 ETF 또는 자산군: {[...issue.affectedEtfs, ...issue.affectedStocks].join(", ")}</div>
+              <div>출처: {issue.source}</div>
+              <div>업데이트 시각: {issue.timestamp}</div>
             </WhyDetails>
           </article>
         ))}
@@ -2050,9 +2152,9 @@ function MacroCockpitView({ snapshot }: { snapshot: MarketSnapshot }) {
     <div className="space-y-6">
       <MacroSnapshot snapshot={snapshot} />
       <MacroIssueTape />
-      <MacroMonitorSection snapshot={snapshot} section={macroMonitorSections[0]} />
-      <MacroMonitorSection snapshot={snapshot} section={macroMonitorSections[3]} />
-      <MacroMonitorSection snapshot={snapshot} section={macroMonitorSections[4]} />
+      {macroMonitorSections.map((section) => (
+        <MacroMonitorSection key={section.title} snapshot={snapshot} section={section} />
+      ))}
       <MacroEventCalendar />
     </div>
   );
@@ -2158,6 +2260,38 @@ function RiskAndDataView({ snapshot, compact = false }: { snapshot: MarketSnapsh
     <div className="space-y-6">
       <DataReliability snapshot={snapshot} compact={compact} />
       <UpdateLogs snapshot={snapshot} compact={compact} />
+    </div>
+  );
+}
+
+function TiltView({ snapshot }: { snapshot: MarketSnapshot }) {
+  return (
+    <div className="space-y-6">
+      <UserBmPlaceholder />
+      <ActiveTiltLimitSummary snapshot={snapshot} />
+      <ActionMatrix />
+      <AssetAllocationView compact limit={8} />
+      <ActiveSleeveByRegime />
+    </div>
+  );
+}
+
+function WatchlistView() {
+  return (
+    <div className="space-y-6">
+      <TopIdeas />
+      <SectorEtfBoard compact limit={10} />
+      <QualityStockCandidates compact limit={10} />
+      <MidSmallQualityWatchlist compact limit={6} />
+    </div>
+  );
+}
+
+function BacktestView() {
+  return (
+    <div className="space-y-6">
+      <UserBmPlaceholder />
+      <BacktestLabView />
     </div>
   );
 }
@@ -3411,12 +3545,13 @@ function DataReliability({ snapshot, compact = false }: { snapshot: MarketSnapsh
   const groups = reliabilityGroups(snapshot);
   const overall = reliabilityScore(snapshot);
   const signalRules = [
-    ["Live", "100%", "Signal can be reflected in allocation."],
-    ["Delayed", "70~80%", "New additions should be staged."],
-    ["Stale", "0~30%", "No new overweight; warning only."],
-    ["Modeled", "Support only", "No direct investment action."],
-    ["Fallback", "Support only", "No new inclusion."],
-    ["Error", "0%", "Related signal disabled."]
+    ["Live", "100%", "실시간 또는 최신 원천 데이터입니다. 신호에 정상 반영합니다."],
+    ["Delayed", "70~80%", "지연 데이터입니다. 신규 확대는 분할 접근으로 제한합니다."],
+    ["Calculated", "Calculated", "원천 데이터를 조합해 계산한 값입니다. 예: 금리차, Net Liquidity."],
+    ["Modeled", "Proxy/model estimate", "실제 관측값이 아니라 proxy/model estimate입니다. 직접 투자 액션은 만들지 않고 보조 해석으로만 사용합니다."],
+    ["Stale", "0~30%", "오래된 데이터입니다. 신규 비중확대는 금지하고 경고만 표시합니다."],
+    ["Fallback", "Support only", "기본 소스 실패 후 대체 데이터입니다. 신뢰도를 감점합니다."],
+    ["Error", "0%", "오류 데이터입니다. 관련 신호는 비활성화합니다."]
   ];
   const sourceCandidates = [
     ["US", "FRED API", "Rates, credit, liquidity"],
@@ -3604,25 +3739,21 @@ function DataFreshnessNotice({ snapshot, dataStatus, nextRefreshMs }: { snapshot
   return (
     <section className="mx-auto mt-4 max-w-[1680px] rounded-lg border border-caution/25 bg-caution/5 p-4">
       <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-        <InfoBlock label="Dashboard Generated At" value={pipeline?.generatedAt ?? formatFullDateTime(snapshot.generatedAt)} />
-        <InfoBlock label="Market Data Basis" value={marketDate} />
-        <InfoBlock label="Macro Data Basis" value={pipeline?.macroUpdatedAt ?? basisDateForGroups(snapshot, ["macro", "inflation", "liquidity", "rates", "credit"])} />
-        <InfoBlock label="Flow Data Basis" value={basisDateForGroups(snapshot, ["flow"])} />
-        <InfoBlock label="Issue Updated At" value={pipeline?.issueUpdatedAt ?? issueDate} />
-        <InfoBlock label="Next Refresh" value={pipeline?.nextScheduledUpdate ?? `${nextRefreshLabel(nextRefreshMs)} / ${refreshCadenceLabel(nextRefreshMs)}`} />
-        <InfoBlock label="Status Counts" value={`Live ${counts.live} / Delayed ${counts.delayed} / Modeled ${counts.modeled} / Stale ${counts.stale} / Error ${counts.error}`} />
-        <InfoBlock label="Stale Sources" value={String(pipeline?.staleSources ?? counts.stale)} />
+        <InfoBlock label="신호 기준일" value={`${pipeline?.tradableSignalDate ?? lastTradingDay(snapshot)} · generated ${pipeline?.generatedAt ?? formatFullDateTime(snapshot.generatedAt)}`} />
+        <InfoBlock label="시장 데이터 기준일" value={`Market ${marketDate} · Macro ${pipeline?.macroUpdatedAt ?? basisDateForGroups(snapshot, ["macro", "inflation", "liquidity", "rates", "credit"])} · Flow ${basisDateForGroups(snapshot, ["flow"])}`} />
+        <InfoBlock label="이슈 업데이트 시각" value={`${pipeline?.issueUpdatedAt ?? issueDate} · next ${pipeline?.nextScheduledUpdate ?? nextRefreshLabel(nextRefreshMs)}`} />
+        <InfoBlock label="데이터 상태" value={`데이터 신뢰도 ${reliabilityScore(snapshot)}/100 · Stale ${pipeline?.staleSources ?? counts.stale} · Error ${pipeline?.errors ?? counts.error}`} />
       </div>
       <div className="mt-3 rounded border border-white/10 bg-black/20 px-3 py-2 text-sm text-caution">
         {counts.stale ? "Some macro inputs are stale. " : null}
         {counts.modeled ? "Some indicators are modeled proxies. " : null}
-        Dashboard loaded from {pipeline?.status ?? dataLoadLabel(snapshot, dataStatus)} data. {basisMismatch ? "Market data and issue tape basis dates differ." : "Market data and issue tape dates are aligned."}
+        Dashboard loaded from {pipeline?.status ?? dataLoadLabel(snapshot, dataStatus)} data. {basisMismatch ? "시장 데이터와 이슈 테이프 기준일이 다릅니다." : "Market data and issue tape dates are aligned."}
       </div>
     </section>
   );
 }
 export function MarketDashboard() {
-  const [active, setActive] = React.useState<NavItem>("Dashboard");
+  const [active, setActive] = React.useState<NavItem>("Today");
   const [snapshot, setSnapshot] = React.useState<MarketSnapshot>(marketSnapshot);
   const [dataStatus, setDataStatus] = React.useState<"loaded" | "live" | "fallback">("loaded");
   const [lastRefreshAt, setLastRefreshAt] = React.useState<string | null>(null);
@@ -3668,13 +3799,11 @@ export function MarketDashboard() {
   }, []);
 
   const renderContent = () => {
-    if (active === "Dashboard") return <HomeView snapshot={snapshot} />;
-    if (active === "Rates") return <MacroCategoryView snapshot={snapshot} sectionIndexes={[0]} />;
-    if (active === "Inflation") return <MacroCategoryView snapshot={snapshot} sectionIndexes={[1]} />;
-    if (active === "Growth") return <MacroCategoryView snapshot={snapshot} sectionIndexes={[2]} />;
-    if (active === "Liquidity") return <MacroCategoryView snapshot={snapshot} sectionIndexes={[3]} />;
-    if (active === "FX / Commodities") return <MacroCategoryView snapshot={snapshot} sectionIndexes={[4, 5]} />;
-    if (active === "Risk Monitor") return <RiskMonitorView snapshot={snapshot} />;
+    if (active === "Today") return <HomeView snapshot={snapshot} />;
+    if (active === "Macro") return <MacroCockpitView snapshot={snapshot} />;
+    if (active === "Tilt") return <TiltView snapshot={snapshot} />;
+    if (active === "Watchlist") return <WatchlistView />;
+    if (active === "Backtest") return <BacktestView />;
     return <RiskAndDataView snapshot={snapshot} />;
   };
 
@@ -3690,15 +3819,11 @@ export function MarketDashboard() {
             <p className="mt-1 text-sm text-muted">{ko.subtitle}</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-2 text-xs text-muted sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
-          <HeaderStat label="Dashboard Generated At" value={formatFullDateTime(snapshot.generatedAt)} />
-          <HeaderStat label="Market Data Basis" value={basisDateForGroups(snapshot, ["price", "future", "volatility"])} />
-          <HeaderStat label="Macro Data Basis" value={basisDateForGroups(snapshot, ["macro", "rates", "inflation", "credit", "liquidity"])} />
-          <HeaderStat label="Flow Data Basis" value={basisDateForGroups(snapshot, ["flow"])} />
-          <HeaderStat label="Issue Tape Updated" value={issueTapeUpdatedAt()} />
-          <HeaderStat label="Next Refresh" value={`${nextRefreshLabel(nextRefreshMs)} / ${refreshCadenceLabel(nextRefreshMs)}`} />
-          <HeaderStat label="Status Counts" value={(() => { const counts = dataStatusCounts(snapshot); return `Live ${counts.live} / Delayed ${counts.delayed} / Modeled ${counts.modeled} / Stale ${counts.stale} / Error ${counts.error}`; })()} />
-          <HeaderStat label="Reliability / Load State" value={`${reliabilityScore(snapshot)}/100 · ${dataLoadLabel(snapshot, dataStatus)}`} />
+        <div className="grid grid-cols-1 gap-2 text-xs text-muted sm:grid-cols-2 xl:grid-cols-4">
+          <HeaderStat label="신호 기준일" value={snapshot.pipeline?.tradableSignalDate ?? lastTradingDay(snapshot)} />
+          <HeaderStat label="시장 데이터 기준일" value={basisDateForGroups(snapshot, ["price", "future", "volatility"])} />
+          <HeaderStat label="이슈 업데이트 시각" value={snapshot.pipeline?.issueUpdatedAt ?? issueTapeUpdatedAt()} />
+          <HeaderStat label="데이터 상태" value={(() => { const counts = dataStatusCounts(snapshot); return `데이터 신뢰도 ${reliabilityScore(snapshot)}/100 · stale ${counts.stale} · error ${counts.error}`; })()} />
         </div>
       </header>
       <DataFreshnessNotice snapshot={snapshot} dataStatus={dataStatus} nextRefreshMs={nextRefreshMs} />
