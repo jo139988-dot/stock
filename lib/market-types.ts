@@ -144,12 +144,39 @@ export type CalendarEvent = {
 
 export type SourceFetchLog = {
   id: string;
+  jobName?: string;
   source: string;
   status: DataStatus;
+  startedAt?: string;
+  finishedAt?: string;
   lastAttemptAt: string;
   latencyMs?: number;
   message: string;
+  rowsUpdated?: number;
+  errorMessage?: string;
+  nextRun?: string;
   affectedIndicatorIds: string[];
+};
+
+export type PipelineStatus = "live" | "delayed" | "stale" | "modeled" | "fallback" | "error";
+
+export type PipelineFreshness = {
+  marketPriceUpdatedAt: string;
+  fxRatesUpdatedAt: string;
+  macroUpdatedAt: string;
+  etfHoldingsUpdatedAt: string;
+  fundamentalsUpdatedAt: string;
+  modeledSignalsRecalculatedAt: string;
+  errors: number;
+  staleSources: number;
+  nextScheduledUpdate: string;
+  tradableSignalDate: string;
+  dataBasisDate: string;
+  signalDate: string;
+  dataDate: string;
+  generatedAt: string;
+  issueUpdatedAt: string;
+  status: PipelineStatus;
 };
 
 export type SignalType =
@@ -252,6 +279,8 @@ export type MarketSnapshot = {
   alerts: MarketAlert[];
   calendar: CalendarEvent[];
   sourceLogs?: SourceFetchLog[];
+  updateLogs?: SourceFetchLog[];
+  pipeline?: PipelineFreshness;
   stockSignals?: StockSignal[];
   backtestMetrics?: BacktestMetric[];
 };

@@ -2016,6 +2016,7 @@ function RiskAndDataView({ snapshot, compact = false }: { snapshot: MarketSnapsh
     <div className="space-y-6">
       <RiskValuationAlerts snapshot={snapshot} compact={compact} limit={compact ? 4 : undefined} />
       <DataReliability snapshot={snapshot} compact={compact} />
+      <UpdateLogs snapshot={snapshot} compact={compact} />
     </div>
   );
 }
@@ -3345,6 +3346,35 @@ function DataReliability({ snapshot, compact = false }: { snapshot: MarketSnapsh
     </section>
   );
 }
+
+function UpdateLogs({ snapshot, compact = false }: { snapshot: MarketSnapshot; compact?: boolean }) {
+  const logs = (snapshot.updateLogs?.length ? snapshot.updateLogs : sourceLogs(snapshot)).slice(0, compact ? 5 : 20);
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Update Logs" title="Scheduled worker job history" icon={<Database className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+        {logs.map((log) => (
+          <article key={log.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="font-semibold text-white">{log.jobName ?? log.id}</div>
+                <div className="mt-1 text-xs text-muted">{log.source}</div>
+              </div>
+              <Pill className={log.status === "Error" ? toneClass.negative : log.status === "Stale" ? toneClass.caution : toneClass.positive}>{log.status}</Pill>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <InfoBlock label="Started" value={log.startedAt ?? log.lastAttemptAt} />
+              <InfoBlock label="Finished" value={log.finishedAt ?? log.lastAttemptAt} />
+              <InfoBlock label="Rows Updated" value={String(log.rowsUpdated ?? log.affectedIndicatorIds.length)} />
+              <InfoBlock label="Next Run" value={log.nextRun ?? "scheduled"} />
+            </div>
+            <p className="description mt-3 text-sm text-white/70">{log.errorMessage || log.message}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
 function UnitLegend() {
   const rows = [
     ["Rates", "bp change"],
@@ -3426,26 +3456,31 @@ function HeaderStat({ label, value }: { label: string; value: string }) {
 
 function DataFreshnessNotice({ snapshot, dataStatus, nextRefreshMs }: { snapshot: MarketSnapshot; dataStatus: "loaded" | "live" | "fallback"; nextRefreshMs: number }) {
   const counts = dataStatusCounts(snapshot);
+  const pipeline = snapshot.pipeline;
   const marketDate = basisDateForGroups(snapshot, ["price", "future", "volatility"]);
   const issueDate = issueTapeUpdatedAt();
   const basisMismatch = marketDate !== "-" && issueDate !== "-" && !issueDate.includes(marketDate);
   return (
     <section className="mx-auto mt-4 max-w-[1680px] rounded-lg border border-caution/25 bg-caution/5 p-4">
       <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-        <InfoBlock label="Dashboard Generated At" value={formatFullDateTime(snapshot.generatedAt)} />
-        <InfoBlock label="Signal Date" value={lastTradingDay(snapshot)} />
-        <InfoBlock label="Data Date" value={marketDate} />
-        <InfoBlock label="Tradable From" value="Next regular session open" />
-        <InfoBlock label="Market Price Basis Date" value={marketDate} />
-        <InfoBlock label="Macro Data Basis Date" value={basisDateForGroups(snapshot, ["macro", "rates", "inflation", "credit", "liquidity"])} />
-        <InfoBlock label="Flow Data Basis Date" value={basisDateForGroups(snapshot, ["flow"])} />
-        <InfoBlock label="Fundamental Data Basis Date" value={`${lastTradingDay(snapshot)} modeled`} />
-        <InfoBlock label="Issue Tape Updated At" value={issueDate} />
-        <InfoBlock label="Next Expected Refresh" value={`${nextRefreshLabel(nextRefreshMs)} / ${refreshCadenceLabel(nextRefreshMs)}`} />
+        <InfoBlock label="Market Price Updated" value={pipeline?.marketPriceUpdatedAt ?? marketDate} />
+        <InfoBlock label="FX/Rates Updated" value={pipeline?.fxRatesUpdatedAt ?? basisDateForGroups(snapshot, ["rates", "credit"])} />
+        <InfoBlock label="Macro Updated" value={pipeline?.macroUpdatedAt ?? basisDateForGroups(snapshot, ["macro", "inflation", "liquidity"])} />
+        <InfoBlock label="ETF Holdings Updated" value={pipeline?.etfHoldingsUpdatedAt ?? "modeled"} />
+        <InfoBlock label="Fundamentals Updated" value={pipeline?.fundamentalsUpdatedAt ?? `${lastTradingDay(snapshot)} modeled`} />
+        <InfoBlock label="Modeled Signals Recalculated" value={pipeline?.modeledSignalsRecalculatedAt ?? snapshot.generatedAt} />
+        <InfoBlock label="Errors / Stale Sources" value={`${pipeline?.errors ?? counts.error} / ${pipeline?.staleSources ?? counts.stale}`} />
+        <InfoBlock label="Next Scheduled Update" value={pipeline?.nextScheduledUpdate ?? `${nextRefreshLabel(nextRefreshMs)} / ${refreshCadenceLabel(nextRefreshMs)}`} />
+        <InfoBlock label="Tradable Signal Date" value={pipeline?.tradableSignalDate ?? lastTradingDay(snapshot)} />
+        <InfoBlock label="Data Basis Date" value={pipeline?.dataBasisDate ?? marketDate} />
+        <InfoBlock label="Generated At" value={pipeline?.generatedAt ?? formatFullDateTime(snapshot.generatedAt)} />
+        <InfoBlock label="Issue Updated At" value={pipeline?.issueUpdatedAt ?? issueDate} />
         <InfoBlock label="Status Mix" value={`Live ${counts.live} / Delayed ${counts.delayed} / Modeled ${counts.modeled} / Error ${counts.error}`} />
       </div>
       <div className="mt-3 rounded border border-white/10 bg-black/20 px-3 py-2 text-sm text-caution">
-        Refresh cadence is not the same as data basis date. Current state: {dataLoadLabel(snapshot, dataStatus)}. {basisMismatch ? "Market data and issue tape basis dates differ." : "Market data and issue tape dates are aligned."}
+        {pipeline?.status === "stale" ? "Do not use stale signals for new allocation. " : null}
+        {counts.modeled ? "Some modeled signals included. " : null}
+        Signal generated from {pipeline?.status ?? dataLoadLabel(snapshot, dataStatus)} data. {basisMismatch ? "Market data and issue tape basis dates differ." : "Market data and issue tape dates are aligned."}
       </div>
     </section>
   );

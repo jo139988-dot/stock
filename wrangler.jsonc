@@ -13,7 +13,22 @@
   },
   "triggers": {
     "crons": [
-      "*/5 * * * *"
+      "*/5 * * * *",
+      "*/15 * * * *",
+      "7 * * * *",
+      "10 7 * * 1-5",
+      "10 21 * * 1-5",
+      "0 22 * * 0-4",
+      "0 15 * * *"
     ]
   }
+  // Optional D1 binding for persistent latest snapshots and pipeline logs.
+  // Create a D1 database, then uncomment and fill database_id:
+  // "d1_databases": [
+  //   {
+  //     "binding": "DB",
+  //     "database_name": "stock_pipeline",
+  //     "database_id": "replace-with-cloudflare-d1-database-id"
+  //   }
+  // ]
 }

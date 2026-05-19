@@ -1,12 +1,12 @@
 import { marketSnapshot } from "../lib/market-data";
-import { getLiveMarketSnapshot } from "../lib/live-market-data";
 import type { DataStatus, MarketSnapshot } from "../lib/market-types";
+import { jobGroupForCron, readLatestSnapshot, runDataPipeline, type PipelineEnv } from "./pipeline";
 
 type Env = {
   ASSETS: {
     fetch(request: Request): Promise<Response>;
   };
-};
+} & PipelineEnv;
 
 type WorkerExecutionContext = {
   waitUntil(promise: Promise<unknown>): void;
@@ -40,7 +40,7 @@ function snapshotResponse(snapshot: MarketSnapshot, cacheState: "hit" | "miss" |
 }
 
 async function refreshSnapshotCache() {
-  const snapshot = await getLiveMarketSnapshot();
+  const snapshot = await runDataPipeline({}, "prices_fx_etf");
   snapshotCache = {
     snapshot,
     fetchedAt: Date.now()
@@ -84,14 +84,54 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/api/snapshot") {
+      const persisted = await readLatestSnapshot(env);
+      if (persisted) return snapshotResponse(persisted, "hit");
+
       if (snapshotCache && Date.now() - snapshotCache.fetchedAt < SNAPSHOT_TTL_MS) {
         return snapshotResponse(snapshotCache.snapshot, "hit");
       }
 
       try {
-        const refresh = refreshSnapshotCache();
-        ctx.waitUntil(refresh.catch(() => undefined));
-        return snapshotResponse(await refresh, "miss");
+        const now = new Date().toISOString();
+        const snapshot: MarketSnapshot = {
+          ...marketSnapshot,
+          generatedAt: now,
+          pipeline: {
+            marketPriceUpdatedAt: marketSnapshot.generatedAt,
+            fxRatesUpdatedAt: marketSnapshot.generatedAt,
+            macroUpdatedAt: marketSnapshot.generatedAt,
+            etfHoldingsUpdatedAt: marketSnapshot.generatedAt,
+            fundamentalsUpdatedAt: marketSnapshot.generatedAt,
+            modeledSignalsRecalculatedAt: marketSnapshot.generatedAt,
+            errors: (marketSnapshot.sourceLogs ?? []).filter((log) => log.status === "Error").length,
+            staleSources: marketSnapshot.indicators.filter((indicator) => indicator.quality.stale).length,
+            nextScheduledUpdate: "waiting for scheduled worker",
+            tradableSignalDate: marketSnapshot.generatedAt.slice(0, 10),
+            dataBasisDate: marketSnapshot.generatedAt.slice(0, 10),
+            signalDate: marketSnapshot.generatedAt.slice(0, 10),
+            dataDate: marketSnapshot.generatedAt.slice(0, 10),
+            generatedAt: now,
+            issueUpdatedAt: marketSnapshot.generatedAt,
+            status: "fallback"
+          },
+          updateLogs: [
+            {
+              id: "latest-snapshot-not-yet-created",
+              jobName: "serve_latest_snapshot",
+              source: "latest snapshot store",
+              status: "Stale",
+              startedAt: now,
+              finishedAt: now,
+              lastAttemptAt: now,
+              message: "No persisted scheduled snapshot found yet. Serving bundled fallback until the next cron job completes.",
+              rowsUpdated: 0,
+              nextRun: "next Cloudflare scheduled trigger",
+              affectedIndicatorIds: marketSnapshot.indicators.map((indicator) => indicator.id)
+            }
+          ]
+        };
+        ctx.waitUntil(runDataPipeline(env, "prices_fx_etf").catch(() => undefined));
+        return snapshotResponse(snapshot, "fallback");
       } catch (error) {
         return Response.json(fallbackSnapshot(error), {
           headers: {
@@ -106,9 +146,12 @@ export default {
     return env.ASSETS.fetch(request);
   },
 
-  async scheduled(_controller: WorkerScheduledController, _env: Env, ctx: WorkerExecutionContext): Promise<void> {
-    ctx.waitUntil(refreshSnapshotCache().catch((error) => {
-      console.error("scheduled snapshot refresh failed", error);
+  async scheduled(controller: WorkerScheduledController, env: Env, ctx: WorkerExecutionContext): Promise<void> {
+    const group = jobGroupForCron(controller.cron);
+    ctx.waitUntil(runDataPipeline(env, group).then((snapshot) => {
+      snapshotCache = { snapshot, fetchedAt: Date.now() };
+    }).catch((error) => {
+      console.error("scheduled data pipeline failed", group, error);
     }));
   }
 };

@@ -2,6 +2,112 @@
 -- Every analytical table keeps tradeDate, lastUpdated, source, and status so it can
 -- later move to PostgreSQL/TimescaleDB without losing freshness metadata.
 
+-- Cloudflare D1 pipeline tables for scheduled snapshot generation.
+-- Status values here follow the runtime pipeline contract:
+-- live, delayed, stale, modeled, fallback, error.
+
+create table if not exists latest_snapshots (
+  id text primary key,
+  generated_at text not null,
+  payload text not null
+);
+
+create table if not exists latest_indicators (
+  indicator_id text primary key,
+  name text not null,
+  category text not null,
+  value real,
+  change_1d real,
+  change_5d real,
+  change_20d real,
+  data_date text,
+  fetched_at text not null,
+  source text not null,
+  status text not null check (status in ('live', 'delayed', 'stale', 'modeled', 'fallback', 'error')),
+  reliability_score real
+);
+
+create table if not exists indicator_history (
+  date text not null,
+  indicator_id text not null,
+  value real,
+  source text not null,
+  status text not null check (status in ('live', 'delayed', 'stale', 'modeled', 'fallback', 'error')),
+  fetched_at text not null,
+  valid_from text,
+  primary key (date, indicator_id, fetched_at)
+);
+
+create table if not exists etf_latest (
+  ticker text primary key,
+  name text not null,
+  country text,
+  category text,
+  price real,
+  return_1m real,
+  return_3m real,
+  return_6m real,
+  return_1y real,
+  aum real,
+  trading_value real,
+  fee real,
+  tracking_error real,
+  premium_discount real,
+  data_date text,
+  fetched_at text not null,
+  status text not null check (status in ('live', 'delayed', 'stale', 'modeled', 'fallback', 'error'))
+);
+
+create table if not exists strategy_snapshot_history (
+  generated_at text primary key,
+  signal_date text not null,
+  tradable_from text not null,
+  macro_regime text,
+  regime_confidence real,
+  active_tilt_limit real,
+  data_reliability real,
+  recommended_assets text,
+  risk_alerts text
+);
+
+create table if not exists portfolio_recommendation_history (
+  generated_at text not null,
+  benchmark_id text not null,
+  asset text not null,
+  target_weight real not null,
+  action text not null,
+  reason text,
+  source_status text not null check (source_status in ('live', 'delayed', 'stale', 'modeled', 'fallback', 'error')),
+  primary key (generated_at, benchmark_id, asset)
+);
+
+create table if not exists modeled_signal_history (
+  id integer primary key autoincrement,
+  generated_at text not null,
+  model_name text not null,
+  model_version text not null,
+  signal_key text not null,
+  value real,
+  text_value text,
+  input_data_date text,
+  calculated_at text not null,
+  confidence real,
+  status text not null check (status in ('modeled', 'fallback', 'error'))
+);
+
+create table if not exists update_logs (
+  id integer primary key autoincrement,
+  job_name text not null,
+  source text not null,
+  started_at text not null,
+  finished_at text,
+  status text not null check (status in ('Fresh', 'Delayed', 'Stale', 'Error', 'live', 'delayed', 'stale', 'modeled', 'fallback', 'error')),
+  rows_updated integer not null default 0,
+  error_message text,
+  next_run text,
+  created_at text not null default (datetime('now'))
+);
+
 create table if not exists indicators (
   id text primary key,
   name text not null,
