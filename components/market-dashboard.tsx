@@ -55,16 +55,14 @@ import type {
 } from "@/lib/market-types";
 
 const navItems = [
-  "Home",
-  "Macro Cockpit",
-  "Macro Regime",
-  "Asset Allocation",
-  "Sector & ETF",
-  "Quality Stocks",
-  "Commodity",
-  "Portfolio",
-  "Backtest Lab",
-  "Risk & Data"
+  "Dashboard",
+  "Rates",
+  "Inflation",
+  "Growth",
+  "Liquidity",
+  "FX / Commodities",
+  "Risk Monitor",
+  "Data Status"
 ] as const;
 
 type NavItem = (typeof navItems)[number];
@@ -246,6 +244,7 @@ type MacroMetric = MacroMetricConfig & {
   change1d: number;
   dataStatus: UiDataStatus;
   basisDate: string;
+  fetchedAt: string;
 };
 
 type MacroMonitorConfig = {
@@ -398,24 +397,22 @@ const actionClass: Record<InvestmentAction, string> = {
 };
 
 const ko = {
-  title: "Macro Active Tilt Dashboard",
-  subtitle: "User-defined BM Core + 5~6 Asset Active Sleeve",
+  title: "Macro Market Dashboard",
+  subtitle: "Rates · Inflation · Growth · Liquidity · FX · Commodities · Credit · Market Internals",
   menu: "Menu",
-  actionLanguage: "Action Glossary",
+  actionLanguage: "Macro Lens",
   detail: "Details"
 };
 
 const navLabel: Record<NavItem, string> = {
-  Home: "Home",
-  "Macro Cockpit": "Macro Cockpit",
-  "Macro Regime": "Macro Regime",
-  "Asset Allocation": "Active Tilt",
-  "Sector & ETF": "ETF Universe",
-  "Quality Stocks": "Quality Stocks",
-  Commodity: "Conditional Hedges",
-  Portfolio: "Portfolio",
-  "Backtest Lab": "Backtest",
-  "Risk & Data": "Risk & Data"
+  Dashboard: "Dashboard",
+  Rates: "Rates",
+  Inflation: "Inflation",
+  Growth: "Growth",
+  Liquidity: "Liquidity",
+  "FX / Commodities": "FX / Commodities",
+  "Risk Monitor": "Risk Monitor",
+  "Data Status": "Data Status"
 };
 
 const actionLabel: Record<InvestmentAction, string> = {
@@ -1085,8 +1082,10 @@ function macroMetric(snapshot: MarketSnapshot, config: MacroMetricConfig): Macro
     value: indicator?.value ?? config.fallbackValue,
     unit: indicator?.unit ?? config.unit,
     change1d: macroChange1d(indicator, config),
+    source: indicator?.quality.source ?? config.source,
     dataStatus: config.status ?? (indicator ? uiStatusForIndicator(indicator) : "Modeled"),
-    basisDate: indicator?.quality.tradeDate ?? indicator?.quality.baseDate ?? lastTradingDay(snapshot)
+    basisDate: indicator?.quality.tradeDate ?? indicator?.quality.baseDate ?? lastTradingDay(snapshot),
+    fetchedAt: indicator?.quality.lastUpdated ?? snapshot.generatedAt
   };
 }
 
@@ -1477,6 +1476,28 @@ function investorActionText(value: string) {
     .replaceAll("Reduce position sizing", "Reduce position sizing");
 }
 
+function monitoringPointText(value: string) {
+  if (/real yield|duration|valuation/i.test(value)) return "Watch real yields, DXY, and equity multiple pressure.";
+  if (/KRW|foreign|export/i.test(value)) return "Watch USD/KRW, foreign flow, and Korea breadth.";
+  if (/Copper|commodity|China/i.test(value)) return "Watch China PMI, copper trend, and materials breadth.";
+  if (/liquidity|cash|quality/i.test(value)) return "Watch Net Liquidity, HY OAS, and market breadth.";
+  return investorActionText(value);
+}
+
+function macroImpactText(value: string) {
+  return value
+    .replaceAll("QQQ/SMH", "long-duration growth and semiconductors")
+    .replaceAll("TLT", "long-duration bonds")
+    .replaceAll("BIL", "cash-like instruments")
+    .replaceAll("XLE", "energy")
+    .replaceAll("COPX", "copper-linked assets")
+    .replaceAll("GLD/IAU", "gold")
+    .replaceAll("GDX", "gold miners")
+    .replaceAll("PAVE", "infrastructure")
+    .replaceAll("GRID", "power grid")
+    .replaceAll("URA/URNM", "uranium-linked assets");
+}
+
 function macroIssueSummary(issue: MacroIssue) {
   if (issue.title === "US real yield rebound") return "Real yields are pressuring long-duration growth valuations.";
   if (issue.title === "USD/KRW breakout risk") return "KRW weakness raises foreign-flow risk for Korea growth exposure.";
@@ -1542,26 +1563,23 @@ function WhyDetails({ label = ko.detail, children }: { label?: string; children:
 function ExecutiveSummaryCard({ snapshot }: { snapshot: MarketSnapshot }) {
   const regime = currentRegime();
   const confidence = macroRegimeConfidence(snapshot, regime);
-  const preferredAssets = assetAllocations.filter((item) => ["Overweight", "Neutral+"].includes(item.signal)).slice(0, 4);
-  const preferredEtfs = [...etfAllocations].sort((a, b) => etfScore(b) - etfScore(a)).slice(0, 5);
-  const stockTypes = ["Core quality compounders", "AI infrastructure leaders", "Financially sound mid caps"];
   const topRisks = riskAlerts.slice(0, 3).map((alert) => alert.title.replace(" Alert", ""));
   const macroDrivers = ["US real yield rebound", "USD/KRW strength", "HY OAS stable to wider", "Korea export cycle constructive", "Copper and gold strength"];
   const whatChanged = macroIssues.slice(0, 3).map((issue) => issue.title).join(" / ");
   const watchList = ["CPI/PCE", "FOMC minutes", "Korea export 1~20 days", "China PMI"].join(", ");
   return (
     <section className="panel rounded-lg border-accent/35 bg-accent/5 p-5">
-      <SectionHeader eyebrow="Executive Summary" title="1-minute active tilt summary" icon={<RadioTower className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Market Regime Summary" title="Macro environment at a glance" icon={<RadioTower className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
         <StatCard label="Current Macro Regime" value={currentRegimeLabel()} detail={regime.quadrant} tone="positive" />
         <StatCard label="Regime Confidence" value={`${confidence}/100`} detail={hasLogIssue(snapshot, /ISM Report on Business/i) ? "ISM data penalty reflected" : "Macro inputs usable"} tone={confidence >= 70 ? "positive" : "caution"} />
-        <StatCard label="Overall Stance" value="Neutral+" detail="Quality bias" tone="positive" />
-        <StatCard label="Today Action" value="Core Hold" detail="Selective accumulation; avoid low-quality cyclicals" tone="neutral" />
+        <StatCard label="Risk Appetite" value="Selective" detail="Not broad beta expansion" tone="neutral" />
+        <StatCard label="Data Reliability" value={`${reliabilityScore(snapshot)}/100`} detail={dataLoadLabel(snapshot, "loaded")} tone={reliabilityScore(snapshot) >= 85 ? "positive" : "caution"} />
       </div>
       <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-4">
-        <InfoBlock label="Preferred Asset Classes" value={preferredAssets.map((item) => item.assetClass).join(", ")} />
-        <InfoBlock label="Preferred ETFs" value={preferredEtfs.map((item) => item.ticker).join(", ")} />
-        <InfoBlock label="Preferred Stock Types" value={stockTypes.join(", ")} />
+        <InfoBlock label="Asset Class Implication" value="Quality equity still supported, but long-duration valuation is capped by real yields." />
+        <InfoBlock label="Sector Implication" value="Semiconductor, exporters, industrial quality positive; speculative growth and levered small caps cautious." />
+        <InfoBlock label="Credit / Liquidity Read" value="Credit is not crisis-level, but HY/CCC spread widening limits broad beta." />
         <InfoBlock label="Key Risks" value={topRisks.join(", ")} />
         <InfoBlock label="Key Macro Drivers" value={macroDrivers.join(", ")} />
         <InfoBlock label="What Changed Today" value={whatChanged} />
@@ -1578,11 +1596,35 @@ function HomeView({ snapshot }: { snapshot: MarketSnapshot }) {
     <div className="space-y-6">
       <ExecutiveSummaryCard snapshot={snapshot} />
       <TopMacroDrivers snapshot={snapshot} />
+      <AssetClassImplication />
       <MacroIssueTape compact limit={4} />
-      <ActiveTiltLimitSummary snapshot={snapshot} />
-      <TopIdeas />
+      <MacroEventCalendar compact limit={4} />
       <HomeRiskDataIssues snapshot={snapshot} />
     </div>
+  );
+}
+
+function AssetClassImplication() {
+  const rows = [
+    ["Real Yield Up", "Growth valuation pressure", "Long-duration equities caution"],
+    ["USD/KRW Up", "Korea equity flow risk", "KOSDAQ growth caution"],
+    ["Copper Up + China PMI Improving", "Reflation confirmation signal", "Industrials / materials positive"],
+    ["HY OAS Widening", "Credit risk appetite weaker", "Quality and liquidity preference"],
+    ["Net Liquidity Down", "Equity beta less supported", "Cash buffer and defensive balance"]
+  ];
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Asset Class Implication" title="Macro signals translated into asset-class environment" icon={<Layers3 className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-5">
+        {rows.map(([driver, implication, watch]) => (
+          <article key={driver} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+            <div className="font-semibold text-white">{driver}</div>
+            <div className="mt-3 text-sm text-white/75">{implication}</div>
+            <div className="mt-3 rounded border border-white/10 bg-black/20 p-3 text-xs text-accent">{watch}</div>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -1698,9 +1740,10 @@ function TopIdeas() {
 
 function HomeRiskDataIssues({ snapshot }: { snapshot: MarketSnapshot }) {
   const counts = sourceIssueCounts(snapshot);
+  const issues = macroRiskSignals.slice(0, 4);
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Risk & Data Issues" title="Factors that can change today's allocation call" icon={<ShieldAlert className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Data Freshness" title="Risk and data issues that can change the macro read" icon={<ShieldAlert className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <StatCard label="Macro Confidence" value={`${macroRegimeConfidence(snapshot, currentRegime())}/100`} tone="caution" />
         <StatCard label="Reliability" value={`${reliabilityScore(snapshot)}/100`} tone={reliabilityScore(snapshot) >= 85 ? "positive" : "caution"} />
@@ -1708,8 +1751,8 @@ function HomeRiskDataIssues({ snapshot }: { snapshot: MarketSnapshot }) {
         <StatCard label="Errors" value={counts.error} tone={counts.error ? "negative" : "positive"} />
       </div>
       <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
-        {riskAlerts.slice(0, 4).map((alert) => (
-          <InfoBlock key={alert.title} label={alert.title} value={alert.suggestedInvestorAction} />
+        {issues.map(([title, , trigger, , , monitoring]) => (
+          <InfoBlock key={title} label={title} value={`${trigger}. ${monitoring}`} />
         ))}
       </div>
     </section>
@@ -1743,12 +1786,12 @@ function MacroSnapshot({ snapshot, compact = false, limit }: { snapshot: MarketS
                         <td className={row.change1d >= 0 ? "px-4 py-3 text-caution" : "px-4 py-3 text-positive"}>{formatMacroDelta(row, row.change1d)}</td>
                         <td className={row.change20d >= 0 ? "px-4 py-3 text-caution" : "px-4 py-3 text-positive"}>{formatMacroDelta(row, row.change20d)}</td>
                         <td className="px-4 py-3"><DataStatusPill status={row.dataStatus} /></td>
-                        <td className="px-4 py-3 text-white/75">{row.sectorImpact}</td>
+                        <td className="px-4 py-3 text-white/75">{macroImpactText(row.sectorImpact)}</td>
                         <td className="px-4 py-3">
                           <WhyDetails label="Detail">
                             <div>5D: {formatMacroDelta(row, row.change5d)}</div>
                             <div>Regime impact: {row.regimeImpact}</div>
-                            <div>Sector impact: {row.sectorImpact}</div>
+                            <div>Sector impact: {macroImpactText(row.sectorImpact)}</div>
                             <div>Source: {row.source}</div>
                             <div>Data basis date: {row.basisDate}</div>
                           </WhyDetails>
@@ -1770,7 +1813,7 @@ function MacroIssueTape({ compact = false, limit }: { compact?: boolean; limit?:
   const rows = compact ? macroIssues.slice(0, limit ?? 4) : macroIssues;
   return (
     <section className="panel rounded-lg p-5">
-      <SectionHeader eyebrow="Macro Issue Tape" title="Macro issues that can change the active sleeve" icon={<RadioTower className="h-5 w-5" />} />
+      <SectionHeader eyebrow="Macro Risk Alerts" title="Macro issues that can change the market environment" icon={<RadioTower className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {rows.map((issue) => (
           <article key={issue.title} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
@@ -1784,13 +1827,14 @@ function MacroIssueTape({ compact = false, limit }: { compact?: boolean; limit?:
             </div>
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
               <InfoBlock label="Summary" value={macroIssueSummary(issue)} />
-              <InfoBlock label="Impact" value={[...issue.affectedAssetClasses, ...issue.affectedEtfs].slice(0, 5).join(", ")} />
-              <InfoBlock label="Action" value={investorActionText(issue.suggestedAction)} />
+              <InfoBlock label="Affected Assets" value={issue.affectedAssetClasses.slice(0, 4).join(", ")} />
+              <InfoBlock label="Monitoring Point" value={monitoringPointText(issue.suggestedAction)} />
             </div>
-            <WhyDetails label="Korean Detail">
-              <div>?? ??: {issue.relatedIndicators.join(", ")}</div>
-              <div>??: {issue.source}</div>
-              <div>???? ??: {issue.timestamp}</div>
+            <WhyDetails label="Related Instruments">
+              <div>Indicators: {issue.relatedIndicators.join(", ")}</div>
+              <div>Related instruments: {[...issue.affectedEtfs, ...issue.affectedStocks].join(", ")}</div>
+              <div>Source: {issue.source}</div>
+              <div>Timestamp: {issue.timestamp}</div>
             </WhyDetails>
           </article>
         ))}
@@ -1876,15 +1920,15 @@ function MacroMetricMiniGrid({ rows }: { rows: MacroMetric[] }) {
 function MacroMonitorSection({ snapshot, section, compact = false }: { snapshot: MarketSnapshot; section: MacroMonitorConfig; compact?: boolean }) {
   const rows = macroMetrics(snapshot, section.metrics);
   const visibleRows = compact ? rows.slice(0, 6) : rows;
-  const entries = Object.entries(section.interpretation);
+  const entries = Object.entries(section.interpretation).filter(([label]) => !/ETF|Suggested Investor Action|Stock/i.test(label));
   return (
     <section className="panel rounded-lg p-5">
       <SectionHeader eyebrow={section.eyebrow} title={section.title} icon={<LineChart className="h-5 w-5" />} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="thin-scrollbar overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
+          <table className="w-full min-w-[980px] text-left text-sm">
             <thead className="bg-white/5 text-xs uppercase tracking-[0.12em] text-muted">
-              <tr>{["indicator", "value", "1D", "5D", "20D", "impact", "data"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
+              <tr>{["indicator", "value", "1D", "5D", "20D", "impact", "dataDate", "fetchedAt", "source", "status"].map((head) => <th key={head} className="px-4 py-3">{head}</th>)}</tr>
             </thead>
             <tbody>
               {visibleRows.map((row) => (
@@ -1894,7 +1938,10 @@ function MacroMonitorSection({ snapshot, section, compact = false }: { snapshot:
                   <td className={row.change1d >= 0 ? "px-4 py-3 text-caution" : "px-4 py-3 text-positive"}>{formatMacroDelta(row, row.change1d)}</td>
                   <td className={row.change5d >= 0 ? "px-4 py-3 text-caution" : "px-4 py-3 text-positive"}>{formatMacroDelta(row, row.change5d)}</td>
                   <td className={row.change20d >= 0 ? "px-4 py-3 text-caution" : "px-4 py-3 text-positive"}>{formatMacroDelta(row, row.change20d)}</td>
-                  <td className="px-4 py-3 text-muted">{row.sectorImpact}</td>
+                  <td className="px-4 py-3 text-muted">{macroImpactText(row.sectorImpact)}</td>
+                  <td className="px-4 py-3 font-mono text-muted">{row.basisDate}</td>
+                  <td className="px-4 py-3 font-mono text-muted">{formatFullDateTime(row.fetchedAt)}</td>
+                  <td className="px-4 py-3 text-muted">{row.source}</td>
                   <td className="px-4 py-3"><DataStatusPill status={row.dataStatus} /></td>
                 </tr>
               ))}
@@ -2011,10 +2058,104 @@ function MacroCockpitView({ snapshot }: { snapshot: MarketSnapshot }) {
   );
 }
 
+function MacroCategoryView({ snapshot, sectionIndexes }: { snapshot: MarketSnapshot; sectionIndexes: number[] }) {
+  return (
+    <div className="space-y-6">
+      {sectionIndexes.map((index) => (
+        <MacroMonitorSection key={macroMonitorSections[index].title} snapshot={snapshot} section={macroMonitorSections[index]} />
+      ))}
+    </div>
+  );
+}
+
+const marketInternalsRows = [
+  ["S&P500 above 50D MA", "63%", "Breadth is constructive but no longer broadening aggressively.", "Delayed"],
+  ["S&P500 above 200D MA", "71%", "Longer trend participation remains healthy.", "Delayed"],
+  ["Nasdaq breadth", "58%", "Mega-cap leadership still masks weaker secondary growth breadth.", "Modeled"],
+  ["NYSE/Nasdaq new highs vs new lows", "+42", "New highs still exceed new lows; deterioration would be a risk-off tell.", "Delayed"],
+  ["Growth vs Value", "+1.8% 20D", "Growth leadership persists but is sensitive to real-yield spikes.", "Modeled"],
+  ["High Beta vs Low Vol", "-0.6% 20D", "Speculative beta is not confirming the index move.", "Modeled"],
+  ["Sector relative strength", "Tech / Industrials", "Leadership is concentrated in quality tech and capex-linked industrials.", "Modeled"],
+  ["KOSPI advancing ratio", "46%", "Korea breadth is mixed and needs foreign-flow confirmation.", "Stale"],
+  ["KOSDAQ advancing ratio", "39%", "KOSDAQ participation is fragile under KRW pressure.", "Stale"],
+  ["Foreign / institution flow Korea", "Foreign selling", "Flow pressure remains a key Korea risk monitor.", "Stale"]
+] as const;
+
+function MarketInternals() {
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Market Internals" title="Breadth, style leadership, and Korea flow pressure" icon={<BarChart3 className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+        {marketInternalsRows.map(([label, value, interpretation, status]) => (
+          <article key={label} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="font-semibold text-white">{label}</div>
+                <div className="mt-1 font-mono text-xl text-white">{value}</div>
+              </div>
+              <DataStatusPill status={status} />
+            </div>
+            <p className="description mt-3 text-sm text-white/70">{interpretation}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RiskMonitorView({ snapshot }: { snapshot: MarketSnapshot }) {
+  return (
+    <div className="space-y-6">
+      <MacroIssueTape />
+      <MarketInternals />
+      <MacroRiskSignals />
+    </div>
+  );
+}
+
+const macroRiskSignals = [
+  ["Real Yield Spike", "High", "US 10Y real yield breaks 20D high", "Growth equity, long-duration assets", "Higher discount rates compress valuation multiples.", "Watch real yields and Nasdaq breadth."],
+  ["Dollar Spike", "High", "DXY and USD/KRW rise together", "Korea equity, EM risk", "Dollar strength tightens global liquidity and pressures foreign flows.", "Watch USD/KRW and KRX foreign net buying."],
+  ["HY OAS Widening", "Medium", "HY OAS widens for 5 trading days", "Equity beta, small/mid caps", "Credit spread widening reduces risk appetite.", "Watch HY OAS, CCC spread, and high beta vs low vol."],
+  ["VIX Spike", "Medium", "VIX rises more than 15% day over day", "Global equities", "Vol impulse can trigger de-risking even before credit stress appears.", "Watch VIX term structure and put/call ratio."],
+  ["MOVE Spike", "High", "MOVE breaks upper range", "Bonds, rate-sensitive equities", "Rates volatility makes duration exposure less stable.", "Watch US 2Y/10Y and real-yield direction."],
+  ["Net Liquidity Deterioration", "Medium", "Fed assets down while TGA rises", "Equity beta, liquidity-sensitive assets", "Liquidity drain weakens broad market participation.", "Watch Net Liquidity proxy and breadth."],
+  ["Oil Shock", "Medium", "WTI rises sharply with gasoline", "Inflation-sensitive assets", "Energy shock can lift inflation expectations.", "Watch WTI, gasoline, and 5Y breakeven."],
+  ["Copper Breakdown", "Medium", "Copper loses 20D trend", "Industrials, materials, Korea cyclicals", "Copper weakness undermines reflation and China demand signals.", "Watch Copper, China PMI, and iron ore."],
+  ["Korea FX Stress", "High", "USD/KRW 20D high with foreign selling", "Korea equity, KOSDAQ growth", "FX pressure can delay foreign inflows and compress domestic growth multiples.", "Watch USD/KRW, KOSPI/KOSDAQ flow, and breadth."],
+  ["China Demand Weakness", "Medium", "China PMI below 50 with iron ore softness", "Materials, exporters, commodities", "China demand weakness reduces cyclical confirmation.", "Watch China PMI, copper, iron ore, and Korea exports."]
+] as const;
+
+function MacroRiskSignals() {
+  return (
+    <section className="panel rounded-lg p-5">
+      <SectionHeader eyebrow="Risk Monitor" title="Macro risk signals without buy/sell recommendations" icon={<ShieldAlert className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {macroRiskSignals.map(([title, severity, trigger, affected, interpretation, monitoring]) => (
+          <article key={title} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <Pill className={severity === "High" ? toneClass.negative : toneClass.caution}>{severity}</Pill>
+                <h3 className="mt-3 font-semibold text-white">{title}</h3>
+              </div>
+              <Pill className={toneClass.neutral}>Monitor</Pill>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <InfoBlock label="Trigger" value={trigger} />
+              <InfoBlock label="Affected Asset Classes" value={affected} />
+              <InfoBlock label="Interpretation" value={interpretation} />
+              <InfoBlock label="Monitoring Point" value={monitoring} />
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function RiskAndDataView({ snapshot, compact = false }: { snapshot: MarketSnapshot; compact?: boolean }) {
   return (
     <div className="space-y-6">
-      <RiskValuationAlerts snapshot={snapshot} compact={compact} limit={compact ? 4 : undefined} />
       <DataReliability snapshot={snapshot} compact={compact} />
       <UpdateLogs snapshot={snapshot} compact={compact} />
     </div>
@@ -3463,30 +3604,25 @@ function DataFreshnessNotice({ snapshot, dataStatus, nextRefreshMs }: { snapshot
   return (
     <section className="mx-auto mt-4 max-w-[1680px] rounded-lg border border-caution/25 bg-caution/5 p-4">
       <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-        <InfoBlock label="Market Price Updated" value={pipeline?.marketPriceUpdatedAt ?? marketDate} />
-        <InfoBlock label="FX/Rates Updated" value={pipeline?.fxRatesUpdatedAt ?? basisDateForGroups(snapshot, ["rates", "credit"])} />
-        <InfoBlock label="Macro Updated" value={pipeline?.macroUpdatedAt ?? basisDateForGroups(snapshot, ["macro", "inflation", "liquidity"])} />
-        <InfoBlock label="ETF Holdings Updated" value={pipeline?.etfHoldingsUpdatedAt ?? "modeled"} />
-        <InfoBlock label="Fundamentals Updated" value={pipeline?.fundamentalsUpdatedAt ?? `${lastTradingDay(snapshot)} modeled`} />
-        <InfoBlock label="Modeled Signals Recalculated" value={pipeline?.modeledSignalsRecalculatedAt ?? snapshot.generatedAt} />
-        <InfoBlock label="Errors / Stale Sources" value={`${pipeline?.errors ?? counts.error} / ${pipeline?.staleSources ?? counts.stale}`} />
-        <InfoBlock label="Next Scheduled Update" value={pipeline?.nextScheduledUpdate ?? `${nextRefreshLabel(nextRefreshMs)} / ${refreshCadenceLabel(nextRefreshMs)}`} />
-        <InfoBlock label="Tradable Signal Date" value={pipeline?.tradableSignalDate ?? lastTradingDay(snapshot)} />
-        <InfoBlock label="Data Basis Date" value={pipeline?.dataBasisDate ?? marketDate} />
-        <InfoBlock label="Generated At" value={pipeline?.generatedAt ?? formatFullDateTime(snapshot.generatedAt)} />
+        <InfoBlock label="Dashboard Generated At" value={pipeline?.generatedAt ?? formatFullDateTime(snapshot.generatedAt)} />
+        <InfoBlock label="Market Data Basis" value={marketDate} />
+        <InfoBlock label="Macro Data Basis" value={pipeline?.macroUpdatedAt ?? basisDateForGroups(snapshot, ["macro", "inflation", "liquidity", "rates", "credit"])} />
+        <InfoBlock label="Flow Data Basis" value={basisDateForGroups(snapshot, ["flow"])} />
         <InfoBlock label="Issue Updated At" value={pipeline?.issueUpdatedAt ?? issueDate} />
-        <InfoBlock label="Status Mix" value={`Live ${counts.live} / Delayed ${counts.delayed} / Modeled ${counts.modeled} / Error ${counts.error}`} />
+        <InfoBlock label="Next Refresh" value={pipeline?.nextScheduledUpdate ?? `${nextRefreshLabel(nextRefreshMs)} / ${refreshCadenceLabel(nextRefreshMs)}`} />
+        <InfoBlock label="Status Counts" value={`Live ${counts.live} / Delayed ${counts.delayed} / Modeled ${counts.modeled} / Stale ${counts.stale} / Error ${counts.error}`} />
+        <InfoBlock label="Stale Sources" value={String(pipeline?.staleSources ?? counts.stale)} />
       </div>
       <div className="mt-3 rounded border border-white/10 bg-black/20 px-3 py-2 text-sm text-caution">
-        {pipeline?.status === "stale" ? "Do not use stale signals for new allocation. " : null}
-        {counts.modeled ? "Some modeled signals included. " : null}
-        Signal generated from {pipeline?.status ?? dataLoadLabel(snapshot, dataStatus)} data. {basisMismatch ? "Market data and issue tape basis dates differ." : "Market data and issue tape dates are aligned."}
+        {counts.stale ? "Some macro inputs are stale. " : null}
+        {counts.modeled ? "Some indicators are modeled proxies. " : null}
+        Dashboard loaded from {pipeline?.status ?? dataLoadLabel(snapshot, dataStatus)} data. {basisMismatch ? "Market data and issue tape basis dates differ." : "Market data and issue tape dates are aligned."}
       </div>
     </section>
   );
 }
 export function MarketDashboard() {
-  const [active, setActive] = React.useState<NavItem>("Home");
+  const [active, setActive] = React.useState<NavItem>("Dashboard");
   const [snapshot, setSnapshot] = React.useState<MarketSnapshot>(marketSnapshot);
   const [dataStatus, setDataStatus] = React.useState<"loaded" | "live" | "fallback">("loaded");
   const [lastRefreshAt, setLastRefreshAt] = React.useState<string | null>(null);
@@ -3532,15 +3668,13 @@ export function MarketDashboard() {
   }, []);
 
   const renderContent = () => {
-    if (active === "Home") return <HomeView snapshot={snapshot} />;
-    if (active === "Macro Cockpit") return <MacroCockpitView snapshot={snapshot} />;
-    if (active === "Macro Regime") return <><MacroRegimeSummary snapshot={snapshot} /><GroupedMacroIndicators snapshot={snapshot} /></>;
-    if (active === "Asset Allocation") return <><AssetAllocationView /><PortfolioConstructionView /></>;
-    if (active === "Sector & ETF") return <SectorEtfBoard />;
-    if (active === "Quality Stocks") return <><QualityStockCandidates /><MidSmallQualityWatchlist /><TenbaggerScreener /></>;
-    if (active === "Commodity") return <CommodityResourceMonitor />;
-    if (active === "Portfolio") return <><BenchmarkBuilder /><ActiveSleeveByRegime /><PortfolioConstructionView /><RiskBudgetView /></>;
-    if (active === "Backtest Lab") return <BacktestLabView />;
+    if (active === "Dashboard") return <HomeView snapshot={snapshot} />;
+    if (active === "Rates") return <MacroCategoryView snapshot={snapshot} sectionIndexes={[0]} />;
+    if (active === "Inflation") return <MacroCategoryView snapshot={snapshot} sectionIndexes={[1]} />;
+    if (active === "Growth") return <MacroCategoryView snapshot={snapshot} sectionIndexes={[2]} />;
+    if (active === "Liquidity") return <MacroCategoryView snapshot={snapshot} sectionIndexes={[3]} />;
+    if (active === "FX / Commodities") return <MacroCategoryView snapshot={snapshot} sectionIndexes={[4, 5]} />;
+    if (active === "Risk Monitor") return <RiskMonitorView snapshot={snapshot} />;
     return <RiskAndDataView snapshot={snapshot} />;
   };
 
@@ -3561,9 +3695,9 @@ export function MarketDashboard() {
           <HeaderStat label="Market Data Basis" value={basisDateForGroups(snapshot, ["price", "future", "volatility"])} />
           <HeaderStat label="Macro Data Basis" value={basisDateForGroups(snapshot, ["macro", "rates", "inflation", "credit", "liquidity"])} />
           <HeaderStat label="Flow Data Basis" value={basisDateForGroups(snapshot, ["flow"])} />
-          <HeaderStat label="Fundamental Basis" value={`${lastTradingDay(snapshot)} modeled`} />
           <HeaderStat label="Issue Tape Updated" value={issueTapeUpdatedAt()} />
           <HeaderStat label="Next Refresh" value={`${nextRefreshLabel(nextRefreshMs)} / ${refreshCadenceLabel(nextRefreshMs)}`} />
+          <HeaderStat label="Status Counts" value={(() => { const counts = dataStatusCounts(snapshot); return `Live ${counts.live} / Delayed ${counts.delayed} / Modeled ${counts.modeled} / Stale ${counts.stale} / Error ${counts.error}`; })()} />
           <HeaderStat label="Reliability / Load State" value={`${reliabilityScore(snapshot)}/100 · ${dataLoadLabel(snapshot, dataStatus)}`} />
         </div>
       </header>
@@ -3593,10 +3727,10 @@ export function MarketDashboard() {
           <div className="mt-5 rounded-lg border border-white/10 bg-black/20 p-3">
             <div className="text-xs uppercase tracking-[0.14em] text-muted">{ko.actionLanguage}</div>
             <div className="mt-3 space-y-2 text-xs">
-              <div className="flex justify-between"><span>Expand</span><span className="text-positive">Overweight / Accumulate</span></div>
-              <div className="flex justify-between"><span>Balance</span><span className="text-muted">Neutral</span></div>
-              <div className="flex justify-between"><span>Adjust</span><span className="text-caution">Trim / Rebalance</span></div>
-              <div className="flex justify-between"><span>Protect</span><span className="text-negative">Risk Review</span></div>
+              <div className="flex justify-between"><span>Rates</span><span className="text-caution">Valuation pressure</span></div>
+              <div className="flex justify-between"><span>Credit</span><span className="text-muted">Risk appetite</span></div>
+              <div className="flex justify-between"><span>FX</span><span className="text-caution">Korea flow risk</span></div>
+              <div className="flex justify-between"><span>Internals</span><span className="text-positive">Breadth check</span></div>
             </div>
           </div>
         </aside>
